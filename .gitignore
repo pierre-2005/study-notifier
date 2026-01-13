@@ -1,0 +1,19 @@
+# local env / secrets
+.env
+
+# virtual environment
+.venv/
+
+# python cache
+__pycache__/
+*.pyc
+
+# local database files
+*.sqlite3
+*.db
+*.sqlite3-wal
+*.sqlite3-shm
+
+# editor junk
+.vscode/
+.DS_Store
