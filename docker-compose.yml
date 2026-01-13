@@ -4,9 +4,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - TZ=America/Edmonton
-      - STUDY_NOTIFIER_DB=/data/study_notifier.db
-      # Add your ntfy env vars here IF your app uses them (we’ll do this below)
+      NOTIFIER: ntfy
+      TIMEZONE: America/Edmonton
+      NTFY_BASE_URL: https://ntfy.sh
+      NTFY_TOPIC: study-9f3a2c1d4e6b7a8f
+      STUDY_NOTIFIER_DB: /data/study_notifier.db
     volumes:
       - study_notifier_data:/data
     restart: unless-stopped
