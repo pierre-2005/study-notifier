@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+  <div>
+    <h2 class="text-2xl font-extrabold">{{ event["title"] }}</h2>
+    <p class="muted mt-1">{{ event["kind"] }} · {{ event["location"] or "—" }}</p>
+    <p class="mt-3"><span class="font-semibold">Starts:</span> {{ utc_to_local_str(event["start_at_utc"], tz) }}</p>
+  </div>
+
+  <form method="post" action="/events/{{ event['id'] }}/delete" onsubmit="return confirm('Delete this event and its reminders?');">
+    <button class="btn btn-danger" type="submit">Delete</button>
+  </form>
+</div>
+
+<div class="card p-5 mt-6">
+  <h3 class="text-lg font-extrabold">Quick reminders</h3>
+  <div class="mt-3 flex flex-wrap gap-2">
+    <form method="post" action="/events/{{ event['id'] }}/reminders/before">
+      <input type="hidden" name="minutes_before" value="10">
+      <button class="btn" type="submit">10 min before</button>
+    </form>
+    <form method="post" action="/events/{{ event['id'] }}/reminders/before">
+      <input type="hidden" name="minutes_before" value="60">
+      <button class="btn" type="submit">1 hr before</button>
+    </form>
+    <form method="post" action="/events/{{ event['id'] }}/reminders/before">
+      <input type="hidden" name="minutes_before" value="1440">
+      <button class="btn" type="submit">24 hr before</button>
+    </form>
+  </div>
+  <p class="muted mt-2">These schedule relative to the event’s start time.</p>
+</div>
+
+{% endblock %}

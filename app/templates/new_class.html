@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card p-6 max-w-2xl">
+  <div class="flex items-center justify-between">
+    <h2 class="text-lg font-extrabold">New Class</h2>
+    <a class="btn" href="/classes">Back</a>
+  </div>
+
+  <form method="post" class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="md:col-span-2">
+      <div class="label">Title</div>
+      <input class="input" name="title" required placeholder="ENEL 419 Lecture" />
+    </div>
+
+    <div>
+      <div class="label">Weekday</div>
+      <select class="input" name="weekday">
+        <option value="0">Monday</option>
+        <option value="1">Tuesday</option>
+        <option value="2">Wednesday</option>
+        <option value="3">Thursday</option>
+        <option value="4">Friday</option>
+        <option value="5">Saturday</option>
+        <option value="6">Sunday</option>
+      </select>
+    </div>
+
+    <div>
+      <div class="label">Start time</div>
+      <input class="input" type="time" name="start_time_local" required />
+    </div>
+
+    <div>
+      <div class="label">Duration (minutes)</div>
+      <input class="input" type="number" name="duration_minutes" value="50" />
+    </div>
+
+    <div>
+      <div class="label">Notify before (minutes)</div>
+      <input class="input" type="number" name="remind_before_minutes" value="15" />
+    </div>
+
+    <div class="md:col-span-2">
+      <div class="label">Location (optional)</div>
+      <input class="input" name="location" placeholder="ENGG 120 / TFDL / Zoom" />
+    </div>
+
+    <div class="md:col-span-2">
+      <div class="label">Notes (optional)</div>
+      <textarea class="input" name="notes" rows="3"></textarea>
+    </div>
+
+    <div class="md:col-span-2 flex gap-2">
+      <button class="btn btn-primary" type="submit">Create (auto-adds reminders)</button>
+      <a class="btn" href="/classes">Cancel</a>
+    </div>
+
+    <div class="md:col-span-2 muted">
+      It will generate reminders for the next ~4 months automatically.
+    </div>
+  </form>
+</div>
+
+{% endblock %}

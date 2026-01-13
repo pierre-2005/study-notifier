@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+  <div>
+    <h2 class="text-2xl font-extrabold">{{ expense["title"] }}</h2>
+    <div class="mt-2 flex flex-wrap gap-2">
+      <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold bg-slate-100 text-slate-700">
+        {{ expense["category"] or "No category" }}
+      </span>
+      <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold bg-slate-100 text-slate-700">
+        ${{ "%.2f"|format(expense["amount"]) }}
+      </span>
+      <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold
+        {% if expense['status']=='paid' %} bg-emerald-100 text-emerald-800 {% else %} bg-amber-100 text-amber-800 {% endif %}">
+        {{ expense["status"] }}
+      </span>
+    </div>
+
+    <p class="mt-3"><span class="font-semibold">Due:</span> {{ utc_to_local_str(expense["due_at_utc"], tz) }}</p>
+    {% if expense["notes"] %}<p class="mt-2"><span class="font-semibold">Notes:</span><br/>{{ expense["notes"] }}</p>{% endif %}
+  </div>
+
+  <div class="flex gap-2">
+    <form method="post" action="/expenses/{{ expense['id'] }}/delete"
+          onsubmit="return confirm('Delete this expense (and its reminders)?');">
+      <button class="btn btn-danger" type="submit">Delete</button>
+    </form>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+  <div class="card p-5">
+    <h3 class="text-lg font-extrabold">Payment status</h3>
+    <form method="post" action="/expenses/{{ expense['id'] }}/status" class="mt-3 flex gap-2">
+      <select class="input" name="status">
+        <option value="unpaid" {% if expense["status"]=="unpaid" %}selected{% endif %}>unpaid</option>
+        <option value="paid" {% if expense["status"]=="paid" %}selected{% endif %}>paid</option>
+      </select>
+      <button class="btn btn-primary" type="submit">Save</button>
+    </form>
+
+    <div class="mt-5">
+      <h4 class="font-bold">Quick reminders (before due date)</h4>
+      <div class="mt-2 flex flex-wrap gap-2">
+        <form method="post" action="/expenses/{{ expense['id'] }}/reminders/preset_before_due">
+          <input type="hidden" name="minutes_before_due" value="10080">
+          <button class="btn" type="submit">1 week before</button>
+        </form>
+        <form method="post" action="/expenses/{{ expense['id'] }}/reminders/preset_before_due">
+          <input type="hidden" name="minutes_before_due" value="4320">
+          <button class="btn" type="submit">3 days before</button>
+        </form>
+        <form method="post" action="/expenses/{{ expense['id'] }}/reminders/preset_before_due">
+          <input type="hidden" name="minutes_before_due" value="1440">
+          <button class="btn" type="submit">24h before</button>
+        </form>
+        <form method="post" action="/expenses/{{ expense['id'] }}/reminders/preset_before_due">
+          <input type="hidden" name="minutes_before_due" value="180">
+          <button class="btn" type="submit">3h before</button>
+        </form>
+      </div>
+      <p class="muted mt-2">These schedule relative to the expense’s due time.</p>
+    </div>
+  </div>
+
+  <div class="card p-5">
+    <h3 class="text-lg font-extrabold">Reminders</h3>
+
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="text-slate-500 text-xs uppercase tracking-wide">
+          <tr>
+            <th class="text-left py-3 pr-3 border-b border-slate-200">When</th>
+            <th class="text-left py-3 pr-3 border-b border-slate-200">Message</th>
+            <th class="text-left py-3 border-b border-slate-200">Sent</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in reminders %}
+          <tr class="hover:bg-slate-50">
+            <td class="py-3 pr-3 border-b border-slate-100 whitespace-nowrap">{{ utc_to_local_str(r["remind_at_utc"], tz) }}</td>
+            <td class="py-3 pr-3 border-b border-slate-100 font-semibold">{{ r["message"] }}</td>
+            <td class="py-3 border-b border-slate-100">{{ "yes" if r["sent_at_utc"] else "no" }}</td>
+          </tr>
+          {% endfor %}
+          {% if reminders|length == 0 %}
+          <tr><td class="py-4 muted" colspan="3">No reminders yet.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mt-5">
+      <h4 class="font-bold">Add a custom reminder</h4>
+      <form method="post" action="/expenses/{{ expense['id'] }}/reminders/new" class="mt-3 space-y-3">
+        <div>
+          <div class="label">Remind at</div>
+          <input class="input" type="datetime-local" name="remind_at_local" required />
+        </div>
+        <div>
+          <div class="label">Message</div>
+          <input class="input" name="message" required placeholder="Pay this today" />
+        </div>
+        <button class="btn btn-primary" type="submit">Add</button>
+      </form>
+
+      <div class="mt-5">
+        <h4 class="font-bold">Quick reminders (from now)</h4>
+        <div class="mt-2 flex flex-wrap gap-2">
+          <form method="post" action="/expenses/{{ expense['id'] }}/reminders/preset_now">
+            <input type="hidden" name="minutes" value="60">
+            <button class="btn" type="submit">+1 hr</button>
+          </form>
+          <form method="post" action="/expenses/{{ expense['id'] }}/reminders/preset_now">
+            <input type="hidden" name="minutes" value="1440">
+            <button class="btn" type="submit">+24 hr</button>
+          </form>
+          <form method="post" action="/expenses/{{ expense['id'] }}/reminders/preset_now">
+            <input type="hidden" name="minutes" value="10080">
+            <button class="btn" type="submit">+1 week</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

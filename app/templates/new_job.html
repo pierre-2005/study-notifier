@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card p-6 max-w-2xl">
+  <div class="flex items-center justify-between">
+    <h2 class="text-lg font-extrabold">New Job</h2>
+    <a class="btn" href="/jobs">Back</a>
+  </div>
+
+  <form method="post" class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div>
+      <div class="label">Company</div>
+      <input class="input" name="company" required placeholder="Cisco" />
+    </div>
+
+    <div>
+      <div class="label">Role</div>
+      <input class="input" name="role" required placeholder="Software Engineering Intern" />
+    </div>
+
+    <div class="md:col-span-2">
+      <div class="label">Link (optional)</div>
+      <input class="input" name="link" placeholder="https://..." />
+    </div>
+
+    <div>
+      <div class="label">Status</div>
+      <select class="input" name="status">
+        <option value="interested">interested</option>
+        <option value="applied">applied</option>
+        <option value="interview">interview</option>
+        <option value="offer">offer</option>
+        <option value="rejected">rejected</option>
+      </select>
+    </div>
+
+    <div>
+      <div class="label">Applied at (optional)</div>
+      <input class="input" type="datetime-local" name="applied_at_local" />
+    </div>
+
+    <div>
+      <div class="label">Follow-up at (optional)</div>
+      <input class="input" type="datetime-local" name="followup_at_local" />
+      <div class="muted mt-1">If set, it auto-creates a reminder.</div>
+    </div>
+
+    <div class="md:col-span-2">
+      <div class="label">Notes</div>
+      <textarea class="input" name="notes" rows="4"></textarea>
+    </div>
+
+    <div class="md:col-span-2 flex gap-2">
+      <button class="btn btn-primary" type="submit">Create</button>
+      <a class="btn" href="/jobs">Cancel</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

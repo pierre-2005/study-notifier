@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card p-6 max-w-2xl">
+  <div class="flex items-center justify-between">
+    <h2 class="text-lg font-extrabold">New Expense</h2>
+    <a class="btn" href="/expenses">Back</a>
+  </div>
+
+  <form method="post" class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="md:col-span-2">
+      <div class="label">Title</div>
+      <input class="input" name="title" required placeholder="Rent / Phone bill / Credit card payment" />
+    </div>
+
+    <div>
+      <div class="label">Category (optional)</div>
+      <input class="input" name="category" placeholder="Housing, Utilities, Subscriptions..." />
+    </div>
+
+    <div>
+      <div class="label">Amount</div>
+      <input class="input" name="amount" required placeholder="e.g., 49.99" />
+    </div>
+
+    <div class="md:col-span-2">
+      <div class="label">Due date/time</div>
+      <input class="input" type="datetime-local" name="due_at_local" required />
+      <div class="muted mt-1">Timezone: {{ tz }}</div>
+    </div>
+
+    <div class="md:col-span-2">
+      <div class="label">Notes (optional)</div>
+      <textarea class="input" name="notes" rows="4"></textarea>
+    </div>
+
+    <div class="md:col-span-2 flex gap-2">
+      <button class="btn btn-primary" type="submit">Create</button>
+      <a class="btn" href="/expenses">Cancel</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

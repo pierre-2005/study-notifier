@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+  <div class="card p-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-lg font-extrabold">Class reminders</h2>
+        <p class="muted mt-1">Upcoming “leave for class” notifications.</p>
+      </div>
+      <a class="btn btn-primary" href="/classes">Manage</a>
+    </div>
+
+    <div class="mt-4 space-y-3">
+      {% for r in class_next %}
+      <div class="rounded-2xl border border-slate-200 p-3 bg-white">
+        <div class="text-xs uppercase tracking-wide text-slate-500">
+          {{ utc_to_local_str(r["remind_at_utc"], tz) }}
+        </div>
+        <div class="mt-1 font-semibold">{{ r["message"] }}</div>
+      </div>
+      {% endfor %}
+      {% if class_next|length == 0 %}
+      <div class="muted">No class reminders yet. Add your schedule in “Manage”.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card p-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-lg font-extrabold">Meetings & events</h2>
+        <p class="muted mt-1">Upcoming one-off events.</p>
+      </div>
+      <a class="btn btn-primary" href="/events">Open</a>
+    </div>
+
+    <div class="mt-4 space-y-3">
+      {% for e in events_next %}
+      <a class="block rounded-2xl border border-slate-200 p-3 bg-white hover:bg-slate-50 transition" href="/events/{{ e['id'] }}">
+        <div class="font-semibold">{{ e["title"] }}</div>
+        <div class="text-xs uppercase tracking-wide text-slate-500 mt-1">
+          {{ utc_to_local_str(e["start_at_utc"], tz) }} · {{ e["location"] or "—" }}
+        </div>
+      </a>
+      {% endfor %}
+      {% if events_next|length == 0 %}
+      <div class="muted">No upcoming events.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

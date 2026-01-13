@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>{{ title if title else "My Life Organized" }}</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    .card { background:#fff; border:1px solid rgb(226 232 240); border-radius:18px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; padding:.55rem .95rem; border-radius:14px; border:1px solid rgb(226 232 240); background:#fff; font-weight:700; font-size:.875rem; line-height:1; }
+    .btn:hover { background:rgb(248 250 252); }
+    .btn-primary { background:rgb(15 23 42); color:#fff; border-color:rgb(15 23 42); }
+    .btn-primary:hover { background:rgb(30 41 59); }
+    .btn-danger { background:rgb(220 38 38); color:#fff; border-color:rgb(220 38 38); }
+    .btn-danger:hover { background:rgb(239 68 68); }
+    .input { width:100%; border:1px solid rgb(226 232 240); border-radius:14px; padding:.6rem .75rem; outline:none; background:#fff; }
+    .input:focus { box-shadow:0 0 0 4px rgba(148,163,184,.35); border-color:rgb(148 163 184); }
+    .label { font-size:.875rem; font-weight:700; color:rgb(51 65 85); }
+    .muted { color:rgb(100 116 139); font-size:.875rem; }
+  </style>
+</head>
+
+<body class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 text-slate-900">
+  <div class="max-w-6xl mx-auto px-4 py-6">
+    <div class="card px-5 py-4">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div class="text-2xl font-extrabold tracking-tight">My Life Organized</div>
+          <div class="muted mt-1">Assignments, Exams, Job applications, Expenses and Schedule</div>
+        </div>
+      </div>
+
+      <div class="mt-4 flex flex-wrap gap-2">
+        <a class="btn" href="/">Dashboard</a>
+        <a class="btn" href="/courses">Courses</a>
+        <a class="btn" href="/items">Assignments/Exams</a>
+        <a class="btn" href="/jobs">Jobs</a>
+        <a class="btn" href="/expenses">Expenses</a>
+        <a class="btn" href="/schedule">Schedule</a>
+      </div>
+    </div>
+
+    <div class="mt-6">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</body>
+</html>

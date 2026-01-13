@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+  <div>
+    <h2 class="text-2xl font-extrabold">{{ item["title"] }}</h2>
+    <div class="mt-2 flex flex-wrap gap-2">
+      <span class="pill">{{ item["type"] }}</span>
+      <span class="pill">{{ item["course_name"] }}</span>
+      <span class="pill">Priority {{ item["priority"] }}</span>
+      <span class="pill">Status: {{ item["status"] }}</span>
+    </div>
+    <p class="mt-3"><span class="font-semibold">Due:</span> {{ utc_to_local_str(item["due_at_utc"], tz) }}</p>
+    {% if item["weight"] %}<p><span class="font-semibold">Weight:</span> {{ item["weight"] }}%</p>{% endif %}
+    {% if item["notes"] %}<p class="mt-2"><span class="font-semibold">Notes:</span><br/>{{ item["notes"] }}</p>{% endif %}
+  </div>
+
+  <form method="post" action="/items/{{ item['id'] }}/delete"
+        onsubmit="return confirm('Delete this item (and its reminders)?');">
+    <button class="btn btn-danger" type="submit">Delete</button>
+  </form>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+  <div class="card p-5">
+    <h3 class="text-lg font-bold mb-3">Update status</h3>
+    <form method="post" action="/items/{{ item['id'] }}/status" class="flex gap-2">
+      <select class="input" name="status">
+        <option value="todo" {% if item["status"]=="todo" %}selected{% endif %}>todo</option>
+        <option value="doing" {% if item["status"]=="doing" %}selected{% endif %}>doing</option>
+        <option value="done" {% if item["status"]=="done" %}selected{% endif %}>done</option>
+      </select>
+      <button class="btn btn-primary" type="submit">Save</button>
+    </form>
+  </div>
+
+  <div class="card p-5">
+    <h3 class="text-lg font-bold mb-3">Reminders</h3>
+
+    <table class="table w-full">
+      <tr><th>When</th><th>Message</th><th>Sent?</th></tr>
+      {% for r in reminders %}
+      <tr>
+        <td>{{ utc_to_local_str(r["remind_at_utc"], tz) }}</td>
+        <td>{{ r["message"] }}</td>
+        <td>{{ "yes" if r["sent_at_utc"] else "no" }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <div class="mt-4">
+      <h4 class="font-bold mb-2">Add reminder</h4>
+      <form method="post" action="/items/{{ item['id'] }}/reminders/new" class="space-y-2">
+        <div>
+          <div class="label">Remind at</div>
+          <input class="input" type="datetime-local" name="remind_at_local" required />
+        </div>
+        <div>
+          <div class="label">Message</div>
+          <input class="input" name="message" required placeholder="e.g., Start working on it now" />
+        </div>
+        <button class="btn btn-primary" type="submit">Add</button>
+      </form>
+
+      <div class="mt-5">
+        <h4 class="font-bold mb-2">Quick reminders (from now)</h4>
+        <div class="flex flex-wrap gap-2">
+          <!-- these call the preset route we add in section 3 -->
+          <form method="post" action="/items/{{ item['id'] }}/reminders/preset">
+            <input type="hidden" name="minutes" value="60">
+            <button class="btn" type="submit">+1 hr</button>
+          </form>
+          <form method="post" action="/items/{{ item['id'] }}/reminders/preset">
+            <input type="hidden" name="minutes" value="180">
+            <button class="btn" type="submit">+3 hr</button>
+          </form>
+          <form method="post" action="/items/{{ item['id'] }}/reminders/preset">
+            <input type="hidden" name="minutes" value="1440">
+            <button class="btn" type="submit">+24 hr</button>
+          </form>
+          <form method="post" action="/items/{{ item['id'] }}/reminders/preset">
+            <input type="hidden" name="minutes" value="4320">
+            <button class="btn" type="submit">+3 days</button>
+          </form>
+          <form method="post" action="/items/{{ item['id'] }}/reminders/preset">
+            <input type="hidden" name="minutes" value="10080">
+            <button class="btn" type="submit">+1 week</button>
+          </form>
+        </div>
+        <p class="muted mt-2">These reminders fire based on the moment you click the button.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

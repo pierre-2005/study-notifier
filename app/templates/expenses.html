@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card p-6">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h2 class="text-lg font-extrabold">Expenses</h2>
+      <p class="muted mt-1">Track bills and set reminders so you don’t miss payments.</p>
+    </div>
+
+    <div class="flex flex-wrap gap-2">
+      <a class="btn" href="/expenses?sort=due">Sort: Due</a>
+      <a class="btn" href="/expenses?sort=amount">Sort: Amount</a>
+      <a class="btn" href="/expenses?sort=status">Sort: Status</a>
+      <a class="btn btn-primary" href="/expenses/new">+ New expense</a>
+    </div>
+  </div>
+
+  <div class="mt-5 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="text-slate-500 text-xs uppercase tracking-wide">
+        <tr>
+          <th class="text-left py-3 pr-3 border-b border-slate-200">Due</th>
+          <th class="text-left py-3 pr-3 border-b border-slate-200">Title</th>
+          <th class="text-left py-3 pr-3 border-b border-slate-200">Category</th>
+          <th class="text-left py-3 pr-3 border-b border-slate-200">Amount</th>
+          <th class="text-left py-3 border-b border-slate-200">Status</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for e in expenses %}
+        <tr class="hover:bg-slate-50">
+          <td class="py-3 pr-3 border-b border-slate-100 whitespace-nowrap">{{ utc_to_local_str(e["due_at_utc"], tz) }}</td>
+          <td class="py-3 pr-3 border-b border-slate-100 font-semibold">
+            <a class="hover:underline" href="/expenses/{{ e['id'] }}">{{ e["title"] }}</a>
+          </td>
+          <td class="py-3 pr-3 border-b border-slate-100">{{ e["category"] or "—" }}</td>
+          <td class="py-3 pr-3 border-b border-slate-100">${{ "%.2f"|format(e["amount"]) }}</td>
+          <td class="py-3 border-b border-slate-100">
+            <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold
+              {% if e['status']=='paid' %} bg-emerald-100 text-emerald-800 {% else %} bg-amber-100 text-amber-800 {% endif %}">
+              {{ e["status"] }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+
+        {% if expenses|length == 0 %}
+        <tr><td class="py-4 muted" colspan="5">No expenses yet. Add one to start tracking.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

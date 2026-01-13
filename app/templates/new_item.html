@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card p-6">
+  <div class="flex items-center justify-between">
+    <h2 class="text-lg font-extrabold">New Assignment / Exam</h2>
+    <a class="btn" href="/items">Back</a>
+  </div>
+
+  <form method="post" class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div>
+      <div class="label">Course</div>
+      <select class="input" name="course_id" required>
+        {% for c in courses %}
+          <option value="{{ c['id'] }}">{{ c["name"] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <div class="label">Type</div>
+      <select class="input" name="type" required>
+        <option value="assignment">assignment</option>
+        <option value="exam">exam</option>
+      </select>
+    </div>
+
+    <div class="md:col-span-2">
+      <div class="label">Title</div>
+      <input class="input" name="title" required />
+    </div>
+
+    <div>
+      <div class="label">Due date/time</div>
+      <input class="input" type="datetime-local" name="due_at_local" required />
+    </div>
+
+    <div>
+      <div class="label">Priority (1–5)</div>
+      <input class="input" type="number" name="priority" min="1" max="5" value="2" />
+    </div>
+
+    <div>
+      <div class="label">Weight (optional)</div>
+      <input class="input" name="weight" placeholder="10" />
+    </div>
+
+    <div class="md:col-span-2">
+      <div class="label">Notes</div>
+      <textarea class="input" name="notes" rows="4"></textarea>
+    </div>
+
+    <div class="md:col-span-2 flex gap-2">
+      <button class="btn btn-primary" type="submit">Create</button>
+      <a class="btn" href="/courses/new">Need a new course?</a>
+    </div>
+  </form>
+
+  <p class="muted mt-4">Timezone: {{ tz }}</p>
+</div>
+
+{% endblock %}

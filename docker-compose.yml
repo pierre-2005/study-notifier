@@ -1,0 +1,15 @@
+services:
+  study_notifier:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - TZ=America/Edmonton
+      - STUDY_NOTIFIER_DB=/data/study_notifier.db
+      # Add your ntfy env vars here IF your app uses them (we’ll do this below)
+    volumes:
+      - study_notifier_data:/data
+    restart: unless-stopped
+
+volumes:
+  study_notifier_data:
