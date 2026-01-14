@@ -34,7 +34,7 @@ body{
 }
 
 /* Layout */
-.container{
+.shell{
   max-width: 1100px;
   margin: 0 auto;
   padding: 24px 16px;
@@ -64,6 +64,7 @@ body{
   gap:10px;
   font-weight: 900;
   letter-spacing: .2px;
+  font-size: 26px;
 }
 .nav{
   display:flex;
@@ -91,19 +92,19 @@ body{
   box-shadow: var(--shadow);
 }
 .card-h{
-  padding: 16px 16px 10px;
+  padding: 18px 18px 12px;
   border-bottom: 1px solid var(--border);
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap: 10px;
 }
-.card-b{ padding: 14px 16px 16px; }
+.card-b{ padding: 16px 18px 18px; }
 
-.h1{ font-size: 22px; font-weight: 900; margin: 0; }
-.h2{ font-size: 16px; font-weight: 850; margin: 0; }
+.h1{ font-size: 26px; font-weight: 900; margin: 0; }
+.h2{ font-size: 18px; font-weight: 850; margin: 0; }
 
-.small{ font-size: 12px; color: var(--muted); }
+.small{ font-size: 13px; color: var(--muted); }
 .muted{ color: var(--muted); font-size: 14px; }   /* backwards compatible */
 .label{ font-size: 14px; font-weight: 850; color: var(--text); } /* backwards compatible */
 
@@ -185,10 +186,10 @@ html.dark .btn-primary{
 }
 .table th, .table td{
   text-align:left;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--border);
   vertical-align: top;
-  font-size: 14px;
+  font-size: 15px;
 }
 .table th{
   background: var(--panel2);
