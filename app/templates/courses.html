@@ -1,98 +1,55 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="card">
-  <div class="card-h">
-    <div>
-      <div class="h1">Courses</div>
-      <div class="small">Create courses, track open work, and set a color for quick scanning.</div>
-    </div>
-    <div class="hstack">
-      <a class="btn btn-primary" href="/courses/new">+ New Course</a>
-    </div>
+<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+  <div>
+    <h2 class="text-2xl font-extrabold">Courses</h2>
+    <p class="muted mt-1">Your classes for the term.</p>
   </div>
-
-  <div class="card-b">
-    <form method="get" action="/courses" class="hstack" style="gap:10px;">
-      <div style="flex:1; min-width:220px;">
-        <input class="input" type="text" name="q" value="{{ q or '' }}" placeholder="Search courses…">
-      </div>
-      <button class="btn" type="submit">Search</button>
-      {% if q %}
-        <a class="btn" href="/courses">Clear</a>
-      {% endif %}
-    </form>
-
-    <div class="hr"></div>
-
-    {% if courses and courses|length > 0 %}
-      <table class="table">
-        <thead>
-          <tr>
-            <th style="width:45%;">Course</th>
-            <th style="width:25%;">Term</th>
-            <th style="width:15%;">Open items</th>
-            <th style="width:15%;"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for c in courses %}
-          <tr>
-            <td>
-              <div class="hstack" style="gap:10px;">
-                <span class="badge">
-                  <span class="color-dot" data-color="{{ c.color or '' }}" style="display:inline-block;width:10px;height:10px;border-radius:999px;border:1px solid var(--border);"></span>
-                  {{ c.name }}
-                </span>
-              </div>
-            </td>
-
-            <td class="muted">
-              {{ c.term if c.term else "—" }}
-            </td>
-
-            <td>
-              <span class="badge">
-                {{ c.open_count if c.open_count is not none else 0 }}
-              </span>
-            </td>
-
-            <td style="text-align:right;">
-              <div class="hstack" style="justify-content:flex-end;">
-                <a class="btn" href="/courses/{{ c.id }}">View</a>
-                <form method="post" action="/courses/{{ c.id }}/delete" style="margin:0;">
-                  <button class="btn btn-danger" type="submit" onclick="return confirm('Delete this course and all its items?');">
-                    Delete
-                  </button>
-                </form>
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <div class="muted">
-        No courses yet. Create one to get started.
-      </div>
-      <div style="margin-top:10px;">
-        <a class="btn btn-primary" href="/courses/new">+ Create your first course</a>
-      </div>
-    {% endif %}
+  <div class="flex gap-2">
+    <a class="btn btn-primary" href="/courses/new">+ New course</a>
   </div>
 </div>
 
-<script>
-  // Apply course colors safely (avoids CSS lint issues from templating in style="")
-  (function () {
-    const FALLBACK = "#e2e8f0";
-    const HEX = /^#([0-9a-fA-F]{3}){1,2}$/;
+<div class="card p-5 mt-5">
+  <form method="get" action="/courses" class="flex flex-col sm:flex-row gap-2 sm:items-end">
+    <div class="flex-1">
+      <div class="label">Search</div>
+      <input class="input mt-1" name="q" value="{{ q or '' }}" placeholder="e.g., ENEL 419">
+    </div>
+    <button class="btn" type="submit">Search</button>
+    {% if q %}
+      <a class="btn" href="/courses">Clear</a>
+    {% endif %}
+  </form>
+</div>
 
-    document.querySelectorAll(".color-dot").forEach(el => {
-      const raw = (el.getAttribute("data-color") || "").trim();
-      el.style.backgroundColor = HEX.test(raw) ? raw : FALLBACK;
-    });
-  })();
-</script>
+<div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+  {% for c in courses %}
+  <a href="/courses/{{ c['id'] }}" class="card p-5 hover:shadow-sm transition-shadow">
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="h-3 w-3 rounded-full border border-slate-200/70 dark:border-slate-700/70"
+                style="background-color: {{ c['color'] or '#e2e8f0' }};"></span>
+          <div class="font-extrabold truncate">{{ c['name'] }}</div>
+        </div>
+        <div class="muted mt-1 truncate">{{ c['term'] or '—' }}</div>
+      </div>
+      <span class="badge">{{ c['open_count'] }} open</span>
+    </div>
+    <div class="mt-4 muted">View items, due dates, and progress →</div>
+  </a>
+  {% endfor %}
+
+  {% if courses|length == 0 %}
+  <div class="card p-6">
+    <div class="font-extrabold">No courses yet.</div>
+    <div class="muted mt-1">Add one to start tracking assignments and exams.</div>
+    <div class="mt-4"><a class="btn btn-primary" href="/courses/new">+ New course</a></div>
+  </div>
+  {% endif %}
+</div>
 
 {% endblock %}
+EOF

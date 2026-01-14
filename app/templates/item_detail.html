@@ -1,123 +1,139 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-  <!-- Left: main -->
-  <div class="lg:col-span-2 space-y-5">
-    <div class="card p-6">
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <div class="flex items-center gap-2">
-          <span class="color-dot"
-                data-color="{{ item['course_color'] or '' }}"
-                style="display:inline-block;width:10px;height:10px;border-radius:999px;border:1px solid var(--border);"></span>
-            <div class="muted">{{ item["course_name"] }}</div>
-          </div>
-          <h2 class="text-2xl font-extrabold mt-1">{{ item["title"] }}</h2>
-          <div class="mt-2 flex flex-wrap gap-2">
-            {% if item["type"]=="exam" %}<span class="badge badge-amber">exam</span>{% else %}<span class="badge badge-indigo">assignment</span>{% endif %}
-            <span class="badge">priority {{ item["priority"] }}</span>
-            {% if item["status"]=="done" %}<span class="badge badge-green">done</span>
-            {% elif item["status"]=="doing" %}<span class="badge badge-amber">doing</span>
-            {% else %}<span class="badge">todo</span>{% endif %}
-          </div>
-          <div class="mt-4">
-            <div class="label">Due</div>
-            <div class="font-extrabold">{{ utc_to_local_str(item["due_at_utc"], tz) }}</div>
-          </div>
-        </div>
-
-        <div class="flex flex-col gap-2">
-          <form method="post" action="/items/{{ item['id'] }}/status">
-            <input type="hidden" name="status" value="todo">
-            <button class="btn w-full" type="submit">Todo</button>
-          </form>
-          <form method="post" action="/items/{{ item['id'] }}/status">
-            <input type="hidden" name="status" value="doing">
-            <button class="btn w-full" type="submit">Doing</button>
-          </form>
-          <form method="post" action="/items/{{ item['id'] }}/status">
-            <input type="hidden" name="status" value="done">
-            <button class="btn btn-primary w-full" type="submit">Done</button>
-          </form>
-        </div>
-      </div>
-
-      {% if item["notes"] %}
-      <div class="mt-5">
-        <div class="label">Notes</div>
-        <div class="mt-1 whitespace-pre-wrap">{{ item["notes"] }}</div>
-      </div>
-      {% endif %}
+<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+  <div class="min-w-0">
+    <div class="flex items-center gap-2">
+      <span class="h-3 w-3 rounded-full border border-slate-200/70 dark:border-slate-700/70"
+            style="background-color: {{ item['course_color'] or '#e2e8f0' }};"></span>
+      <h2 class="text-2xl font-extrabold truncate">{{ item["title"] }}</h2>
+    </div>
+    <div class="muted mt-1">
+      {{ item["course_name"] }} • {{ item["type"]|capitalize }} • Due {{ utc_to_local_str(item["due_at_utc"], tz) }}
     </div>
 
-    <div class="card p-6">
-      <h3 class="text-lg font-extrabold">Danger zone</h3>
-      <p class="muted mt-1">This deletes the item and all its reminders.</p>
-      <form class="mt-3" method="post" action="/items/{{ item['id'] }}/delete" onsubmit="return confirm('Delete this item and its reminders?');">
-        <button class="btn btn-danger" type="submit">Delete item</button>
-      </form>
+    <div class="mt-3 flex flex-wrap gap-2">
+      <span class="badge">priority {{ item["priority"] }}</span>
+      {% if item["weight"] is not none %}
+        <span class="badge">weight {{ "%.1f"|format(item["weight"]) }}%</span>
+      {% endif %}
+      <span class="badge">status: {{ item["status"] }}</span>
     </div>
   </div>
 
-  <!-- Right: reminders -->
-  <div class="space-y-5">
-    <div class="card p-6">
-      <div class="flex items-center justify-between">
-        <h3 class="text-lg font-extrabold">Reminders</h3>
-        <form method="post" action="/items/{{ item['id'] }}/reminders/template">
-          <button class="btn" type="submit">Apply template</button>
-        </form>
-      </div>
-      <p class="muted mt-1">Template presets + custom reminder times.</p>
+  <div class="flex flex-wrap gap-2">
+    <a class="btn" href="/items">Back</a>
 
-      <div class="mt-4 flex flex-wrap gap-2">
-        <form method="post" action="/items/{{ item['id'] }}/reminders/preset">
-          <input type="hidden" name="minutes" value="10">
-          <button class="btn" type="submit">10m</button>
-        </form>
-        <form method="post" action="/items/{{ item['id'] }}/reminders/preset">
-          <input type="hidden" name="minutes" value="60">
-          <button class="btn" type="submit">1h</button>
-        </form>
-        <form method="post" action="/items/{{ item['id'] }}/reminders/preset">
-          <input type="hidden" name="minutes" value="1440">
-          <button class="btn" type="submit">24h</button>
-        </form>
-      </div>
+    <form method="post" action="/items/{{ item['id'] }}/status">
+      <input type="hidden" name="status" value="todo">
+      <button class="btn" type="submit">Mark todo</button>
+    </form>
 
-      <form class="mt-4" method="post" action="/items/{{ item['id'] }}/reminders/new">
-        <div class="label">Custom reminder time</div>
-        <input class="input mt-1" type="datetime-local" name="remind_at_local" required>
-        <div class="label mt-3">Message</div>
-        <input class="input mt-1" name="message" required value="Reminder: {{ item['title'] }}">
-        <button class="btn btn-primary mt-4 w-full" type="submit">Add reminder</button>
+    <form method="post" action="/items/{{ item['id'] }}/status">
+      <input type="hidden" name="status" value="doing">
+      <button class="btn" type="submit">Mark doing</button>
+    </form>
+
+    <form method="post" action="/items/{{ item['id'] }}/status">
+      <input type="hidden" name="status" value="done">
+      <button class="btn btn-primary" type="submit">Mark done</button>
+    </form>
+
+    <form method="post" action="/items/{{ item['id'] }}/delete" onsubmit="return confirm('Delete this item and all reminders?');">
+      <button class="btn btn-danger" type="submit">Delete</button>
+    </form>
+  </div>
+</div>
+
+{% if item["notes"] %}
+  <div class="card p-5 mt-5">
+    <div class="label">Notes</div>
+    <div class="mt-2 whitespace-pre-wrap">{{ item["notes"] }}</div>
+  </div>
+{% endif %}
+
+<div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div class="card p-5">
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <div class="text-lg font-extrabold">Reminders</div>
+        <div class="muted mt-1">Add custom reminders, or apply your template presets.</div>
+      </div>
+      <form method="post" action="/items/{{ item['id'] }}/reminders/template">
+        <button class="btn" type="submit">Apply template</button>
       </form>
+    </div>
 
-      <div class="mt-5 space-y-2">
+    <div class="mt-4 flex flex-wrap gap-2">
+      {% for m in [30, 60, 180, 1440] %}
+      <form method="post" action="/items/{{ item['id'] }}/reminders/preset">
+        <input type="hidden" name="minutes" value="{{ m }}">
+        <button class="btn" type="submit">
+          {% if m < 60 %}{{ m }} min
+          {% elif m == 60 %}1 hour
+          {% elif m == 180 %}3 hours
+          {% elif m == 1440 %}1 day
+          {% else %}{{ m }} min{% endif %}
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+
+    <form class="mt-5" method="post" action="/items/{{ item['id'] }}/reminders/new">
+      <div class="label">Remind at (local)</div>
+      <input class="input mt-1" type="datetime-local" name="remind_at_local" required>
+
+      <div class="label mt-3">Message</div>
+      <input class="input mt-1" name="message" required value="Reminder: {{ item['title'] }}">
+
+      <button class="btn btn-primary mt-4 w-full" type="submit">Add reminder</button>
+    </form>
+
+    <div class="mt-6">
+      <div class="label mb-2">Scheduled reminders</div>
+
+      {% if reminders and reminders|length > 0 %}
         {% for r in reminders %}
-        <div class="rounded-2xl border border-slate-200 p-3 bg-white">
-          <div class="muted text-xs uppercase tracking-wide">{{ utc_to_local_str(r["remind_at_utc"], tz) }}</div>
-          <div class="mt-1 font-extrabold">{{ r["message"] }}</div>
-        </div>
+          <div class="row py-3 flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <div class="font-bold truncate">{{ r["message"] }}</div>
+              <div class="muted mt-1">{{ utc_to_local_str(r["remind_at_utc"], tz) }}</div>
+            </div>
+            {% if r["sent_at_utc"] %}
+              <span class="badge">Sent</span>
+            {% else %}
+              <span class="badge">Pending</span>
+            {% endif %}
+          </div>
         {% endfor %}
-        {% if reminders|length == 0 %}
-        <div class="muted">No reminders yet.</div>
-        {% endif %}
+      {% else %}
+        <div class="muted mt-2">No reminders yet.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card p-5">
+    <div class="text-lg font-extrabold">Quick help</div>
+    <div class="muted mt-1">Recommended routine for staying ahead.</div>
+
+    <div class="mt-4 space-y-3">
+      <div class="row pt-3">
+        <div class="font-extrabold">Apply your template</div>
+        <div class="muted mt-1">Auto-create reminders (weeks/days/hours before the due date).</div>
+      </div>
+
+      <div class="row pt-3">
+        <div class="font-extrabold">Use “doing”</div>
+        <div class="muted mt-1">Mark active work so it stands out from “todo”.</div>
+      </div>
+
+      <div class="row pt-3">
+        <div class="font-extrabold">Keep titles short</div>
+        <div class="muted mt-1">Short titles are easier to scan on Dashboard and Items pages.</div>
       </div>
     </div>
   </div>
 </div>
 
-<script>
-  (function () {
-    const FALLBACK = "#e2e8f0";
-    const HEX = /^#([0-9a-fA-F]{3}){1,2}$/;
-    document.querySelectorAll(".color-dot").forEach(el => {
-      const raw = (el.getAttribute("data-color") || "").trim();
-      el.style.backgroundColor = HEX.test(raw) ? raw : FALLBACK;
-    });
-  })();
-</script>
-
 {% endblock %}
+EOF

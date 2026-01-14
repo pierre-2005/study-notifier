@@ -5,8 +5,8 @@
   <div>
     <div class="flex items-center gap-2">
       <span
-        class="h-3 w-3 rounded-full border border-slate-200 dark:border-slate-700"
-        style="--dot: {{ course['course_color'] or '#e2e8f0' }}; background-color: var(--dot);">
+        class="h-3 w-3 rounded-full border border-slate-200/70 dark:border-slate-700/70"
+        style="background-color: {{ course['color'] or '#e2e8f0' }};">
       </span>
       <h2 class="text-2xl font-extrabold">{{ course["name"] }}</h2>
     </div>
@@ -23,35 +23,53 @@
 
 <div class="card p-6 mt-5">
   <h3 class="text-lg font-extrabold">Items</h3>
+
   <div class="mt-4 overflow-x-auto">
     <table class="w-full text-sm">
-      <thead class="text-slate-500 text-xs uppercase tracking-wide">
+      <thead class="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">
         <tr>
-          <th class="text-left py-3 pr-3 border-b border-slate-200">Due</th>
-          <th class="text-left py-3 pr-3 border-b border-slate-200">Type</th>
-          <th class="text-left py-3 pr-3 border-b border-slate-200">Title</th>
-          <th class="text-left py-3 border-b border-slate-200">Status</th>
+          <th class="text-left py-3 pr-3 border-b border-slate-200/70 dark:border-slate-700/70">Due</th>
+          <th class="text-left py-3 pr-3 border-b border-slate-200/70 dark:border-slate-700/70">Type</th>
+          <th class="text-left py-3 pr-3 border-b border-slate-200/70 dark:border-slate-700/70">Title</th>
+          <th class="text-left py-3 border-b border-slate-200/70 dark:border-slate-700/70">Status</th>
         </tr>
       </thead>
+
       <tbody>
         {% for it in items %}
-        <tr class="hover:bg-slate-50">
-          <td class="py-3 pr-3 border-b border-slate-100">{{ utc_to_local_str(it["due_at_utc"], tz) }}</td>
-          <td class="py-3 pr-3 border-b border-slate-100">
-            {% if it["type"]=="exam" %}<span class="badge badge-amber">exam</span>{% else %}<span class="badge badge-indigo">assignment</span>{% endif %}
+        <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-950/30">
+          <td class="py-3 pr-3 border-b border-slate-100/70 dark:border-slate-800/50">
+            {{ utc_to_local_str(it["due_at_utc"], tz) }}
           </td>
-          <td class="py-3 pr-3 border-b border-slate-100 font-extrabold">
+
+          <td class="py-3 pr-3 border-b border-slate-100/70 dark:border-slate-800/50">
+            {% if it["type"]=="exam" %}
+              <span class="badge">exam</span>
+            {% else %}
+              <span class="badge">assignment</span>
+            {% endif %}
+          </td>
+
+          <td class="py-3 pr-3 border-b border-slate-100/70 dark:border-slate-800/50 font-extrabold">
             <a href="/items/{{ it['id'] }}" class="hover:underline">{{ it["title"] }}</a>
           </td>
-          <td class="py-3 border-b border-slate-100">
-            {% if it["status"]=="done" %}<span class="badge badge-green">done</span>
-            {% elif it["status"]=="doing" %}<span class="badge badge-amber">doing</span>
-            {% else %}<span class="badge">todo</span>{% endif %}
+
+          <td class="py-3 border-b border-slate-100/70 dark:border-slate-800/50">
+            {% if it["status"]=="done" %}
+              <span class="badge">done</span>
+            {% elif it["status"]=="doing" %}
+              <span class="badge">doing</span>
+            {% else %}
+              <span class="badge">todo</span>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
+
         {% if items|length == 0 %}
-        <tr><td class="py-5 muted" colspan="4">No items in this course yet.</td></tr>
+        <tr>
+          <td class="py-5 muted" colspan="4">No items in this course yet.</td>
+        </tr>
         {% endif %}
       </tbody>
     </table>
@@ -59,3 +77,4 @@
 </div>
 
 {% endblock %}
+EOF
