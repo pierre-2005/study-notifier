@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from datetime import timedelta, datetime, timezone
 from zoneinfo import ZoneInfo
+from fastapi.staticfiles import StaticFiles
+
 
 from app.config import settings
 from app.db import init_db, get_conn
@@ -22,6 +24,8 @@ async def lifespan(app: FastAPI):
     sched.shutdown(wait=False)
 
 app = FastAPI(lifespan=lifespan)
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 def _course_name(conn, course_id: int) -> str:
     row = conn.execute("SELECT name FROM courses WHERE id=?", (course_id,)).fetchone()
