@@ -1,0 +1,204 @@
+/* static/theme.css */
+
+/* LIGHT MODE (default) */
+:root{
+  --bg: #f6f7fb;          /* soft background (not pure white) */
+  --panel: #ffffff;       /* cards */
+  --panel2: #f1f5f9;      /* hover / table header */
+  --text: #0f172a;        /* slate-900 */
+  --muted: #475569;       /* slate-600 */
+  --border: #e2e8f0;      /* slate-200 */
+  --ring: rgba(15, 23, 42, .14);
+  --shadow: 0 10px 30px rgba(15,23,42,.08);
+}
+
+/* DARK MODE */
+html.dark{
+  --bg: #0b1220;
+  --panel: rgba(15, 23, 42, .78);
+  --panel2: rgba(30, 41, 59, .60);
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --border: rgba(148, 163, 184, .18);
+  --ring: rgba(226, 232, 240, .14);
+  --shadow: 0 12px 40px rgba(0,0,0,.35);
+}
+
+*{ box-sizing:border-box; }
+html, body{ height:100%; }
+body{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Layout */
+.container{
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+/* Topbar */
+.topbar{
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(10px);
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-inner{
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 14px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-weight: 900;
+  letter-spacing: .2px;
+}
+.nav{
+  display:flex;
+  flex-wrap:wrap;
+  gap: 6px;
+  align-items:center;
+}
+.nav a{
+  color: var(--text);
+  text-decoration:none;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+.nav a:hover{
+  background: var(--panel2);
+  border-color: var(--border);
+}
+
+/* Components */
+.card{
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+.card-h{
+  padding: 16px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+}
+.card-b{ padding: 14px 16px 16px; }
+
+.h1{ font-size: 22px; font-weight: 900; margin: 0; }
+.h2{ font-size: 16px; font-weight: 850; margin: 0; }
+
+.small{ font-size: 12px; color: var(--muted); }
+.muted{ color: var(--muted); font-size: 14px; }   /* backwards compatible */
+.label{ font-size: 14px; font-weight: 850; color: var(--text); } /* backwards compatible */
+
+.hstack{
+  display:flex;
+  gap: 10px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+.spread{ justify-content:space-between; }
+
+.btn{
+  appearance:none;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  color: var(--text);
+  padding: 9px 12px;
+  border-radius: 12px;
+  font-weight: 900;
+  cursor:pointer;
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  gap: 8px;
+}
+.btn:hover{ filter: brightness(0.98); }
+.btn:active{ transform: translateY(1px); }
+
+.btn-primary{
+  background: var(--text);
+  color: var(--bg);
+  border-color: color-mix(in srgb, var(--text) 70%, transparent);
+}
+html.dark .btn-primary{
+  background: #e5e7eb;
+  color: #0b1220;
+  border-color: rgba(229,231,235,.2);
+}
+
+.btn-danger{
+  background: #ef4444;
+  color: white;
+  border-color: rgba(239,68,68,.3);
+}
+
+.input, .select, .textarea{
+  width:100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  outline:none;
+}
+.input:focus, .select:focus, .textarea:focus{
+  box-shadow: 0 0 0 4px var(--ring);
+  border-color: color-mix(in srgb, var(--text) 28%, var(--border));
+}
+
+.badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  font-size: 12px;
+  font-weight: 850;
+  color: var(--text);
+}
+
+.table{
+  width:100%;
+  border-collapse: collapse;
+  overflow:hidden;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+}
+.table th, .table td{
+  text-align:left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  font-size: 14px;
+}
+.table th{
+  background: var(--panel2);
+  font-weight: 900;
+}
+.table tr:last-child td{ border-bottom:none; }
+
+.hr{
+  height:1px;
+  background: var(--border);
+  border:none;
+  margin: 14px 0;
+}
