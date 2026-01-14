@@ -8,6 +8,7 @@
         <div>
           <h2 class="text-2xl font-extrabold">{{ job["company"] }}</h2>
           <div class="muted mt-1">{{ job["role"] }}</div>
+
           <div class="mt-3">
             {% if job["status"]=="offer" %}<span class="badge badge-green">offer</span>
             {% elif job["status"]=="rejected" %}<span class="badge badge-red">rejected</span>
@@ -18,7 +19,7 @@
 
           {% if job["link"] %}
           <div class="mt-4">
-            <a class="btn" href="{{ job['link'] }}" target="_blank">Open link</a>
+            <a class="btn" href="{{ job['link'] }}" target="_blank" rel="noreferrer">Open link</a>
           </div>
           {% endif %}
         </div>
@@ -40,23 +41,27 @@
   <div class="space-y-5">
     <div class="card p-6">
       <h3 class="text-lg font-extrabold">Reminders</h3>
+
       <form class="mt-4" method="post" action="/jobs/{{ job['id'] }}/reminders/new">
         <div class="label">Remind at (local)</div>
         <input class="input mt-1" type="datetime-local" name="remind_at_local" required>
+
         <div class="label mt-3">Message</div>
         <input class="input mt-1" name="message" required value="Follow up: {{ job['company'] }} — {{ job['role'] }}">
+
         <button class="btn btn-primary mt-4 w-full" type="submit">Add reminder</button>
       </form>
 
-      <div class="mt-5 space-y-2">
+      <div class="mt-5">
         {% for r in reminders %}
-        <div class="rounded-2xl border border-slate-200 p-3 bg-white">
-          <div class="muted text-xs uppercase tracking-wide">{{ utc_to_local_str(r["remind_at_utc"], tz) }}</div>
-          <div class="mt-1 font-extrabold">{{ r["message"] }}</div>
-        </div>
+          <div class="row py-3">
+            <div class="muted text-xs uppercase tracking-wide">{{ utc_to_local_str(r["remind_at_utc"], tz) }}</div>
+            <div class="mt-1 font-extrabold">{{ r["message"] }}</div>
+          </div>
         {% endfor %}
+
         {% if reminders|length == 0 %}
-        <div class="muted">No reminders yet.</div>
+          <div class="muted mt-2">No reminders yet.</div>
         {% endif %}
       </div>
     </div>
