@@ -4,19 +4,40 @@
 <div class="card p-6">
   <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
-      <h2 class="text-lg font-extrabold">Expenses</h2>
-      <p class="muted mt-1">Track bills and set reminders so you don’t miss payments.</p>
+      <h2 class="text-2xl font-extrabold">Expenses</h2>
+      <p class="muted mt-1">Bills, subscriptions, and payment reminders.</p>
     </div>
-
-    <div class="flex flex-wrap gap-2">
-      <a class="btn" href="/expenses?sort=due">Sort: Due</a>
-      <a class="btn" href="/expenses?sort=amount">Sort: Amount</a>
-      <a class="btn" href="/expenses?sort=status">Sort: Status</a>
-      <a class="btn btn-primary" href="/expenses/new">+ New expense</a>
-    </div>
+    <a class="btn btn-primary" href="/expenses/new">+ New expense</a>
   </div>
 
-  <div class="mt-5 overflow-x-auto">
+  <form method="get" class="mt-6 grid grid-cols-1 md:grid-cols-5 gap-3">
+    <input class="input md:col-span-2" name="q" value="{{ filters.q }}" placeholder="Search title / category / notes…" />
+    <select class="input" name="status">
+      <option value="all" {% if filters.status=="all" %}selected{% endif %}>All</option>
+      <option value="unpaid" {% if filters.status=="unpaid" %}selected{% endif %}>Unpaid</option>
+      <option value="paid" {% if filters.status=="paid" %}selected{% endif %}>Paid</option>
+    </select>
+    <select class="input" name="when">
+      <option value="all" {% if filters.when=="all" %}selected{% endif %}>Any time</option>
+      <option value="today" {% if filters.when=="today" %}selected{% endif %}>Due today</option>
+      <option value="next7" {% if filters.when=="next7" %}selected{% endif %}>Next 7 days</option>
+      <option value="overdue" {% if filters.when=="overdue" %}selected{% endif %}>Overdue</option>
+    </select>
+    <select class="input" name="sort">
+      <option value="due" {% if filters.sort=="due" %}selected{% endif %}>Sort: due</option>
+      <option value="amount" {% if filters.sort=="amount" %}selected{% endif %}>Sort: amount</option>
+      <option value="status" {% if filters.sort=="status" %}selected{% endif %}>Sort: status</option>
+    </select>
+
+    <div class="md:col-span-5 flex gap-2">
+      <button class="btn btn-primary" type="submit">Apply</button>
+      <a class="btn" href="/expenses">Reset</a>
+      <a class="btn" href="/expenses?status=unpaid&when=overdue">Overdue</a>
+      <a class="btn" href="/expenses?status=unpaid&when=next7">Next 7</a>
+    </div>
+  </form>
+
+  <div class="mt-6 overflow-x-auto">
     <table class="w-full text-sm">
       <thead class="text-slate-500 text-xs uppercase tracking-wide">
         <tr>
@@ -24,30 +45,33 @@
           <th class="text-left py-3 pr-3 border-b border-slate-200">Title</th>
           <th class="text-left py-3 pr-3 border-b border-slate-200">Category</th>
           <th class="text-left py-3 pr-3 border-b border-slate-200">Amount</th>
+          <th class="text-left py-3 pr-3 border-b border-slate-200">Recurrence</th>
           <th class="text-left py-3 border-b border-slate-200">Status</th>
         </tr>
       </thead>
-
       <tbody>
         {% for e in expenses %}
         <tr class="hover:bg-slate-50">
           <td class="py-3 pr-3 border-b border-slate-100 whitespace-nowrap">{{ utc_to_local_str(e["due_at_utc"], tz) }}</td>
-          <td class="py-3 pr-3 border-b border-slate-100 font-semibold">
+          <td class="py-3 pr-3 border-b border-slate-100 font-extrabold">
             <a class="hover:underline" href="/expenses/{{ e['id'] }}">{{ e["title"] }}</a>
           </td>
           <td class="py-3 pr-3 border-b border-slate-100">{{ e["category"] or "—" }}</td>
           <td class="py-3 pr-3 border-b border-slate-100">${{ "%.2f"|format(e["amount"]) }}</td>
+          <td class="py-3 pr-3 border-b border-slate-100">
+            {% if e["recurrence"] and e["recurrence"] != "none" %}
+              <span class="badge">{{ e["recurrence"] }} ×{{ e["recurrence_interval"] }}</span>
+            {% else %}
+              <span class="badge">none</span>
+            {% endif %}
+          </td>
           <td class="py-3 border-b border-slate-100">
-            <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold
-              {% if e['status']=='paid' %} bg-emerald-100 text-emerald-800 {% else %} bg-amber-100 text-amber-800 {% endif %}">
-              {{ e["status"] }}
-            </span>
+            {% if e["status"]=="paid" %}<span class="badge badge-green">paid</span>{% else %}<span class="badge badge-amber">unpaid</span>{% endif %}
           </td>
         </tr>
         {% endfor %}
-
         {% if expenses|length == 0 %}
-        <tr><td class="py-4 muted" colspan="5">No expenses yet. Add one to start tracking.</td></tr>
+        <tr><td class="py-6 muted" colspan="6">No expenses match your filters.</td></tr>
         {% endif %}
       </tbody>
     </table>

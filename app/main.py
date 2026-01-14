@@ -6,15 +6,20 @@ from pathlib import Path
 from datetime import timedelta, datetime, timezone
 from zoneinfo import ZoneInfo
 from fastapi.staticfiles import StaticFiles
-
+import calendar
 
 from app.config import settings
 from app.db import init_db, get_conn
 from app.scheduler import start_scheduler
 from app.timeutil import now_utc, parse_local_datetime_localinput, utc_to_local_str
+from app.notifier import build_notifier
+
+APP_VERSION = "0.3.1"
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+templates.env.globals["APP_VERSION"] = APP_VERSION
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,22 +28,161 @@ async def lifespan(app: FastAPI):
     yield
     sched.shutdown(wait=False)
 
+
 app = FastAPI(lifespan=lifespan)
+
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
+
+# ----------------- helpers -----------------
 def _course_name(conn, course_id: int) -> str:
     row = conn.execute("SELECT name FROM courses WHERE id=?", (course_id,)).fetchone()
     return row["name"] if row else "Unknown Course"
 
+
 def _weekday_name(n: int) -> str:
     return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][n]
 
+
+def _parse_csv_ints(s: str, fallback: list[int]) -> list[int]:
+    if not s:
+        return fallback
+    out = []
+    for part in s.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            out.append(int(part))
+        except ValueError:
+            pass
+    return out if out else fallback
+
+
+def _get_setting(conn, key: str, default: str) -> str:
+    row = conn.execute("SELECT value FROM app_settings WHERE key=?", (key,)).fetchone()
+    return row["value"] if row else default
+
+
+def _set_setting(conn, key: str, value: str) -> None:
+    try:
+        conn.execute(
+            "INSERT INTO app_settings(key, value) VALUES(?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            (key, value),
+        )
+    except Exception:
+        row = conn.execute("SELECT key FROM app_settings WHERE key=?", (key,)).fetchone()
+        if row:
+            conn.execute("UPDATE app_settings SET value=? WHERE key=?", (value, key))
+        else:
+            conn.execute("INSERT INTO app_settings(key, value) VALUES(?, ?)", (key, value))
+
+
+def _add_months(dt: datetime, months: int) -> datetime:
+    y = dt.year + (dt.month - 1 + months) // 12
+    m = (dt.month - 1 + months) % 12 + 1
+    dmax = calendar.monthrange(y, m)[1]
+    d = min(dt.day, dmax)
+    return dt.replace(year=y, month=m, day=d)
+
+
+def _add_years(dt: datetime, years: int) -> datetime:
+    try:
+        return dt.replace(year=dt.year + years)
+    except ValueError:
+        # Feb 29 -> Feb 28
+        return dt.replace(year=dt.year + years, day=28)
+
+
+def _local_day_bounds_utc() -> tuple[datetime, datetime]:
+    tz = ZoneInfo(settings.timezone)
+    now_local = datetime.now(tz)
+    start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_local = start_local + timedelta(days=1)
+    return start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc)
+
+
+def _create_default_item_reminders(conn, item_id: int, item_type: str, title: str, due_utc_iso: str) -> int:
+    due_dt = datetime.fromisoformat(due_utc_iso)
+    if due_dt.tzinfo is None:
+        due_dt = due_dt.replace(tzinfo=timezone.utc)
+
+    if item_type == "exam":
+        default_csv = _get_setting(conn, "exam_template_minutes", "10080,4320,1440,120,30")
+        minutes_list = _parse_csv_ints(default_csv, [10080, 4320, 1440, 120, 30])
+    else:
+        default_csv = _get_setting(conn, "assignment_template_minutes", "10080,4320,1440,180")
+        minutes_list = _parse_csv_ints(default_csv, [10080, 4320, 1440, 180])
+
+    created = 0
+    now = now_utc()
+    for mins in minutes_list:
+        remind_dt = due_dt - timedelta(minutes=int(mins))
+        if remind_dt <= now:
+            continue
+        conn.execute(
+            """
+            INSERT INTO reminders(entity_type, entity_id, remind_at_utc, message, created_at_utc)
+            VALUES('item', ?, ?, ?, ?)
+            """,
+            (item_id, remind_dt.isoformat(), f"{item_type.title()} due: {title}", now.isoformat()),
+        )
+        created += 1
+
+    return created
+
+
+def _create_default_expense_reminders(conn, expense_id: int, title: str, due_utc_iso: str) -> int:
+    due_dt = datetime.fromisoformat(due_utc_iso)
+    if due_dt.tzinfo is None:
+        due_dt = due_dt.replace(tzinfo=timezone.utc)
+
+    default_csv = _get_setting(conn, "expense_template_minutes", "4320,1440,180")
+    minutes_list = _parse_csv_ints(default_csv, [4320, 1440, 180])
+
+    created = 0
+    now = now_utc()
+
+    # before due offsets
+    for mins in minutes_list:
+        remind_dt = due_dt - timedelta(minutes=int(mins))
+        if remind_dt <= now:
+            continue
+        conn.execute(
+            """
+            INSERT INTO reminders(entity_type, entity_id, remind_at_utc, message, created_at_utc)
+            VALUES('expense', ?, ?, ?, ?)
+            """,
+            (expense_id, remind_dt.isoformat(), f"Upcoming payment: {title}", now.isoformat()),
+        )
+        created += 1
+
+    # day-of morning reminder
+    hhmm = _get_setting(conn, "expense_dayof_local_time", "09:00")
+    try:
+        hh, mm = [int(x) for x in hhmm.split(":")]
+        tz = ZoneInfo(settings.timezone)
+        due_local = due_dt.astimezone(tz)
+        morning_local = due_local.replace(hour=hh, minute=mm, second=0, microsecond=0)
+        morning_utc = morning_local.astimezone(timezone.utc)
+        if now < morning_utc < due_dt:
+            conn.execute(
+                """
+                INSERT INTO reminders(entity_type, entity_id, remind_at_utc, message, created_at_utc)
+                VALUES('expense', ?, ?, ?, ?)
+                """,
+                (expense_id, morning_utc.isoformat(), f"Pay today: {title}", now.isoformat()),
+            )
+            created += 1
+    except Exception:
+        pass
+
+    return created
+
+
 def _generate_class_reminders(conn, class_id: int, horizon_days: int = 120):
-    """
-    Create reminder rows for the next `horizon_days` days for a weekly class meeting.
-    Avoid duplicates by checking existing reminders with the same remind_at_utc.
-    """
     row = conn.execute("SELECT * FROM class_meetings WHERE id=?", (class_id,)).fetchone()
     if not row or row["active"] != 1:
         return
@@ -47,7 +191,6 @@ def _generate_class_reminders(conn, class_id: int, horizon_days: int = 120):
     now_local = datetime.now(tz)
     now_u = now_utc()
 
-    # Parse HH:MM
     hh, mm = [int(x) for x in row["start_time_local"].split(":")]
     weekday = int(row["weekday"])
     lead = int(row["remind_before_minutes"])
@@ -63,13 +206,11 @@ def _generate_class_reminders(conn, class_id: int, horizon_days: int = 120):
         start_utc = start_local.astimezone(timezone.utc)
         remind_utc = start_utc - timedelta(minutes=lead)
 
-        # Don’t create reminders in the past
         if remind_utc <= now_u:
             continue
 
         remind_iso = remind_utc.isoformat()
 
-        # avoid duplicates
         exists = conn.execute(
             """
             SELECT 1 FROM reminders
@@ -89,17 +230,54 @@ def _generate_class_reminders(conn, class_id: int, horizon_days: int = 120):
             (class_id, remind_iso, msg, now_utc().isoformat()),
         )
 
+
+# ----------------- DASHBOARD -----------------
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
+    now = now_utc()
+    start_today_utc, end_today_utc = _local_day_bounds_utc()
+    next7 = now + timedelta(days=7)
+
     with get_conn() as conn:
+        due_today_count = conn.execute(
+            """
+            SELECT COUNT(*) AS c
+            FROM items
+            WHERE status != 'done' AND due_at_utc >= ? AND due_at_utc < ?
+            """,
+            (start_today_utc.isoformat(), end_today_utc.isoformat()),
+        ).fetchone()["c"]
+
+        overdue_count = conn.execute(
+            """
+            SELECT COUNT(*) AS c
+            FROM items
+            WHERE status != 'done' AND due_at_utc < ?
+            """,
+            (now.isoformat(),),
+        ).fetchone()["c"]
+
+        next7_count = conn.execute(
+            """
+            SELECT COUNT(*) AS c
+            FROM items
+            WHERE status != 'done' AND due_at_utc >= ? AND due_at_utc < ?
+            """,
+            (now.isoformat(), next7.isoformat()),
+        ).fetchone()["c"]
+
+        unpaid_expenses_count = conn.execute(
+            "SELECT COUNT(*) AS c FROM expenses WHERE status='unpaid'",
+        ).fetchone()["c"]
+
         upcoming = conn.execute(
             """
-            SELECT items.*, courses.name as course_name
+            SELECT items.*, courses.name as course_name, courses.color as course_color
             FROM items
             JOIN courses ON courses.id = items.course_id
             WHERE items.status != 'done'
             ORDER BY items.due_at_utc ASC
-            LIMIT 15
+            LIMIT 10
             """
         ).fetchall()
 
@@ -108,28 +286,25 @@ def dashboard(request: Request):
             SELECT * FROM reminders
             WHERE sent_at_utc IS NULL
             ORDER BY remind_at_utc ASC
-            LIMIT 10
+            LIMIT 8
             """
         ).fetchall()
 
-        # NEW: unpaid expenses (for dashboard card)
         expenses_rows = conn.execute(
             """
             SELECT * FROM expenses
             WHERE status='unpaid'
             ORDER BY due_at_utc ASC
-            LIMIT 8
+            LIMIT 6
             """
         ).fetchall()
 
-    # Compute overdue flag safely outside the DB context
     now_dt = datetime.now(timezone.utc)
     expenses_due = []
     for e in expenses_rows:
         due_dt = datetime.fromisoformat(e["due_at_utc"])
         if due_dt.tzinfo is None:
             due_dt = due_dt.replace(tzinfo=timezone.utc)
-
         d = dict(e)
         d["is_overdue"] = due_dt < now_dt
         expenses_due.append(d)
@@ -140,22 +315,51 @@ def dashboard(request: Request):
             "request": request,
             "upcoming": upcoming,
             "next_reminders": next_reminders,
-            "expenses_due": expenses_due,  # NEW
+            "expenses_due": expenses_due,
+            "stats": {
+                "due_today": due_today_count,
+                "overdue": overdue_count,
+                "next7": next7_count,
+                "unpaid_expenses": unpaid_expenses_count,
+            },
             "tz": settings.timezone,
             "utc_to_local_str": utc_to_local_str,
         },
     )
 
-# ---------- COURSES ----------
+
+# ----------------- COURSES -----------------
 @app.get("/courses", response_class=HTMLResponse)
-def courses(request: Request):
+def courses(request: Request, q: str = ""):
+    q = (q or "").strip()
     with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM courses ORDER BY name ASC").fetchall()
-    return templates.TemplateResponse("courses.html", {"request": request, "courses": rows})
+        if q:
+            rows = conn.execute(
+                """
+                SELECT c.*,
+                       (SELECT COUNT(*) FROM items i WHERE i.course_id=c.id AND i.status!='done') AS open_count
+                FROM courses c
+                WHERE c.name LIKE ?
+                ORDER BY c.name ASC
+                """,
+                (f"%{q}%",),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT c.*,
+                       (SELECT COUNT(*) FROM items i WHERE i.course_id=c.id AND i.status!='done') AS open_count
+                FROM courses c
+                ORDER BY c.name ASC
+                """
+            ).fetchall()
+    return templates.TemplateResponse("courses.html", {"request": request, "courses": rows, "q": q})
+
 
 @app.get("/courses/new", response_class=HTMLResponse)
 def new_course(request: Request):
     return templates.TemplateResponse("new_course.html", {"request": request})
+
 
 @app.post("/courses/new")
 def create_course(
@@ -171,52 +375,142 @@ def create_course(
         conn.commit()
     return RedirectResponse("/courses", status_code=303)
 
+
 @app.get("/courses/{course_id}", response_class=HTMLResponse)
 def course_detail(request: Request, course_id: int):
     with get_conn() as conn:
         course = conn.execute("SELECT * FROM courses WHERE id=?", (course_id,)).fetchone()
+        # FIX: join courses so templates can use course_name/course_color safely if needed
         items = conn.execute(
             """
-            SELECT * FROM items
-            WHERE course_id=?
-            ORDER BY due_at_utc ASC
+            SELECT items.*, courses.name AS course_name, courses.color AS course_color
+            FROM items
+            JOIN courses ON courses.id = items.course_id
+            WHERE items.course_id=?
+            ORDER BY items.due_at_utc ASC
             """,
             (course_id,),
         ).fetchall()
+
     return templates.TemplateResponse(
         "course_detail.html",
-        {"request": request, "course": course, "items": items, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str},
+        {
+            "request": request,
+            "course": course,
+            "items": items,
+            "tz": settings.timezone,
+            "utc_to_local_str": utc_to_local_str,
+        },
     )
 
-# ---------- ITEMS ----------
+
+@app.post("/courses/{course_id}/delete")
+def delete_course(course_id: int):
+    with get_conn() as conn:
+        item_ids = [r["id"] for r in conn.execute("SELECT id FROM items WHERE course_id=?", (course_id,)).fetchall()]
+        if item_ids:
+            placeholders = ",".join("?" for _ in item_ids)
+            conn.execute(f"DELETE FROM reminders WHERE entity_type='item' AND entity_id IN ({placeholders})", item_ids)
+            conn.execute(f"DELETE FROM items WHERE id IN ({placeholders})", item_ids)
+
+        conn.execute("DELETE FROM courses WHERE id=?", (course_id,))
+        conn.commit()
+    return RedirectResponse("/courses", status_code=303)
+
+
+# ----------------- ITEMS -----------------
 @app.get("/items", response_class=HTMLResponse)
-def items(request: Request, sort: str = "due"):
+def items(
+    request: Request,
+    q: str = "",
+    course_id: int | None = None,
+    type: str = "all",
+    status: str = "open",
+    when: str = "all",
+    sort: str = "due",
+):
+    q = (q or "").strip()
+    type = (type or "all").strip()
+    status = (status or "open").strip()
+    when = (when or "all").strip()
+    sort = (sort or "due").strip()
+
     sort_sql = {
-        "due": "due_at_utc ASC",
-        "priority": "priority DESC, due_at_utc ASC",
-        "course": "course_name ASC, due_at_utc ASC",
-    }.get(sort, "due_at_utc ASC")
+        "due": "items.due_at_utc ASC",
+        "priority": "items.priority DESC, items.due_at_utc ASC",
+        "course": "course_name ASC, items.due_at_utc ASC",
+        "created": "items.created_at_utc DESC",
+    }.get(sort, "items.due_at_utc ASC")
+
+    now = now_utc()
+    start_today_utc, end_today_utc = _local_day_bounds_utc()
+    next7 = now + timedelta(days=7)
+
+    where = ["1=1"]
+    params = []
+
+    if q:
+        # FIX: use courses.name, not course_name alias in WHERE
+        where.append("(items.title LIKE ? OR items.notes LIKE ? OR courses.name LIKE ?)")
+        params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
+
+    if course_id is not None:
+        where.append("items.course_id = ?")
+        params.append(int(course_id))
+
+    if type in ("assignment", "exam"):
+        where.append("items.type = ?")
+        params.append(type)
+
+    if status == "open":
+        where.append("items.status != 'done'")
+    elif status in ("todo", "doing", "done"):
+        where.append("items.status = ?")
+        params.append(status)
+
+    if when == "today":
+        where.append("items.due_at_utc >= ? AND items.due_at_utc < ?")
+        params.extend([start_today_utc.isoformat(), end_today_utc.isoformat()])
+    elif when == "next7":
+        where.append("items.due_at_utc >= ? AND items.due_at_utc < ?")
+        params.extend([now.isoformat(), next7.isoformat()])
+    elif when == "overdue":
+        where.append("items.due_at_utc < ?")
+        params.append(now.isoformat())
+        where.append("items.status != 'done'")
 
     with get_conn() as conn:
+        courses = conn.execute("SELECT id, name FROM courses ORDER BY name ASC").fetchall()
         rows = conn.execute(
             f"""
-            SELECT items.*, courses.name AS course_name
+            SELECT items.*, courses.name AS course_name, courses.color AS course_color
             FROM items
             JOIN courses ON courses.id = items.course_id
+            WHERE {' AND '.join(where)}
             ORDER BY {sort_sql}
-            """
+            """,
+            tuple(params),
         ).fetchall()
 
     return templates.TemplateResponse(
         "items.html",
-        {"request": request, "items": rows, "sort": sort, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str},
+        {
+            "request": request,
+            "items": rows,
+            "courses": courses,
+            "filters": {"q": q, "course_id": course_id, "type": type, "status": status, "when": when, "sort": sort},
+            "tz": settings.timezone,
+            "utc_to_local_str": utc_to_local_str,
+        },
     )
+
 
 @app.get("/items/new", response_class=HTMLResponse)
 def new_item(request: Request):
     with get_conn() as conn:
         courses = conn.execute("SELECT * FROM courses ORDER BY name ASC").fetchall()
     return templates.TemplateResponse("new_item.html", {"request": request, "courses": courses})
+
 
 @app.post("/items/new")
 def create_item(
@@ -227,6 +521,7 @@ def create_item(
     due_at_local: str = Form(...),
     priority: int = Form(2),
     weight: str = Form(""),
+    auto_template: str = Form("on"),
 ):
     due_utc = parse_local_datetime_localinput(due_at_local, settings.timezone)
     w = None
@@ -239,29 +534,36 @@ def create_item(
     now = now_utc().isoformat()
 
     with get_conn() as conn:
-        conn.execute(
+        cur = conn.execute(
             """
             INSERT INTO items(course_id,type,title,notes,due_at_utc,status,priority,weight,created_at_utc,updated_at_utc)
             VALUES(?,?,?,?,?,?,?,?,?,?)
             """,
             (course_id, type, title.strip(), notes.strip(), due_utc.isoformat(), "todo", int(priority), w, now, now),
         )
+        item_id = cur.lastrowid
+
+        if auto_template == "on":
+            _create_default_item_reminders(conn, item_id, type, title.strip(), due_utc.isoformat())
+
         conn.commit()
 
-    return RedirectResponse("/items", status_code=303)
+    return RedirectResponse(f"/items/{item_id}", status_code=303)
+
 
 @app.get("/items/{item_id}", response_class=HTMLResponse)
 def item_detail(request: Request, item_id: int):
     with get_conn() as conn:
         item = conn.execute(
             """
-            SELECT items.*, courses.name AS course_name
+            SELECT items.*, courses.name AS course_name, courses.color AS course_color
             FROM items
             JOIN courses ON courses.id = items.course_id
             WHERE items.id=?
             """,
             (item_id,),
         ).fetchone()
+
         reminders = conn.execute(
             """
             SELECT * FROM reminders
@@ -282,6 +584,7 @@ def item_detail(request: Request, item_id: int):
         },
     )
 
+
 @app.post("/items/{item_id}/status")
 def set_item_status(item_id: int, status: str = Form(...)):
     now = now_utc().isoformat()
@@ -289,6 +592,16 @@ def set_item_status(item_id: int, status: str = Form(...)):
         conn.execute("UPDATE items SET status=?, updated_at_utc=? WHERE id=?", (status, now, item_id))
         conn.commit()
     return RedirectResponse(f"/items/{item_id}", status_code=303)
+
+
+@app.post("/items/{item_id}/delete")
+def delete_item(item_id: int):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM reminders WHERE entity_type='item' AND entity_id=?", (item_id,))
+        conn.execute("DELETE FROM items WHERE id=?", (item_id,))
+        conn.commit()
+    return RedirectResponse("/items", status_code=303)
+
 
 @app.post("/items/{item_id}/reminders/new")
 def add_item_reminder(
@@ -308,16 +621,65 @@ def add_item_reminder(
         conn.commit()
     return RedirectResponse(f"/items/{item_id}", status_code=303)
 
-# ---------- JOBS ----------
-@app.get("/jobs", response_class=HTMLResponse)
-def jobs(request: Request):
+
+@app.post("/items/{item_id}/reminders/template")
+def add_item_reminder_template(item_id: int):
     with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM jobs ORDER BY updated_at_utc DESC").fetchall()
-    return templates.TemplateResponse("jobs.html", {"request": request, "jobs": rows, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str})
+        item = conn.execute("SELECT type, title, due_at_utc FROM items WHERE id=?", (item_id,)).fetchone()
+        if item:
+            _create_default_item_reminders(conn, item_id, item["type"], item["title"], item["due_at_utc"])
+            conn.commit()
+    return RedirectResponse(f"/items/{item_id}", status_code=303)
+
+
+@app.post("/items/{item_id}/reminders/preset")
+def add_item_reminder_preset(item_id: int, minutes: int = Form(...)):
+    remind_utc = now_utc() + timedelta(minutes=int(minutes))
+    with get_conn() as conn:
+        item = conn.execute("SELECT title FROM items WHERE id=?", (item_id,)).fetchone()
+        title = item["title"] if item else "Assignment/Exam"
+        conn.execute(
+            """
+            INSERT INTO reminders(entity_type, entity_id, remind_at_utc, message, created_at_utc)
+            VALUES('item', ?, ?, ?, ?)
+            """,
+            (item_id, remind_utc.isoformat(), f"Reminder: {title}", now_utc().isoformat()),
+        )
+        conn.commit()
+    return RedirectResponse(f"/items/{item_id}", status_code=303)
+
+
+# ----------------- JOBS -----------------
+@app.get("/jobs", response_class=HTMLResponse)
+def jobs(request: Request, q: str = "", status: str = "all"):
+    q = (q or "").strip()
+    status = (status or "all").strip()
+
+    where = ["1=1"]
+    params = []
+    if q:
+        where.append("(company LIKE ? OR role LIKE ? OR notes LIKE ?)")
+        params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
+    if status != "all":
+        where.append("status = ?")
+        params.append(status)
+
+    with get_conn() as conn:
+        rows = conn.execute(
+            f"SELECT * FROM jobs WHERE {' AND '.join(where)} ORDER BY updated_at_utc DESC",
+            tuple(params),
+        ).fetchall()
+
+    return templates.TemplateResponse(
+        "jobs.html",
+        {"request": request, "jobs": rows, "filters": {"q": q, "status": status}, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str},
+    )
+
 
 @app.get("/jobs/new", response_class=HTMLResponse)
 def new_job(request: Request):
     return templates.TemplateResponse("new_job.html", {"request": request})
+
 
 @app.post("/jobs/new")
 def create_job(
@@ -343,7 +705,6 @@ def create_job(
         )
         job_id = cur.lastrowid
 
-        # Optional: auto-create a reminder for follow-up if followup date is set
         if followup_utc:
             conn.execute(
                 """
@@ -356,6 +717,7 @@ def create_job(
         conn.commit()
 
     return RedirectResponse("/jobs", status_code=303)
+
 
 @app.get("/jobs/{job_id}", response_class=HTMLResponse)
 def job_detail(request: Request, job_id: int):
@@ -375,12 +737,9 @@ def job_detail(request: Request, job_id: int):
         {"request": request, "job": job, "reminders": reminders, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str},
     )
 
+
 @app.post("/jobs/{job_id}/reminders/new")
-def add_job_reminder(
-    job_id: int,
-    remind_at_local: str = Form(...),
-    message: str = Form(...),
-):
+def add_job_reminder(job_id: int, remind_at_local: str = Form(...), message: str = Form(...)):
     remind_utc = parse_local_datetime_localinput(remind_at_local, settings.timezone)
     with get_conn() as conn:
         conn.execute(
@@ -393,27 +752,6 @@ def add_job_reminder(
         conn.commit()
     return RedirectResponse(f"/jobs/{job_id}", status_code=303)
 
-# ---------- DELETE ----------
-@app.post("/items/{item_id}/delete")
-def delete_item(item_id: int):
-    with get_conn() as conn:
-        conn.execute("DELETE FROM reminders WHERE entity_type='item' AND entity_id=?", (item_id,))
-        conn.execute("DELETE FROM items WHERE id=?", (item_id,))
-        conn.commit()
-    return RedirectResponse("/items", status_code=303)
-
-@app.post("/courses/{course_id}/delete")
-def delete_course(course_id: int):
-    with get_conn() as conn:
-        item_ids = [r["id"] for r in conn.execute("SELECT id FROM items WHERE course_id=?", (course_id,)).fetchall()]
-        if item_ids:
-            placeholders = ",".join("?" for _ in item_ids)
-            conn.execute(f"DELETE FROM reminders WHERE entity_type='item' AND entity_id IN ({placeholders})", item_ids)
-            conn.execute(f"DELETE FROM items WHERE id IN ({placeholders})", item_ids)
-
-        conn.execute("DELETE FROM courses WHERE id=?", (course_id,))
-        conn.commit()
-    return RedirectResponse("/courses", status_code=303)
 
 @app.post("/jobs/{job_id}/delete")
 def delete_job(job_id: int):
@@ -423,55 +761,69 @@ def delete_job(job_id: int):
         conn.commit()
     return RedirectResponse("/jobs", status_code=303)
 
-@app.post("/items/{item_id}/reminders/preset")
-def add_item_reminder_preset(
-    item_id: int,
-    minutes: int = Form(...),
-):
-    # Reminder time = now + preset minutes
-    remind_utc = now_utc() + timedelta(minutes=int(minutes))
 
-    with get_conn() as conn:
-        # Pull item title for a nicer default message
-        item = conn.execute("SELECT title FROM items WHERE id=?", (item_id,)).fetchone()
-        title = item["title"] if item else "Assignment/Exam"
-
-        conn.execute(
-            """
-            INSERT INTO reminders(entity_type, entity_id, remind_at_utc, message, created_at_utc)
-            VALUES('item', ?, ?, ?, ?)
-            """,
-            (item_id, remind_utc.isoformat(), f"Reminder: {title}", now_utc().isoformat()),
-        )
-        conn.commit()
-
-    return RedirectResponse(f"/items/{item_id}", status_code=303)
-
-# ---------- EXPENSES ----------
+# ----------------- EXPENSES -----------------
 @app.get("/expenses", response_class=HTMLResponse)
-def expenses(request: Request, sort: str = "due"):
+def expenses(
+    request: Request,
+    q: str = "",
+    status: str = "all",
+    when: str = "all",
+    sort: str = "due",
+):
+    q = (q or "").strip()
+    status = (status or "all").strip()
+    when = (when or "all").strip()
+    sort = (sort or "due").strip()
+
     sort_sql = {
         "due": "due_at_utc ASC",
         "amount": "amount DESC, due_at_utc ASC",
         "status": "status ASC, due_at_utc ASC",
     }.get(sort, "due_at_utc ASC")
 
+    now = now_utc()
+    start_today_utc, end_today_utc = _local_day_bounds_utc()
+    next7 = now + timedelta(days=7)
+
+    where = ["1=1"]
+    params = []
+
+    if q:
+        where.append("(title LIKE ? OR category LIKE ? OR notes LIKE ?)")
+        params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
+
+    if status != "all":
+        where.append("status = ?")
+        params.append(status)
+
+    if when == "today":
+        where.append("due_at_utc >= ? AND due_at_utc < ?")
+        params.extend([start_today_utc.isoformat(), end_today_utc.isoformat()])
+    elif when == "next7":
+        where.append("due_at_utc >= ? AND due_at_utc < ?")
+        params.extend([now.isoformat(), next7.isoformat()])
+    elif when == "overdue":
+        where.append("due_at_utc < ?")
+        params.append(now.isoformat())
+        where.append("status = 'unpaid'")
+
     with get_conn() as conn:
         rows = conn.execute(
-            f"""
-            SELECT * FROM expenses
-            ORDER BY {sort_sql}
-            """
+            f"SELECT * FROM expenses WHERE {' AND '.join(where)} ORDER BY {sort_sql}",
+            tuple(params),
         ).fetchall()
 
     return templates.TemplateResponse(
         "expenses.html",
-        {"request": request, "expenses": rows, "sort": sort, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str},
+        {"request": request, "expenses": rows, "filters": {"q": q, "status": status, "when": when, "sort": sort}, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str},
     )
+
 
 @app.get("/expenses/new", response_class=HTMLResponse)
 def new_expense(request: Request):
     return templates.TemplateResponse("new_expense.html", {"request": request, "tz": settings.timezone})
+
 
 @app.post("/expenses/new")
 def create_expense(
@@ -480,6 +832,9 @@ def create_expense(
     amount: str = Form(...),
     due_at_local: str = Form(...),
     notes: str = Form(""),
+    recurrence: str = Form("none"),
+    recurrence_interval: int = Form(1),
+    auto_template: str = Form("on"),
 ):
     try:
         amt = float(amount)
@@ -492,15 +847,20 @@ def create_expense(
     with get_conn() as conn:
         cur = conn.execute(
             """
-            INSERT INTO expenses(title, category, amount, due_at_utc, status, notes, created_at_utc, updated_at_utc)
-            VALUES(?,?,?,?,?,?,?,?)
+            INSERT INTO expenses(title, category, amount, due_at_utc, status, notes, created_at_utc, updated_at_utc, recurrence, recurrence_interval)
+            VALUES(?,?,?,?,?,?,?,?,?,?)
             """,
-            (title.strip(), category.strip(), amt, due_utc.isoformat(), "unpaid", notes.strip(), now, now),
+            (title.strip(), category.strip(), amt, due_utc.isoformat(), "unpaid", notes.strip(), now, now, recurrence, int(recurrence_interval)),
         )
         expense_id = cur.lastrowid
+
+        if auto_template == "on":
+            _create_default_expense_reminders(conn, expense_id, title.strip(), due_utc.isoformat())
+
         conn.commit()
 
     return RedirectResponse(f"/expenses/{expense_id}", status_code=303)
+
 
 @app.get("/expenses/{expense_id}", response_class=HTMLResponse)
 def expense_detail(request: Request, expense_id: int):
@@ -520,13 +880,60 @@ def expense_detail(request: Request, expense_id: int):
         {"request": request, "expense": expense, "reminders": reminders, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str},
     )
 
+
 @app.post("/expenses/{expense_id}/status")
 def set_expense_status(expense_id: int, status: str = Form(...)):
     now = now_utc().isoformat()
     with get_conn() as conn:
+        exp = conn.execute("SELECT * FROM expenses WHERE id=?", (expense_id,)).fetchone()
+        if not exp:
+            return RedirectResponse("/expenses", status_code=303)
+
         conn.execute("UPDATE expenses SET status=?, updated_at_utc=? WHERE id=?", (status, now, expense_id))
+
+        if status == "paid" and exp["recurrence"] and exp["recurrence"] != "none":
+            due_dt = datetime.fromisoformat(exp["due_at_utc"])
+            if due_dt.tzinfo is None:
+                due_dt = due_dt.replace(tzinfo=timezone.utc)
+
+            interval = int(exp["recurrence_interval"] or 1)
+            rec = exp["recurrence"]
+
+            if rec == "weekly":
+                next_due = due_dt + timedelta(days=7 * interval)
+            elif rec == "monthly":
+                next_due = _add_months(due_dt, interval)
+            elif rec == "yearly":
+                next_due = _add_years(due_dt, interval)
+            else:
+                next_due = None
+
+            if next_due:
+                cur = conn.execute(
+                    """
+                    INSERT INTO expenses(title, category, amount, due_at_utc, status, notes, created_at_utc, updated_at_utc, recurrence, recurrence_interval)
+                    VALUES(?,?,?,?,?,?,?,?,?,?)
+                    """,
+                    (
+                        exp["title"],
+                        exp["category"] or "",
+                        float(exp["amount"]),
+                        next_due.isoformat(),
+                        "unpaid",
+                        exp["notes"] or "",
+                        now,
+                        now,
+                        exp["recurrence"],
+                        interval,
+                    ),
+                )
+                new_id = cur.lastrowid
+                _create_default_expense_reminders(conn, new_id, exp["title"], next_due.isoformat())
+
         conn.commit()
+
     return RedirectResponse(f"/expenses/{expense_id}", status_code=303)
+
 
 @app.post("/expenses/{expense_id}/delete")
 def delete_expense(expense_id: int):
@@ -536,12 +943,9 @@ def delete_expense(expense_id: int):
         conn.commit()
     return RedirectResponse("/expenses", status_code=303)
 
+
 @app.post("/expenses/{expense_id}/reminders/new")
-def add_expense_reminder(
-    expense_id: int,
-    remind_at_local: str = Form(...),
-    message: str = Form(...),
-):
+def add_expense_reminder(expense_id: int, remind_at_local: str = Form(...), message: str = Form(...)):
     remind_utc = parse_local_datetime_localinput(remind_at_local, settings.timezone)
     with get_conn() as conn:
         conn.execute(
@@ -554,61 +958,18 @@ def add_expense_reminder(
         conn.commit()
     return RedirectResponse(f"/expenses/{expense_id}", status_code=303)
 
-@app.post("/expenses/{expense_id}/reminders/preset_now")
-def add_expense_reminder_preset_now(
-    expense_id: int,
-    minutes: int = Form(...),
-):
-    remind_utc = now_utc() + timedelta(minutes=int(minutes))
 
-    with get_conn() as conn:
-        exp = conn.execute("SELECT title FROM expenses WHERE id=?", (expense_id,)).fetchone()
-        title = exp["title"] if exp else "Expense"
-        msg = f"Pay expense: {title}"
-
-        conn.execute(
-            """
-            INSERT INTO reminders(entity_type, entity_id, remind_at_utc, message, created_at_utc)
-            VALUES('expense', ?, ?, ?, ?)
-            """,
-            (expense_id, remind_utc.isoformat(), msg, now_utc().isoformat()),
-        )
-        conn.commit()
-
-    return RedirectResponse(f"/expenses/{expense_id}", status_code=303)
-
-@app.post("/expenses/{expense_id}/reminders/preset_before_due")
-def add_expense_reminder_preset_before_due(
-    expense_id: int,
-    minutes_before_due: int = Form(...),
-):
+@app.post("/expenses/{expense_id}/reminders/template")
+def add_expense_reminder_template(expense_id: int):
     with get_conn() as conn:
         exp = conn.execute("SELECT title, due_at_utc FROM expenses WHERE id=?", (expense_id,)).fetchone()
-        if not exp:
-            return RedirectResponse("/expenses", status_code=303)
-
-        due_utc = exp["due_at_utc"]
-        # due_utc is ISO string; parse to datetime
-        from datetime import datetime, timezone
-        due_dt = datetime.fromisoformat(due_utc)
-        if due_dt.tzinfo is None:
-            due_dt = due_dt.replace(tzinfo=timezone.utc)
-
-        remind_dt = due_dt - timedelta(minutes=int(minutes_before_due))
-        msg = f"Upcoming payment: {exp['title']} (due soon)"
-
-        conn.execute(
-            """
-            INSERT INTO reminders(entity_type, entity_id, remind_at_utc, message, created_at_utc)
-            VALUES('expense', ?, ?, ?, ?)
-            """,
-            (expense_id, remind_dt.isoformat(), msg, now_utc().isoformat()),
-        )
-        conn.commit()
-
+        if exp:
+            _create_default_expense_reminders(conn, expense_id, exp["title"], exp["due_at_utc"])
+            conn.commit()
     return RedirectResponse(f"/expenses/{expense_id}", status_code=303)
 
-# ---------- SCHEDULE (home) ----------
+
+# ----------------- SCHEDULE -----------------
 @app.get("/schedule", response_class=HTMLResponse)
 def schedule_home(request: Request):
     with get_conn() as conn:
@@ -636,42 +997,32 @@ def schedule_home(request: Request):
 
     return templates.TemplateResponse(
         "schedule.html",
-        {
-            "request": request,
-            "class_next": class_next,
-            "events_next": events_next,
-            "tz": settings.timezone,
-            "utc_to_local_str": utc_to_local_str,
-        },
+        {"request": request, "class_next": class_next, "events_next": events_next, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str},
     )
 
 
-# ---------- CLASSES (recurring weekly) ----------
 @app.get("/classes", response_class=HTMLResponse)
 def classes(request: Request):
     with get_conn() as conn:
-        rows = conn.execute(
-            "SELECT * FROM class_meetings WHERE active=1 ORDER BY weekday ASC, start_time_local ASC"
-        ).fetchall()
-
-    # Add weekday name for display
+        rows = conn.execute("SELECT * FROM class_meetings WHERE active=1 ORDER BY weekday ASC, start_time_local ASC").fetchall()
     view = []
     for r in rows:
         d = dict(r)
         d["weekday_name"] = _weekday_name(int(r["weekday"]))
         view.append(d)
-
     return templates.TemplateResponse("classes.html", {"request": request, "classes": view, "tz": settings.timezone})
+
 
 @app.get("/classes/new", response_class=HTMLResponse)
 def new_class(request: Request):
     return templates.TemplateResponse("new_class.html", {"request": request, "tz": settings.timezone})
 
+
 @app.post("/classes/new")
 def create_class(
     title: str = Form(...),
     weekday: int = Form(...),
-    start_time_local: str = Form(...),  # "HH:MM"
+    start_time_local: str = Form(...),
     duration_minutes: int = Form(50),
     location: str = Form(""),
     remind_before_minutes: int = Form(15),
@@ -689,12 +1040,10 @@ def create_class(
              int(remind_before_minutes), notes.strip(), 1, now, now),
         )
         class_id = cur.lastrowid
-
-        # auto-generate reminders for the next ~4 months
         _generate_class_reminders(conn, class_id, horizon_days=120)
         conn.commit()
-
     return RedirectResponse("/classes", status_code=303)
+
 
 @app.post("/classes/{class_id}/regen")
 def regen_class_reminders(class_id: int):
@@ -702,6 +1051,7 @@ def regen_class_reminders(class_id: int):
         _generate_class_reminders(conn, class_id, horizon_days=120)
         conn.commit()
     return RedirectResponse("/classes", status_code=303)
+
 
 @app.post("/classes/{class_id}/delete")
 def delete_class(class_id: int):
@@ -712,7 +1062,6 @@ def delete_class(class_id: int):
     return RedirectResponse("/classes", status_code=303)
 
 
-# ---------- EVENTS / MEETINGS (one-off) ----------
 @app.get("/events", response_class=HTMLResponse)
 def events(request: Request):
     with get_conn() as conn:
@@ -725,15 +1074,13 @@ def events(request: Request):
             """,
             (now_iso,),
         ).fetchall()
+    return templates.TemplateResponse("events.html", {"request": request, "events": rows, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str})
 
-    return templates.TemplateResponse(
-        "events.html",
-        {"request": request, "events": rows, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str},
-    )
 
 @app.get("/events/new", response_class=HTMLResponse)
 def new_event(request: Request):
     return templates.TemplateResponse("new_event.html", {"request": request, "tz": settings.timezone})
+
 
 @app.post("/events/new")
 def create_event(
@@ -761,6 +1108,7 @@ def create_event(
 
     return RedirectResponse(f"/events/{event_id}", status_code=303)
 
+
 @app.get("/events/{event_id}", response_class=HTMLResponse)
 def event_detail(request: Request, event_id: int):
     with get_conn() as conn:
@@ -773,11 +1121,8 @@ def event_detail(request: Request, event_id: int):
             """,
             (event_id,),
         ).fetchall()
+    return templates.TemplateResponse("event_detail.html", {"request": request, "event": event, "reminders": reminders, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str})
 
-    return templates.TemplateResponse(
-        "event_detail.html",
-        {"request": request, "event": event, "reminders": reminders, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str},
-    )
 
 @app.post("/events/{event_id}/delete")
 def delete_event(event_id: int):
@@ -787,11 +1132,9 @@ def delete_event(event_id: int):
         conn.commit()
     return RedirectResponse("/events", status_code=303)
 
+
 @app.post("/events/{event_id}/reminders/before")
-def add_event_reminder_before(
-    event_id: int,
-    minutes_before: int = Form(...),
-):
+def add_event_reminder_before(event_id: int, minutes_before: int = Form(...)):
     with get_conn() as conn:
         ev = conn.execute("SELECT title, start_at_utc FROM events WHERE id=?", (event_id,)).fetchone()
         if not ev:
@@ -812,3 +1155,45 @@ def add_event_reminder_before(
         conn.commit()
 
     return RedirectResponse(f"/events/{event_id}", status_code=303)
+
+
+# ----------------- SETTINGS -----------------
+@app.get("/settings", response_class=HTMLResponse)
+def settings_page(request: Request):
+    with get_conn() as conn:
+        data = {
+            "assignment_template_minutes": _get_setting(conn, "assignment_template_minutes", "10080,4320,1440,180"),
+            "exam_template_minutes": _get_setting(conn, "exam_template_minutes", "10080,4320,1440,120,30"),
+            "expense_template_minutes": _get_setting(conn, "expense_template_minutes", "4320,1440,180"),
+            "expense_dayof_local_time": _get_setting(conn, "expense_dayof_local_time", "09:00"),
+            "quiet_start": _get_setting(conn, "quiet_start", "23:00"),
+            "quiet_end": _get_setting(conn, "quiet_end", "07:00"),
+        }
+    return templates.TemplateResponse("settings.html", {"request": request, "s": data, "tz": settings.timezone})
+
+
+@app.post("/settings/save")
+def settings_save(
+    assignment_template_minutes: str = Form(...),
+    exam_template_minutes: str = Form(...),
+    expense_template_minutes: str = Form(...),
+    expense_dayof_local_time: str = Form(...),
+    quiet_start: str = Form(...),
+    quiet_end: str = Form(...),
+):
+    with get_conn() as conn:
+        _set_setting(conn, "assignment_template_minutes", assignment_template_minutes.strip())
+        _set_setting(conn, "exam_template_minutes", exam_template_minutes.strip())
+        _set_setting(conn, "expense_template_minutes", expense_template_minutes.strip())
+        _set_setting(conn, "expense_dayof_local_time", expense_dayof_local_time.strip())
+        _set_setting(conn, "quiet_start", quiet_start.strip())
+        _set_setting(conn, "quiet_end", quiet_end.strip())
+        conn.commit()
+    return RedirectResponse("/settings", status_code=303)
+
+
+@app.post("/settings/test")
+def settings_test_notification():
+    notifier = build_notifier()
+    notifier.send("Test notification", "✅ Your notifier is working.")
+    return RedirectResponse("/settings", status_code=303)

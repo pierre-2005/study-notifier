@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="card p-6">
+<div class="card p-6 max-w-3xl">
   <div class="flex items-center justify-between">
-    <h2 class="text-lg font-extrabold">New Assignment / Exam</h2>
+    <h2 class="text-2xl font-extrabold">New assignment / exam</h2>
     <a class="btn" href="/items">Back</a>
   </div>
 
-  <form method="post" class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+  <form method="post" class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
     <div>
       <div class="label">Course</div>
       <select class="input" name="course_id" required>
@@ -19,7 +19,7 @@
 
     <div>
       <div class="label">Type</div>
-      <select class="input" name="type" required>
+      <select class="input" name="type">
         <option value="assignment">assignment</option>
         <option value="exam">exam</option>
       </select>
@@ -27,11 +27,16 @@
 
     <div class="md:col-span-2">
       <div class="label">Title</div>
-      <input class="input" name="title" required />
+      <input class="input" name="title" required placeholder="Lab 3 report / Midterm / Problem set…" />
+    </div>
+
+    <div class="md:col-span-2">
+      <div class="label">Notes (optional)</div>
+      <textarea class="input" name="notes" rows="3"></textarea>
     </div>
 
     <div>
-      <div class="label">Due date/time</div>
+      <div class="label">Due date/time (local)</div>
       <input class="input" type="datetime-local" name="due_at_local" required />
     </div>
 
@@ -42,21 +47,24 @@
 
     <div>
       <div class="label">Weight (optional)</div>
-      <input class="input" name="weight" placeholder="10" />
+      <input class="input" name="weight" placeholder="e.g. 10" />
     </div>
 
-    <div class="md:col-span-2">
-      <div class="label">Notes</div>
-      <textarea class="input" name="notes" rows="4"></textarea>
+    <div class="flex items-center gap-2">
+      <input type="hidden" name="auto_template" value="off">
+      <input id="auto_template" type="checkbox" name="auto_template" value="on" checked>
+      <label for="auto_template" class="muted">Auto-add reminder template</label>
     </div>
 
     <div class="md:col-span-2 flex gap-2">
       <button class="btn btn-primary" type="submit">Create</button>
-      <a class="btn" href="/courses/new">Need a new course?</a>
+      <a class="btn" href="/items">Cancel</a>
+    </div>
+
+    <div class="md:col-span-2 muted">
+      Templates are editable in <a class="underline" href="/settings">Settings</a>.
     </div>
   </form>
-
-  <p class="muted mt-4">Timezone: {{ tz }}</p>
 </div>
 
 {% endblock %}

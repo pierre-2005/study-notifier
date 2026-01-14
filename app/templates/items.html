@@ -1,61 +1,117 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="card p-5">
+<div class="card p-6">
   <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
-      <h2 class="text-lg font-extrabold">Assignments & Exams</h2>
-      <p class="muted mt-1">Sort and click into any item to add reminders.</p>
+      <h2 class="text-2xl font-extrabold">Assignments & Exams</h2>
+      <p class="muted mt-1">Search, filter, and focus on what matters now.</p>
     </div>
-
-    <div class="flex flex-wrap gap-2">
-      <a class="btn" href="/items?sort=due">Sort: Due</a>
-      <a class="btn" href="/items?sort=priority">Sort: Priority</a>
-      <a class="btn" href="/items?sort=course">Sort: Course</a>
-      <a class="btn btn-primary" href="/items/new">+ New</a>
-    </div>
+    <a class="btn btn-primary" href="/items/new">+ New item</a>
   </div>
 
-  <div class="mt-4 overflow-x-auto">
+  <form method="get" class="mt-6 grid grid-cols-1 md:grid-cols-6 gap-3">
+    <div class="md:col-span-2">
+      <input class="input" name="q" value="{{ filters.q }}" placeholder="Search title / notes / course…" />
+    </div>
+
+    <div>
+      <select class="input" name="course_id">
+        <option value="">All courses</option>
+        {% for c in courses %}
+          <option value="{{ c['id'] }}" {% if filters.course_id and filters.course_id == c['id'] %}selected{% endif %}>{{ c["name"] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <select class="input" name="type">
+        <option value="all" {% if filters.type=="all" %}selected{% endif %}>All types</option>
+        <option value="assignment" {% if filters.type=="assignment" %}selected{% endif %}>Assignments</option>
+        <option value="exam" {% if filters.type=="exam" %}selected{% endif %}>Exams</option>
+      </select>
+    </div>
+
+    <div>
+      <select class="input" name="status">
+        <option value="open" {% if filters.status=="open" %}selected{% endif %}>Open</option>
+        <option value="todo" {% if filters.status=="todo" %}selected{% endif %}>Todo</option>
+        <option value="doing" {% if filters.status=="doing" %}selected{% endif %}>Doing</option>
+        <option value="done" {% if filters.status=="done" %}selected{% endif %}>Done</option>
+        <option value="all" {% if filters.status=="all" %}selected{% endif %}>All</option>
+      </select>
+    </div>
+
+    <div>
+      <select class="input" name="when">
+        <option value="all" {% if filters.when=="all" %}selected{% endif %}>Any time</option>
+        <option value="today" {% if filters.when=="today" %}selected{% endif %}>Today</option>
+        <option value="next7" {% if filters.when=="next7" %}selected{% endif %}>Next 7 days</option>
+        <option value="overdue" {% if filters.when=="overdue" %}selected{% endif %}>Overdue</option>
+      </select>
+    </div>
+
+    <div>
+      <select class="input" name="sort">
+        <option value="due" {% if filters.sort=="due" %}selected{% endif %}>Sort: due</option>
+        <option value="priority" {% if filters.sort=="priority" %}selected{% endif %}>Sort: priority</option>
+        <option value="course" {% if filters.sort=="course" %}selected{% endif %}>Sort: course</option>
+        <option value="created" {% if filters.sort=="created" %}selected{% endif %}>Sort: created</option>
+      </select>
+    </div>
+
+    <div class="md:col-span-6 flex gap-2">
+      <button class="btn btn-primary" type="submit">Apply</button>
+      <a class="btn" href="/items">Reset</a>
+      <a class="btn" href="/items?when=today&status=open">Today</a>
+      <a class="btn" href="/items?when=next7&status=open">Next 7</a>
+      <a class="btn" href="/items?when=overdue&status=open">Overdue</a>
+    </div>
+  </form>
+
+  <div class="mt-6 overflow-x-auto">
     <table class="w-full text-sm">
       <thead class="text-slate-500 text-xs uppercase tracking-wide">
         <tr>
           <th class="text-left py-3 pr-3 border-b border-slate-200">Due</th>
-          <th class="text-left py-3 pr-3 border-b border-slate-200">Course</th>
           <th class="text-left py-3 pr-3 border-b border-slate-200">Type</th>
           <th class="text-left py-3 pr-3 border-b border-slate-200">Title</th>
+          <th class="text-left py-3 pr-3 border-b border-slate-200">Course</th>
           <th class="text-left py-3 pr-3 border-b border-slate-200">Priority</th>
           <th class="text-left py-3 border-b border-slate-200">Status</th>
         </tr>
       </thead>
+
       <tbody>
         {% for it in items %}
         <tr class="hover:bg-slate-50">
           <td class="py-3 pr-3 border-b border-slate-100 whitespace-nowrap">{{ utc_to_local_str(it["due_at_utc"], tz) }}</td>
-          <td class="py-3 pr-3 border-b border-slate-100">{{ it["course_name"] }}</td>
           <td class="py-3 pr-3 border-b border-slate-100">
-            <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold
-              {% if it['type']=='exam' %} bg-amber-100 text-amber-800 {% else %} bg-indigo-100 text-indigo-800 {% endif %}">
-              {{ it["type"] }}
-            </span>
+            {% if it["type"]=="exam" %}<span class="badge badge-amber">exam</span>{% else %}<span class="badge badge-indigo">assignment</span>{% endif %}
           </td>
-          <td class="py-3 pr-3 border-b border-slate-100 font-semibold">
+          <td class="py-3 pr-3 border-b border-slate-100 font-extrabold">
             <a class="hover:underline" href="/items/{{ it['id'] }}">{{ it["title"] }}</a>
           </td>
           <td class="py-3 pr-3 border-b border-slate-100">
-            <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold bg-slate-100 text-slate-700">
-              {{ it["priority"] }}
-            </span>
+            <div class="flex items-center gap-2">
+              <span
+                class="h-3 w-3 rounded-full border border-slate-200 dark:border-slate-700"
+                style="--dot: {{ it['course_color'] or '#e2e8f0' }}; background-color: var(--dot);">
+              </span>
+              <span>{{ it["course_name"] }}</span>
+            </div>
           </td>
+          <td class="py-3 pr-3 border-b border-slate-100">{{ it["priority"] }}</td>
           <td class="py-3 border-b border-slate-100">
-            <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold bg-slate-100 text-slate-700">
-              {{ it["status"] }}
-            </span>
+            {% if it["status"]=="done" %}<span class="badge badge-green">done</span>
+            {% elif it["status"]=="doing" %}<span class="badge badge-amber">doing</span>
+            {% else %}<span class="badge">todo</span>{% endif %}
           </td>
         </tr>
         {% endfor %}
+
         {% if items|length == 0 %}
-        <tr><td class="py-4 muted" colspan="6">No items yet. Click “New” to add one.</td></tr>
+        <tr><td class="py-6 muted" colspan="6">No items match your filters.</td></tr>
         {% endif %}
       </tbody>
     </table>

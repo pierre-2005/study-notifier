@@ -1,33 +1,61 @@
 {% extends "base.html" %}
 {% block content %}
-
-<div class="card p-6">
-  <div class="flex items-center justify-between">
+<div class="card p-5">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
-      <h2 class="text-lg font-extrabold">Meetings & Events</h2>
-      <p class="muted mt-1">One-off reminders (club meetings, office hours, hangouts, etc.).</p>
+      <div class="text-xl font-extrabold">Events</div>
+      <div class="muted mt-1">One-off meetings, appointments, hangouts, anything time-based.</div>
     </div>
-    <a class="btn btn-primary" href="/events/new">+ New event</a>
-  </div>
-
-  <div class="mt-5 space-y-3">
-    {% for e in events %}
-    <a class="block rounded-2xl border border-slate-200 p-4 bg-white hover:bg-slate-50 transition" href="/events/{{ e['id'] }}">
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <div class="font-semibold">{{ e["title"] }}</div>
-          <div class="muted mt-1">{{ e["kind"] }} · {{ e["location"] or "—" }}</div>
-        </div>
-        <div class="text-xs uppercase tracking-wide text-slate-500">
-          {{ utc_to_local_str(e["start_at_utc"], tz) }}
-        </div>
-      </div>
-    </a>
-    {% endfor %}
-    {% if events|length == 0 %}
-    <div class="muted">No upcoming events.</div>
-    {% endif %}
+    <div class="flex flex-wrap gap-2">
+      <a class="btn" href="/schedule">Back to Schedule</a>
+      <a class="btn btn-primary" href="/events/new">+ New Event</a>
+    </div>
   </div>
 </div>
 
+<div class="mt-6 card p-0 overflow-hidden">
+  <div class="px-5 py-4">
+    <div class="text-lg font-extrabold">Upcoming</div>
+    <div class="muted mt-1">Timezone: {{ tz }}</div>
+  </div>
+
+  {% if events and events|length > 0 %}
+    <div class="px-5 pb-4">
+      {% for e in events %}
+        <div class="row py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <a class="font-extrabold text-lg hover:underline" href="/events/{{ e['id'] }}">{{ e["title"] }}</a>
+              <span class="badge">{{ (e["kind"] or "event")|capitalize }}</span>
+            </div>
+
+            <div class="muted mt-2">
+              {{ utc_to_local_str(e["start_at_utc"], tz) }}
+              {% if e["end_at_utc"] %} → {{ utc_to_local_str(e["end_at_utc"], tz) }}{% endif %}
+              {% if e["location"] %} • {{ e["location"] }}{% endif %}
+            </div>
+
+            {% if e["notes"] %}
+              <div class="muted mt-2 truncate">{{ e["notes"] }}</div>
+            {% endif %}
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <a class="btn" href="/events/{{ e['id'] }}">Open</a>
+            <form method="post" action="/events/{{ e['id'] }}/delete" onsubmit="return confirm('Delete this event?');">
+              <button class="btn btn-danger" type="submit">Delete</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="px-5 pb-6 muted">
+      No upcoming events.
+      <div class="mt-3">
+        <a class="btn btn-primary" href="/events/new">+ Add your first event</a>
+      </div>
+    </div>
+  {% endif %}
+</div>
 {% endblock %}

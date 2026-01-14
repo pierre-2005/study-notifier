@@ -1,54 +1,153 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="">
 <head>
   <link rel="icon" href="/static/favicon.ico">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <meta charset="utf-8"/>
-  <meta name="theme-color" content="#0b1220">
-
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>{{ title if title else "My Life Organized" }}</title>
 
+  <!-- Tailwind config must come BEFORE CDN script -->
+  <script>
+    tailwind = window.tailwind || {};
+    tailwind.config = { darkMode: 'class' };
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <!-- Set theme ASAP to avoid flash -->
+  <script>
+    (function () {
+      try {
+        const stored = localStorage.getItem("theme"); // "light" | "dark" | null
+        const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const theme = stored || (prefersDark ? "dark" : "light");
+        document.documentElement.classList.toggle("dark", theme === "dark");
+      } catch (e) {}
+    })();
+  </script>
+
   <style>
-    .card { background:#fff; border:1px solid rgb(226 232 240); border-radius:18px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
-    .btn { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; padding:.55rem .95rem; border-radius:14px; border:1px solid rgb(226 232 240); background:#fff; font-weight:700; font-size:.875rem; line-height:1; }
-    .btn:hover { background:rgb(248 250 252); }
+    :root{
+      --card:#ffffff;
+      --border: rgb(226 232 240);
+      --text: rgb(15 23 42);
+      --muted: rgb(100 116 139);
+      --btn-bg:#ffffff;
+      --btn-hover: rgb(248 250 252);
+      --input-bg:#ffffff;
+      --ring: rgba(148,163,184,.35);
+    }
+    .dark{
+      --card: rgb(15 23 42);
+      --border: rgb(51 65 85);
+      --text: rgb(226 232 240);
+      --muted: rgb(148 163 184);
+      --btn-bg: rgb(15 23 42);
+      --btn-hover: rgb(30 41 59);
+      --input-bg: rgb(15 23 42);
+      --ring: rgba(148,163,184,.22);
+    }
+
+    .card { background:var(--card); border:1px solid var(--border); border-radius:18px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; padding:.55rem .95rem; border-radius:14px; border:1px solid var(--border); background:var(--btn-bg); font-weight:800; font-size:.875rem; line-height:1; color:var(--text); }
+    .btn:hover { background:var(--btn-hover); }
     .btn-primary { background:rgb(15 23 42); color:#fff; border-color:rgb(15 23 42); }
     .btn-primary:hover { background:rgb(30 41 59); }
+    .dark .btn-primary { background:rgb(226 232 240); color:rgb(15 23 42); border-color:rgb(226 232 240); }
+    .dark .btn-primary:hover { background:rgb(203 213 225); }
+
     .btn-danger { background:rgb(220 38 38); color:#fff; border-color:rgb(220 38 38); }
     .btn-danger:hover { background:rgb(239 68 68); }
-    .input { width:100%; border:1px solid rgb(226 232 240); border-radius:14px; padding:.6rem .75rem; outline:none; background:#fff; }
-    .input:focus { box-shadow:0 0 0 4px rgba(148,163,184,.35); border-color:rgb(148 163 184); }
-    .label { font-size:.875rem; font-weight:700; color:rgb(51 65 85); }
-    .muted { color:rgb(100 116 139); font-size:.875rem; }
+
+    .input { width:100%; border:1px solid var(--border); border-radius:14px; padding:.6rem .75rem; outline:none; background:var(--input-bg); color:var(--text); }
+    .input:focus { box-shadow:0 0 0 4px var(--ring); border-color:rgb(148 163 184); }
+    .label { font-size:.875rem; font-weight:800; color:var(--text); }
+    .muted { color:var(--muted); font-size:.875rem; }
+
+    .badge { display:inline-flex; align-items:center; gap:.35rem; padding:.2rem .6rem; border-radius:999px; border:1px solid var(--border); font-weight:800; font-size:.75rem; color:var(--text); background:rgba(148,163,184,.10); }
+    .dark .badge { background: rgba(148,163,184,.08); }
+
+    .row { border-top:1px solid var(--border); }
+    .row:first-child { border-top:0; }
   </style>
 </head>
 
-<body class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 text-slate-900">
+<body class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 text-slate-900 dark:text-slate-100">
   <div class="max-w-6xl mx-auto px-4 py-6">
     <div class="card px-5 py-4">
-      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div class="text-2xl font-extrabold tracking-tight">My Life Organized</div>
           <div class="muted mt-1">Assignments, Exams, Job applications, Expenses and Schedule</div>
         </div>
+
+        <div class="flex items-center gap-2">
+          <button id="themeToggle" class="btn" type="button" aria-label="Toggle theme"></button>
+        </div>
       </div>
 
+      {% set p = request.url.path %}
       <div class="mt-4 flex flex-wrap gap-2">
-        <a class="btn" href="/">Dashboard</a>
-        <a class="btn" href="/courses">Courses</a>
-        <a class="btn" href="/items">Assignments/Exams</a>
-        <a class="btn" href="/jobs">Jobs</a>
-        <a class="btn" href="/expenses">Expenses</a>
-        <a class="btn" href="/schedule">Schedule</a>
+        <a class="btn {{ 'btn-primary' if p=='/' else '' }}" href="/">Dashboard</a>
+        <a class="btn {{ 'btn-primary' if p.startswith('/courses') else '' }}" href="/courses">Courses</a>
+        <a class="btn {{ 'btn-primary' if p.startswith('/items') else '' }}" href="/items">Assignments/Exams</a>
+        <a class="btn {{ 'btn-primary' if p.startswith('/jobs') else '' }}" href="/jobs">Jobs</a>
+        <a class="btn {{ 'btn-primary' if p.startswith('/expenses') else '' }}" href="/expenses">Expenses</a>
+        <a class="btn {{ 'btn-primary' if p.startswith('/schedule') or p.startswith('/classes') or p.startswith('/events') else '' }}" href="/schedule">Schedule</a>
       </div>
     </div>
 
     <div class="mt-6">
       {% block content %}{% endblock %}
     </div>
+
+    <div class="mt-10 text-center text-sm text-slate-500 dark:text-slate-400">
+      <div>My Life Organized <span class="font-semibold">v0.3.1</span></div>
+    </div>
   </div>
+
+  <script>
+    function setTheme(theme) {
+      document.documentElement.classList.toggle("dark", theme === "dark");
+      localStorage.setItem("theme", theme);
+      renderThemeButton();
+    }
+
+    function currentTheme() {
+      return document.documentElement.classList.contains("dark") ? "dark" : "light";
+    }
+
+    function renderThemeButton() {
+      const btn = document.getElementById("themeToggle");
+      if (!btn) return;
+      const t = currentTheme();
+
+      const sun = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+        </svg>
+      `;
+      const moon = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      `;
+
+      btn.innerHTML = t === "dark"
+        ? `${sun}<span class="hidden sm:inline">Light</span>`
+        : `${moon}<span class="hidden sm:inline">Dark</span>`;
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      renderThemeButton();
+      const btn = document.getElementById("themeToggle");
+      if (btn) {
+        btn.addEventListener("click", function () {
+          setTheme(currentTheme() === "dark" ? "light" : "dark");
+        });
+      }
+    });
+  </script>
 </body>
 </html>

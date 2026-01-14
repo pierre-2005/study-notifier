@@ -1,52 +1,60 @@
 {% extends "base.html" %}
 {% block content %}
-
-<div class="card p-6 max-w-2xl">
-  <div class="flex items-center justify-between">
-    <h2 class="text-lg font-extrabold">New Event</h2>
+<div class="card p-5">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <div class="text-xl font-extrabold">New Event</div>
+      <div class="muted mt-1">Add a one-off event. You can set reminder presets afterward.</div>
+    </div>
     <a class="btn" href="/events">Back</a>
   </div>
+</div>
 
-  <form method="post" class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div class="md:col-span-2">
-      <div class="label">Title</div>
-      <input class="input" name="title" required placeholder="Club meeting / Office hours / Appointment" />
+<div class="mt-6 card p-5">
+  <form method="post" action="/events/new" class="space-y-5">
+    <div>
+      <div class="label mb-2">Title</div>
+      <input class="input" name="title" placeholder="Team meeting" required />
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <div class="label mb-2">Kind</div>
+        <select class="input" name="kind">
+          <option value="meeting" selected>Meeting</option>
+          <option value="personal">Personal</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      <div>
+        <div class="label mb-2">Location (optional)</div>
+        <input class="input" name="location" placeholder="Zoom / Room / Address" />
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <div class="label mb-2">Start (local)</div>
+        <input class="input" type="datetime-local" name="start_at_local" required />
+        <div class="muted mt-2">Timezone: {{ tz }}</div>
+      </div>
+
+      <div>
+        <div class="label mb-2">End (local, optional)</div>
+        <input class="input" type="datetime-local" name="end_at_local" />
+      </div>
     </div>
 
     <div>
-      <div class="label">Kind</div>
-      <select class="input" name="kind">
-        <option value="meeting">meeting</option>
-        <option value="personal">personal</option>
-        <option value="other">other</option>
-      </select>
+      <div class="label mb-2">Notes (optional)</div>
+      <textarea class="input" name="notes" rows="4" placeholder="Agenda, link, who’s coming…"></textarea>
     </div>
 
-    <div>
-      <div class="label">Location (optional)</div>
-      <input class="input" name="location" placeholder="ENGG / Zoom / etc." />
-    </div>
-
-    <div>
-      <div class="label">Start</div>
-      <input class="input" type="datetime-local" name="start_at_local" required />
-    </div>
-
-    <div>
-      <div class="label">End (optional)</div>
-      <input class="input" type="datetime-local" name="end_at_local" />
-    </div>
-
-    <div class="md:col-span-2">
-      <div class="label">Notes</div>
-      <textarea class="input" name="notes" rows="3"></textarea>
-    </div>
-
-    <div class="md:col-span-2 flex gap-2">
-      <button class="btn btn-primary" type="submit">Create</button>
+    <div class="flex flex-wrap gap-2">
+      <button class="btn btn-primary" type="submit">Create event</button>
       <a class="btn" href="/events">Cancel</a>
     </div>
   </form>
 </div>
-
 {% endblock %}

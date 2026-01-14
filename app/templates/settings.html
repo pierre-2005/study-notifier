@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card p-6 max-w-4xl">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h2 class="text-2xl font-extrabold">Settings</h2>
+      <p class="muted mt-1">Reminder templates + quiet hours + notifier test.</p>
+    </div>
+    <form method="post" action="/settings/test">
+      <button class="btn btn-primary" type="submit">Send test notification</button>
+    </form>
+  </div>
+
+  <form method="post" action="/settings/save" class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="md:col-span-2">
+      <div class="label">Assignment reminder template (minutes before due)</div>
+      <input class="input mt-1" name="assignment_template_minutes" value="{{ s.assignment_template_minutes }}">
+      <div class="muted mt-1">Example: <span class="kbd">10080,4320,1440,180</span> = 7d,3d,24h,3h before</div>
+    </div>
+
+    <div class="md:col-span-2">
+      <div class="label">Exam reminder template (minutes before due)</div>
+      <input class="input mt-1" name="exam_template_minutes" value="{{ s.exam_template_minutes }}">
+      <div class="muted mt-1">Example: <span class="kbd">10080,4320,1440,120,30</span> = 7d,3d,24h,2h,30m</div>
+    </div>
+
+    <div class="md:col-span-2">
+      <div class="label">Expense template (minutes before due)</div>
+      <input class="input mt-1" name="expense_template_minutes" value="{{ s.expense_template_minutes }}">
+      <div class="muted mt-1">Example: <span class="kbd">4320,1440,180</span> = 3d,24h,3h before</div>
+    </div>
+
+    <div>
+      <div class="label">Expense “day-of” time (local)</div>
+      <input class="input mt-1" name="expense_dayof_local_time" value="{{ s.expense_dayof_local_time }}">
+      <div class="muted mt-1">Example: <span class="kbd">09:00</span></div>
+    </div>
+
+    <div>
+      <div class="label">Timezone</div>
+      <input class="input mt-1" value="{{ tz }}" disabled>
+      <div class="muted mt-1">Set via your <span class="kbd">.env</span></div>
+    </div>
+
+    <div>
+      <div class="label">Quiet hours start (local)</div>
+      <input class="input mt-1" name="quiet_start" value="{{ s.quiet_start }}">
+    </div>
+
+    <div>
+      <div class="label">Quiet hours end (local)</div>
+      <input class="input mt-1" name="quiet_end" value="{{ s.quiet_end }}">
+    </div>
+
+    <div class="md:col-span-2 flex gap-2 mt-2">
+      <button class="btn btn-primary" type="submit">Save settings</button>
+      <a class="btn" href="/">Back to dashboard</a>
+    </div>
+
+    <div class="md:col-span-2 muted">
+      Quiet hours delay notifications (they’ll send once quiet hours ends).
+    </div>
+  </form>
+</div>
+
+{% endblock %}

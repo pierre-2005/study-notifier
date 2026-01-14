@@ -1,42 +1,67 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="card p-6 max-w-2xl">
+<div class="card p-6 max-w-3xl">
   <div class="flex items-center justify-between">
-    <h2 class="text-lg font-extrabold">New Expense</h2>
+    <h2 class="text-2xl font-extrabold">New expense</h2>
     <a class="btn" href="/expenses">Back</a>
   </div>
 
-  <form method="post" class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+  <form method="post" class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
     <div class="md:col-span-2">
       <div class="label">Title</div>
-      <input class="input" name="title" required placeholder="Rent / Phone bill / Credit card payment" />
+      <input class="input" name="title" required placeholder="Phone bill / Rent / Spotify…" />
     </div>
 
     <div>
-      <div class="label">Category (optional)</div>
-      <input class="input" name="category" placeholder="Housing, Utilities, Subscriptions..." />
+      <div class="label">Category</div>
+      <input class="input" name="category" placeholder="Subscriptions / Rent / Utilities…" />
     </div>
 
     <div>
       <div class="label">Amount</div>
-      <input class="input" name="amount" required placeholder="e.g., 49.99" />
+      <input class="input" name="amount" required placeholder="e.g. 49.99" />
     </div>
 
-    <div class="md:col-span-2">
-      <div class="label">Due date/time</div>
+    <div>
+      <div class="label">Due date/time (local)</div>
       <input class="input" type="datetime-local" name="due_at_local" required />
-      <div class="muted mt-1">Timezone: {{ tz }}</div>
+    </div>
+
+    <div>
+      <div class="label">Recurrence</div>
+      <select class="input" name="recurrence">
+        <option value="none">none</option>
+        <option value="weekly">weekly</option>
+        <option value="monthly">monthly</option>
+        <option value="yearly">yearly</option>
+      </select>
+    </div>
+
+    <div>
+      <div class="label">Recurrence interval</div>
+      <input class="input" type="number" name="recurrence_interval" min="1" value="1" />
+      <div class="muted mt-1">Example: monthly ×2 = every 2 months</div>
     </div>
 
     <div class="md:col-span-2">
-      <div class="label">Notes (optional)</div>
-      <textarea class="input" name="notes" rows="4"></textarea>
+      <div class="label">Notes</div>
+      <textarea class="input" name="notes" rows="3"></textarea>
+    </div>
+
+    <div class="flex items-center gap-2 md:col-span-2">
+      <input type="hidden" name="auto_template" value="off">
+      <input id="auto_template" type="checkbox" name="auto_template" value="on" checked>
+      <label for="auto_template" class="muted">Auto-add reminder template</label>
     </div>
 
     <div class="md:col-span-2 flex gap-2">
       <button class="btn btn-primary" type="submit">Create</button>
       <a class="btn" href="/expenses">Cancel</a>
+    </div>
+
+    <div class="md:col-span-2 muted">
+      Templates + quiet hours are editable in <a class="underline" href="/settings">Settings</a>.
     </div>
   </form>
 </div>

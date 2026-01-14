@@ -4,43 +4,48 @@
 <div class="card p-6">
   <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
-      <h2 class="text-lg font-extrabold">Courses</h2>
-      <p class="muted mt-1">Your classes for the term. Click a course to see its assignments/exams.</p>
+      <h2 class="text-2xl font-extrabold">Courses</h2>
+      <p class="muted mt-1">Your classes and their open workload.</p>
     </div>
-    <a class="btn btn-primary" href="/courses/new">+ New course</a>
+    <div class="flex gap-2">
+      <a class="btn btn-primary" href="/courses/new">+ New course</a>
+    </div>
   </div>
 
-  <div class="mt-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  <form class="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3" method="get">
+    <div class="sm:col-span-2">
+      <input class="input" name="q" value="{{ q }}" placeholder="Search courses…" />
+    </div>
+    <button class="btn btn-primary" type="submit">Search</button>
+  </form>
+
+  <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
     {% for c in courses %}
-      <a href="/courses/{{ c['id'] }}" class="block card p-5 hover:bg-slate-50 transition">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <div class="text-base font-extrabold">{{ c["name"] }}</div>
-            <div class="muted mt-1">{{ c["term"] or "—" }}</div>
+    <a href="/courses/{{ c['id'] }}" class="card p-5 hover:bg-slate-50 transition">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span
+              class="h-3 w-3 rounded-full border border-slate-200 dark:border-slate-700"
+              style="--dot: {{ it['course_color'] or '#e2e8f0' }}; background-color: var(--dot);">
+            </span>
+            <div class="text-lg font-extrabold">{{ c["name"] }}</div>
           </div>
-
-        {% if c["color"] %}
-            <div class="h-3 w-3 rounded-full course-dot" data-color="{{ c['color'] }}"></div>
-        {% else %}
-            <div class="h-3 w-3 rounded-full bg-slate-200"></div>
-        {% endif %}
-
+          <div class="muted mt-1">{{ c["term"] or "—" }}</div>
         </div>
-
-        <div class="mt-4 inline-flex rounded-full px-2.5 py-1 text-xs font-bold bg-slate-100 text-slate-700">
-          Open course →
+        <div class="text-right">
+          {% if c["open_count"] > 0 %}
+            <div class="badge badge-amber">{{ c["open_count"] }} open</div>
+          {% else %}
+            <div class="badge badge-green">clear</div>
+          {% endif %}
         </div>
-      </a>
+      </div>
+    </a>
     {% endfor %}
 
     {% if courses|length == 0 %}
-      <div class="card p-6 md:col-span-2 lg:col-span-3">
-        <div class="text-base font-extrabold">No courses yet</div>
-        <p class="muted mt-1">Create your first course to start adding assignments and exams.</p>
-        <div class="mt-4">
-          <a class="btn btn-primary" href="/courses/new">+ New course</a>
-        </div>
-      </div>
+    <div class="muted">No courses yet. Add one to start organizing.</div>
     {% endif %}
   </div>
 </div>

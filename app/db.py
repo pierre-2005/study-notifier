@@ -7,6 +7,11 @@ DB_PATH = Path(os.getenv("STUDY_NOTIFIER_DB", "study_notifier.db"))
 SCHEMA = """
 PRAGMA journal_mode=WAL;
 
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS courses (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -30,10 +35,9 @@ CREATE TABLE IF NOT EXISTS items (
   FOREIGN KEY(course_id) REFERENCES courses(id)
 );
 
--- Polymorphic reminders so we can add new modules later (jobs, etc.)
 CREATE TABLE IF NOT EXISTS reminders (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  entity_type TEXT NOT NULL,         -- 'item' or 'job' (expand later)
+  entity_type TEXT NOT NULL,
   entity_id INTEGER NOT NULL,
   remind_at_utc TEXT NOT NULL,
   message TEXT NOT NULL,
@@ -88,7 +92,7 @@ CREATE TABLE IF NOT EXISTS class_meetings (
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   title TEXT NOT NULL,
-  kind TEXT NOT NULL DEFAULT 'meeting', -- meeting / personal / other
+  kind TEXT NOT NULL DEFAULT 'meeting',
   location TEXT,
   start_at_utc TEXT NOT NULL,
   end_at_utc TEXT,
@@ -98,12 +102,59 @@ CREATE TABLE IF NOT EXISTS events (
 );
 """
 
+
 def get_conn():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
+
+def _ensure_column(conn, table: str, col_name: str, col_def_sql: str) -> None:
+    cols = [r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+    if col_name in cols:
+        return
+    conn.execute(f"ALTER TABLE {table} ADD COLUMN {col_def_sql}")
+
+
+def _upsert_setting(conn, key: str, value: str) -> None:
+    # Works on modern sqlite. If it ever fails, do manual update/insert.
+    try:
+        conn.execute(
+            "INSERT INTO app_settings(key, value) VALUES(?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            (key, value),
+        )
+    except Exception:
+        row = conn.execute("SELECT key FROM app_settings WHERE key=?", (key,)).fetchone()
+        if row:
+            conn.execute("UPDATE app_settings SET value=? WHERE key=?", (value, key))
+        else:
+            conn.execute("INSERT INTO app_settings(key, value) VALUES(?, ?)", (key, value))
+
+
 def init_db() -> None:
     with get_conn() as conn:
         conn.executescript(SCHEMA)
+
+        # --- Safe migrations for existing DBs ---
+        _ensure_column(conn, "expenses", "recurrence", "recurrence TEXT NOT NULL DEFAULT 'none'")
+        _ensure_column(conn, "expenses", "recurrence_interval", "recurrence_interval INTEGER NOT NULL DEFAULT 1")
+
+        # --- Default settings ---
+        defaults = {
+            # Reminder templates (minutes before due/start)
+            "assignment_template_minutes": "10080,4320,1440,180",   # 7d,3d,24h,3h
+            "exam_template_minutes": "10080,4320,1440,120,30",      # 7d,3d,24h,2h,30m
+            "expense_template_minutes": "4320,1440,180",            # 3d,24h,3h
+            "expense_dayof_local_time": "09:00",                    # day-of reminder time
+            # Quiet hours
+            "quiet_start": "23:00",
+            "quiet_end": "07:00",
+        }
+
+        for k, v in defaults.items():
+            row = conn.execute("SELECT value FROM app_settings WHERE key=?", (k,)).fetchone()
+            if not row:
+                _upsert_setting(conn, k, v)
+
         conn.commit()
