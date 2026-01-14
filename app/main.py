@@ -423,7 +423,7 @@ def delete_course(course_id: int):
 def items(
     request: Request,
     q: str = "",
-    course_id: int | None = None,
+    course_id: str | None = None,
     type: str = "all",
     status: str = "open",
     when: str = "all",
@@ -434,6 +434,14 @@ def items(
     status = (status or "open").strip()
     when = (when or "all").strip()
     sort = (sort or "due").strip()
+
+    # NEW: safely parse course_id (because GET forms send course_id="" when blank)
+    course_id_int = None
+    if course_id is not None and str(course_id).strip() != "":
+        try:
+            course_id_int = int(course_id)
+        except ValueError:
+            course_id_int = None
 
     sort_sql = {
         "due": "items.due_at_utc ASC",
@@ -454,9 +462,9 @@ def items(
         where.append("(items.title LIKE ? OR items.notes LIKE ? OR courses.name LIKE ?)")
         params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
 
-    if course_id is not None:
+    if course_id_int is not None:
         where.append("items.course_id = ?")
-        params.append(int(course_id))
+        params.append(course_id_int)
 
     if type in ("assignment", "exam"):
         where.append("items.type = ?")
@@ -498,7 +506,7 @@ def items(
             "request": request,
             "items": rows,
             "courses": courses,
-            "filters": {"q": q, "course_id": course_id, "type": type, "status": status, "when": when, "sort": sort},
+            "filters": {"q": q, "course_id": course_id_int, "type": type, "status": status, "when": when, "sort": sort},
             "tz": settings.timezone,
             "utc_to_local_str": utc_to_local_str,
         },
