@@ -620,6 +620,7 @@ def update_item(
     due_at_local: str = Form(...),
     rebuild_template: str = Form("off"),
 ):
+    new_title = title.strip()
     due_utc = parse_local_datetime_localinput(due_at_local, settings.timezone)
     now = now_utc().isoformat()
 
@@ -628,13 +629,16 @@ def update_item(
         if not item:
             return RedirectResponse("/items", status_code=303)
 
+        old_title = (item["title"] or "").strip()
+
+        # Update the item itself
         conn.execute(
             "UPDATE items SET title=?, due_at_utc=?, updated_at_utc=? WHERE id=?",
-            (title.strip(), due_utc.isoformat(), now, item_id),
+            (new_title, due_utc.isoformat(), now, item_id),
         )
 
-        # Optional: rebuild pending reminders from template
         if rebuild_template == "on":
+            # Replace pending reminders with a fresh template based on new due/title
             conn.execute(
                 """
                 DELETE FROM reminders
@@ -642,7 +646,22 @@ def update_item(
                 """,
                 (item_id,),
             )
-            _create_default_item_reminders(conn, item_id, item["type"], title.strip(), due_utc.isoformat())
+            _create_default_item_reminders(conn, item_id, item["type"], new_title, due_utc.isoformat())
+        else:
+            # NEW: If title changed, update pending reminder messages to match
+            if old_title and old_title != new_title:
+                conn.execute(
+                    """
+                    UPDATE reminders
+                    SET message = REPLACE(message, ?, ?)
+                    WHERE entity_type='item'
+                      AND entity_id=?
+                      AND sent_at_utc IS NULL
+                      AND message IS NOT NULL
+                      AND message LIKE '%' || ? || '%'
+                    """,
+                    (old_title, new_title, item_id, old_title),
+                )
 
         conn.commit()
 
