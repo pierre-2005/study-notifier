@@ -14,7 +14,7 @@ from app.scheduler import start_scheduler
 from app.timeutil import now_utc, parse_local_datetime_localinput, utc_to_local_str
 from app.notifier import build_notifier
 
-APP_VERSION = "1.2.7"
+APP_VERSION = "1.2.8"
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -145,6 +145,7 @@ def _create_default_item_reminders(conn, item_id: int, item_type: str, title: st
     return created
 
 
+
 def _create_default_expense_reminders(conn, expense_id: int, title: str, due_utc_iso: str) -> int:
     due_dt = datetime.fromisoformat(due_utc_iso)
     if due_dt.tzinfo is None:
@@ -240,6 +241,18 @@ def _generate_class_reminders(conn, class_id: int, horizon_days: int = 120):
             """,
             (class_id, remind_iso, msg, now_utc().isoformat()),
         )
+
+
+
+@app.post("/items/{item_id}/reminders/clear")
+def clear_item_reminders(item_id: int):
+    with get_conn() as conn:
+        conn.execute(
+            "DELETE FROM reminders WHERE entity_type='item' AND entity_id=?",
+            (item_id,),
+        )
+        conn.commit()
+    return RedirectResponse(f"/items/{item_id}", status_code=303)
 
 
 # ----------------- DASHBOARD -----------------

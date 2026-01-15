@@ -44,7 +44,14 @@
       <button class="btn btn-primary" type="submit">Mark done</button>
     </form>
 
-    <form method="post" action="/items/{{ item['id'] }}/delete" onsubmit="return confirm('Delete this item and all reminders?');">
+    <!-- Clear reminders -->
+    <form method="post" action="/items/{{ item['id'] }}/reminders/clear"
+          onsubmit="return confirm('Clear ALL reminders for this item? (This can’t be undone)');">
+      <button class="btn btn-danger" type="submit">Clear reminders</button>
+    </form>
+
+    <form method="post" action="/items/{{ item['id'] }}/delete"
+          onsubmit="return confirm('Delete this item and all reminders?');">
       <button class="btn btn-danger" type="submit">Delete</button>
     </form>
   </div>
