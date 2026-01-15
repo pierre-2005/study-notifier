@@ -466,7 +466,7 @@ def items(
         where.append("items.course_id = ?")
         params.append(course_id_int)
 
-    if type in ("assignment", "exam"):
+    if type in ("assignment", "exam", "lab"):
         where.append("items.type = ?")
         params.append(type)
 
