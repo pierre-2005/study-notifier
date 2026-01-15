@@ -41,14 +41,23 @@ body{
 }
 
 /* Topbar */
+/* Topbar: sticky on desktop, normal on mobile */
 .topbar{
-  position: sticky;
-  top: 0;
+  position: relative;             /* default (mobile): NOT sticky */
   z-index: 20;
   backdrop-filter: blur(10px);
   background: color-mix(in srgb, var(--bg) 86%, transparent);
   border-bottom: 1px solid var(--border);
 }
+
+/* Desktop only: keep it stuck to top */
+@media (min-width: 768px){
+  .topbar{
+    position: sticky;
+    top: 0;
+  }
+}
+
 .topbar-inner{
   max-width: 1100px;
   margin: 0 auto;
