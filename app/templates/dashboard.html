@@ -70,7 +70,7 @@
                       {{ utc_to_local_str(it["due_at_utc"], tz) }} • {{ it["course_name"] }}
                     </div>
                   </div>
-                  <span class="badge">{% if it["type"]=="exam" %}exam{% else %}assignment{% endif %}</span>
+                  <span class="badge" style="flex:0 0 auto;">{% if it["type"]=="exam" %}exam{% else %}assignment{% endif %}</span>
                 </div>
               </div>
             </a>
@@ -81,45 +81,62 @@
       <!-- Desktop table -->
       <div class="hidden sm:block">
         <div class="table-wrap">
-        <table class="table table-upcoming">
-          <thead>
-            <tr>
-              <th>Due</th>
-              <th>Type</th>
-              <th>Title</th>
-              <th>Course</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for it in upcoming %}
-            <tr>
-              <td style="white-space:nowrap;">{{ utc_to_local_str(it["due_at_utc"], tz) }}</td>
-              <td><span class="badge">{% if it["type"]=="exam" %}exam{% else %}assignment{% endif %}</span></td>
-              <td style="font-weight:900; overflow-wrap:anywhere;">
-                <a href="/items/{{ it['id'] }}" style="color:inherit; text-decoration:none;">
-                  {{ it["title"] }}
-                </a>
-              </td>
-              <td style="overflow-wrap:anywhere;">
-                <span style="display:inline-flex; align-items:center; gap:8px;">
-                  <span style="width:10px; height:10px; border-radius:999px; border:1px solid var(--border); background: {{ it['course_color'] or '#e2e8f0' }};"></span>
-                  {{ it["course_name"] }}
-                </span>
-              </td>
-              <td><span class="badge">{{ it["status"] }}</span></td>
-            </tr>
-            {% endfor %}
+          <table class="table table-upcoming" style="table-layout:fixed; width:100%;">
+            <thead>
+              <tr>
+                <!-- Fixed widths to prevent overlap -->
+                <th style="width:160px;">Due</th>
+                <th style="width:120px;">Type</th>
+                <th>Title</th>
+                <th style="width:240px;">Course</th>
+                <th style="width:120px;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for it in upcoming %}
+              <tr>
+                <!-- Allow wrap INSIDE Due cell so it never bleeds into Type -->
+                <td style="white-space:normal; line-height:1.15; word-break:break-word;">
+                  {{ utc_to_local_str(it["due_at_utc"], tz) }}
+                </td>
 
-            {% if upcoming|length == 0 %}
-            <tr>
-              <td class="muted" colspan="5">No upcoming items. Add one to get started 🎉</td>
-            </tr>
-            {% endif %}
-          </tbody>
-        </table>
+                <td>
+                  <span class="badge" style="display:inline-flex; flex:0 0 auto;">
+                    {% if it["type"]=="exam" %}exam{% else %}assignment{% endif %}
+                  </span>
+                </td>
+
+                <td style="font-weight:900; overflow:hidden;">
+                  <a href="/items/{{ it['id'] }}" style="color:inherit; text-decoration:none; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    {{ it["title"] }}
+                  </a>
+                </td>
+
+                <td style="overflow:hidden;">
+                  <span style="display:inline-flex; align-items:center; gap:8px; min-width:0; max-width:100%;">
+                    <span style="width:10px; height:10px; flex:0 0 auto; border-radius:999px; border:1px solid var(--border); background: {{ it['course_color'] or '#e2e8f0' }};"></span>
+                    <span style="display:block; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                      {{ it["course_name"] }}
+                    </span>
+                  </span>
+                </td>
+
+                <td>
+                  <span class="badge" style="display:inline-flex; flex:0 0 auto;">{{ it["status"] }}</span>
+                </td>
+              </tr>
+              {% endfor %}
+
+              {% if upcoming|length == 0 %}
+              <tr>
+                <td class="muted" colspan="5">No upcoming items. Add one to get started 🎉</td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
       </div>
-      </div>
+
     </div>
   </div>
 
@@ -168,11 +185,8 @@
 
         {% for e in expenses_due %}
           <a href="/expenses/{{ e['id'] }}"
-             style="display:block; text-decoration:none; color:inherit;"
              class="row"
-             {% if loop.first %}style="display:block; text-decoration:none; color:inherit; border-top:0; padding-top:12px; padding-bottom:12px;"
-             {% else %}style="display:block; text-decoration:none; color:inherit; padding-top:12px; padding-bottom:12px;"
-             {% endif %}>
+             style="display:block; text-decoration:none; color:inherit; padding-top:12px; padding-bottom:12px; {% if loop.first %}border-top:0;{% endif %}">
             <div class="hstack spread" style="align-items:flex-start;">
               <div style="min-width:0;">
                 <div style="font-weight:900; overflow-wrap:anywhere;">{{ e["title"] }}</div>
