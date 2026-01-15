@@ -13,9 +13,8 @@ from app.db import init_db, get_conn
 from app.scheduler import start_scheduler
 from app.timeutil import now_utc, parse_local_datetime_localinput, utc_to_local_str
 from app.notifier import build_notifier
-import meta
 
-APP_VERSION = meta.VERSION
+APP_VERSION = "0.3.1"
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
