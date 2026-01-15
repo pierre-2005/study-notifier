@@ -102,6 +102,13 @@ def _local_day_bounds_utc() -> tuple[datetime, datetime]:
     end_local = start_local + timedelta(days=1)
     return start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc)
 
+def _utc_iso_to_local_input(utc_iso: str) -> str:
+    dt = datetime.fromisoformat(utc_iso)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    local = dt.astimezone(ZoneInfo(settings.timezone))
+    return local.strftime("%Y-%m-%dT%H:%M")
+
 
 def _create_default_item_reminders(conn, item_id: int, item_type: str, title: str, due_utc_iso: str) -> int:
     due_dt = datetime.fromisoformat(due_utc_iso)
@@ -591,6 +598,7 @@ def item_detail(request: Request, item_id: int):
             "request": request,
             "item": item,
             "reminders": reminders,
+            "due_at_local_value": _utc_iso_to_local_input(item["due_at_utc"]) if item else "",
             "tz": settings.timezone,
             "utc_to_local_str": utc_to_local_str,
         },
@@ -604,6 +612,107 @@ def set_item_status(item_id: int, status: str = Form(...)):
         conn.execute("UPDATE items SET status=?, updated_at_utc=? WHERE id=?", (status, now, item_id))
         conn.commit()
     return RedirectResponse(f"/items/{item_id}", status_code=303)
+
+@app.post("/items/{item_id}/update")
+def update_item(
+    item_id: int,
+    title: str = Form(...),
+    due_at_local: str = Form(...),
+    rebuild_template: str = Form("off"),
+):
+    due_utc = parse_local_datetime_localinput(due_at_local, settings.timezone)
+    now = now_utc().isoformat()
+
+    with get_conn() as conn:
+        item = conn.execute("SELECT * FROM items WHERE id=?", (item_id,)).fetchone()
+        if not item:
+            return RedirectResponse("/items", status_code=303)
+
+        conn.execute(
+            "UPDATE items SET title=?, due_at_utc=?, updated_at_utc=? WHERE id=?",
+            (title.strip(), due_utc.isoformat(), now, item_id),
+        )
+
+        # Optional: rebuild pending reminders from template
+        if rebuild_template == "on":
+            conn.execute(
+                """
+                DELETE FROM reminders
+                WHERE entity_type='item' AND entity_id=? AND sent_at_utc IS NULL
+                """,
+                (item_id,),
+            )
+            _create_default_item_reminders(conn, item_id, item["type"], title.strip(), due_utc.isoformat())
+
+        conn.commit()
+
+    return RedirectResponse(f"/items/{item_id}", status_code=303)
+
+
+@app.post("/items/{item_id}/duplicate")
+def duplicate_item(item_id: int):
+    now_dt = now_utc()
+    now_iso = now_dt.isoformat()
+
+    with get_conn() as conn:
+        item = conn.execute("SELECT * FROM items WHERE id=?", (item_id,)).fetchone()
+        if not item:
+            return RedirectResponse("/items", status_code=303)
+
+        old_title = (item["title"] or "Untitled").strip()
+        new_title = old_title + " (copy)"
+
+        cur = conn.execute(
+            """
+            INSERT INTO items(course_id,type,title,notes,due_at_utc,status,priority,weight,created_at_utc,updated_at_utc)
+            VALUES(?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                item["course_id"],
+                item["type"],
+                new_title,
+                item["notes"] or "",
+                item["due_at_utc"],
+                "todo",
+                int(item["priority"] or 2),
+                item["weight"],
+                now_iso,
+                now_iso,
+            ),
+        )
+        new_id = cur.lastrowid
+
+        # Copy only pending + future reminders
+        reminders = conn.execute(
+            """
+            SELECT remind_at_utc, message
+            FROM reminders
+            WHERE entity_type='item'
+              AND entity_id=?
+              AND sent_at_utc IS NULL
+              AND remind_at_utc > ?
+            ORDER BY remind_at_utc ASC
+            """,
+            (item_id, now_iso),
+        ).fetchall()
+
+        for r in reminders:
+            msg = r["message"] or ""
+            # If the old title appears in the message, update it to new title
+            if old_title and old_title in msg:
+                msg = msg.replace(old_title, new_title)
+
+            conn.execute(
+                """
+                INSERT INTO reminders(entity_type, entity_id, remind_at_utc, message, created_at_utc)
+                VALUES('item', ?, ?, ?, ?)
+                """,
+                (new_id, r["remind_at_utc"], msg, now_iso),
+            )
+
+        conn.commit()
+
+    return RedirectResponse(f"/items/{new_id}", status_code=303)
 
 
 @app.post("/items/{item_id}/delete")

@@ -24,6 +24,11 @@
   <div class="flex flex-wrap gap-2">
     <a class="btn" href="/items">Back</a>
 
+    <!-- Duplicate -->
+    <form method="post" action="/items/{{ item['id'] }}/duplicate">
+      <button class="btn" type="submit">Duplicate</button>
+    </form>
+
     <form method="post" action="/items/{{ item['id'] }}/status">
       <input type="hidden" name="status" value="todo">
       <button class="btn" type="submit">Mark todo</button>
@@ -43,6 +48,45 @@
       <button class="btn btn-danger" type="submit">Delete</button>
     </form>
   </div>
+</div>
+
+<!-- Edit section (title + due date/time) -->
+<div class="card p-5 mt-5">
+  <div class="flex items-center justify-between gap-3">
+    <div>
+      <div class="text-lg font-extrabold">Edit item</div>
+      <div class="muted mt-1">Update the title or due date/time.</div>
+    </div>
+  </div>
+
+  <form method="post" action="/items/{{ item['id'] }}/update" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="md:col-span-2">
+      <div class="label">Title</div>
+      <input class="input mt-1" name="title" required value="{{ item['title'] }}">
+    </div>
+
+    <div>
+      <div class="label">Due date/time (local)</div>
+      <input class="input mt-1" type="datetime-local" name="due_at_local" required value="{{ due_at_local_value }}">
+    </div>
+
+    <div class="flex items-center gap-2 mt-6">
+      <input type="hidden" name="rebuild_template" value="off">
+      <input id="rebuild_template" type="checkbox" name="rebuild_template" value="on">
+      <label for="rebuild_template" class="muted">
+        Rebuild pending reminders from template (replaces pending ones)
+      </label>
+    </div>
+
+    <div class="md:col-span-2 flex gap-2">
+      <button class="btn btn-primary" type="submit">Save changes</button>
+      <a class="btn" href="/items/{{ item['id'] }}">Cancel</a>
+    </div>
+
+    <div class="md:col-span-2 muted">
+      Tip: If you changed the due date a lot, check the box to regenerate reminders so they stay aligned.
+    </div>
+  </form>
 </div>
 
 {% if item["notes"] %}
@@ -136,4 +180,3 @@
 </div>
 
 {% endblock %}
-EOF
