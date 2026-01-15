@@ -280,3 +280,22 @@ html, body { overflow-x: hidden; }
 .table-upcoming td:nth-child(2){
   white-space: nowrap;
 }
+
+/* ================================
+   FIX: desktop table cell overlap
+   ================================ */
+
+.table-fixed {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.table-fixed th,
+.table-fixed td {
+  vertical-align: top;
+  overflow: hidden;          /* prevents bleed into neighboring cells */
+}
+
+.badge {
+  white-space: nowrap;        /* stops "Assignme nt" wrapping weirdly */
+}

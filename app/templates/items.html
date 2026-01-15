@@ -122,7 +122,16 @@
 
     <!-- Desktop table -->
     <div class="hidden sm:block" style="margin-top:14px;">
-      <table class="table">
+      <table class="table table-fixed">
+        <colgroup>
+          <col style="width: 180px;">
+          <col style="width: 140px;">
+          <col>
+          <col style="width: 190px;">
+          <col style="width: 90px;">
+          <col style="width: 110px;">
+        </colgroup>
+
         <thead>
           <tr>
             <th>Due</th>
@@ -133,22 +142,34 @@
             <th>Status</th>
           </tr>
         </thead>
+
         <tbody>
           {% for it in items %}
           <tr>
-            <td style="white-space:nowrap;">{{ utc_to_local_str(it["due_at_utc"], tz) }}</td>
-            <td><span class="badge">{% if it["type"]=="exam" %}Exam{% elif it["type"]=="lab" %}Lab{% else %}Assignment{% endif %}</span></td>
-            <td style="font-weight:900; overflow-wrap:anywhere;">
+            <!-- IMPORTANT: allow wrapping so it never bleeds into Type -->
+            <td style="white-space:normal; overflow-wrap:anywhere;">
+              {{ utc_to_local_str(it["due_at_utc"], tz) }}
+            </td>
+
+            <td>
+              <span class="badge">
+                {% if it["type"]=="exam" %}Exam{% elif it["type"]=="lab" %}Lab{% else %}Assignment{% endif %}
+              </span>
+            </td>
+
+            <td style="font-weight:900; white-space:normal; overflow-wrap:anywhere;">
               <a href="/items/{{ it['id'] }}" style="color:inherit; text-decoration:none;">
                 {{ it["title"] }}
               </a>
             </td>
-            <td style="overflow-wrap:anywhere;">
-              <span style="display:inline-flex; align-items:center; gap:8px;">
+
+            <td style="white-space:normal; overflow-wrap:anywhere;">
+              <span style="display:inline-flex; align-items:center; gap:8px; min-width:0;">
                 <span style="width:10px; height:10px; border-radius:999px; border:1px solid var(--border); background: {{ it['course_color'] or '#e2e8f0' }};"></span>
                 {{ it["course_name"] }}
               </span>
             </td>
+
             <td>P{{ it["priority"] }}</td>
             <td><span class="badge">{{ it["status"] }}</span></td>
           </tr>

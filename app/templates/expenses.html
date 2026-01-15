@@ -11,7 +11,6 @@
   </div>
 
   <div class="card-b">
-    <!-- Filters -->
     <form method="get" action="/expenses">
       <div class="toolbar">
         <div>
@@ -32,7 +31,7 @@
           <div class="label">When</div>
           <select class="select" name="when">
             <option value="all" {% if filters.when=="all" %}selected{% endif %}>Any time</option>
-            <option value="today" {% if filters.when=="today" %}selected{% endif %}>Due today</option>
+            <option value="today" {% if filters.when=="today" %}selected{% endif %}>Today</option>
             <option value="next7" {% if filters.when=="next7" %}selected{% endif %}>Next 7 days</option>
             <option value="overdue" {% if filters.when=="overdue" %}selected{% endif %}>Overdue</option>
           </select>
@@ -50,61 +49,23 @@
         <div class="actions">
           <button class="btn btn-primary" type="submit">Apply</button>
           <a class="btn" href="/expenses">Reset</a>
-          <a class="btn" href="/expenses?status=unpaid&when=overdue">Overdue</a>
-          <a class="btn" href="/expenses?status=unpaid&when=next7">Next 7</a>
+          <a class="btn" href="/expenses?when=overdue&status=all">Overdue</a>
+          <a class="btn" href="/expenses?when=next7&status=all">Next 7</a>
         </div>
       </div>
     </form>
 
-    <!-- Mobile cards -->
-    <div class="sm:hidden" style="margin-top:14px;">
-      {% if expenses|length == 0 %}
-        <div class="muted">No expenses match your filters.</div>
-      {% endif %}
-
-      <div class="space-y-2">
-        {% for e in expenses %}
-          <a href="/expenses/{{ e['id'] }}" class="card" style="display:block; text-decoration:none; color:inherit;">
-            <div class="card-b">
-              <div class="hstack spread" style="align-items:flex-start;">
-                <div style="min-width:0;">
-                  <div class="h2" style="overflow-wrap:anywhere;">
-                    {{ e["title"] }}
-                  </div>
-                  <div class="small" style="margin-top:4px; overflow-wrap:anywhere;">
-                    {{ utc_to_local_str(e["due_at_utc"], tz) }}
-                    • {{ e["category"] or "—" }}
-                  </div>
-
-                  <div class="hstack" style="margin-top:8px; gap:6px; flex-wrap:wrap;">
-                    {% if e["recurrence"] and e["recurrence"] != "none" %}
-                      <span class="badge">{{ e["recurrence"] }} ×{{ e["recurrence_interval"] }}</span>
-                    {% else %}
-                      <span class="badge">one-time</span>
-                    {% endif %}
-                  </div>
-                </div>
-
-                <div style="text-align:right;">
-                  <div class="badge">${{ "%.2f"|format(e["amount"]) }}</div>
-                  <div style="margin-top:6px;">
-                    {% if e["status"]=="paid" %}
-                      <span class="badge">paid</span>
-                    {% else %}
-                      <span class="badge">unpaid</span>
-                    {% endif %}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </a>
-        {% endfor %}
-      </div>
-    </div>
-
-    <!-- Desktop table -->
     <div class="hidden sm:block" style="margin-top:14px;">
-      <table class="table">
+      <table class="table table-fixed">
+        <colgroup>
+          <col style="width: 180px;">
+          <col>
+          <col style="width: 160px;">
+          <col style="width: 120px;">
+          <col style="width: 150px;">
+          <col style="width: 110px;">
+        </colgroup>
+
         <thead>
           <tr>
             <th>Due</th>
@@ -115,31 +76,40 @@
             <th>Status</th>
           </tr>
         </thead>
+
         <tbody>
           {% for e in expenses %}
           <tr>
-            <td style="white-space:nowrap;">{{ utc_to_local_str(e["due_at_utc"], tz) }}</td>
-            <td style="font-weight:900; overflow-wrap:anywhere;">
+            <!-- IMPORTANT: allow wrapping so it never bleeds into Title -->
+            <td style="white-space:normal; overflow-wrap:anywhere;">
+              {{ utc_to_local_str(e["due_at_utc"], tz) }}
+            </td>
+
+            <td style="font-weight:900; white-space:normal; overflow-wrap:anywhere;">
               <a href="/expenses/{{ e['id'] }}" style="color:inherit; text-decoration:none;">
                 {{ e["title"] }}
               </a>
             </td>
-            <td style="overflow-wrap:anywhere;">{{ e["category"] or "—" }}</td>
-            <td>${{ "%.2f"|format(e["amount"]) }}</td>
+
+            <td style="white-space:normal; overflow-wrap:anywhere;">
+              {{ e["category"] or "—" }}
+            </td>
+
+            <td style="white-space:nowrap;">
+              ${{ "%.2f"|format(e["amount"]) }}
+            </td>
+
             <td>
-              {% if e["recurrence"] and e["recurrence"] != "none" %}
-                <span class="badge">{{ e["recurrence"] }} ×{{ e["recurrence_interval"] }}</span>
+              {% if e.get("recurrence") and e["recurrence"] != "none" %}
+                <span class="badge">
+                  {{ e["recurrence"] }}<br>×{{ e.get("recurrence_interval") or 1 }}
+                </span>
               {% else %}
-                <span class="badge">none</span>
+                —
               {% endif %}
             </td>
-            <td>
-              {% if e["status"]=="paid" %}
-                <span class="badge">paid</span>
-              {% else %}
-                <span class="badge">unpaid</span>
-              {% endif %}
-            </td>
+
+            <td><span class="badge">{{ e["status"] }}</span></td>
           </tr>
           {% endfor %}
 
@@ -152,6 +122,7 @@
       </table>
     </div>
 
+    <!-- If you have a mobile version already, keep it. If not, it’ll still work fine on desktop. -->
   </div>
 </div>
 
