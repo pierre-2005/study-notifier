@@ -34,10 +34,11 @@
 
         <div>
           <div class="label">Type</div>
-          <select class="select" name="type">
+          <select class="input" name="type">
             <option value="all" {% if filters.type=="all" %}selected{% endif %}>All types</option>
             <option value="assignment" {% if filters.type=="assignment" %}selected{% endif %}>Assignments</option>
             <option value="exam" {% if filters.type=="exam" %}selected{% endif %}>Exams</option>
+            <option value="lab" {% if filters.type=="lab" %}selected{% endif %}>Labs</option>
           </select>
         </div>
 
@@ -100,7 +101,7 @@
                   </div>
 
                   <div class="hstack" style="margin-top:8px; gap:6px; flex-wrap:wrap;">
-                    <span class="badge">{% if it["type"]=="exam" %}exam{% else %}assignment{% endif %}</span>
+                    <span class="badge">{% if it["type"]=="exam" %}Exam{% elif it["type"]=="lab" %}Lab{% else %}Assignment{% endif %}</span>
                     <span class="badge">{{ it["status"] }}</span>
                     <span class="badge">P{{ it["priority"] }}</span>
                   </div>
@@ -138,7 +139,7 @@
           {% for it in items %}
           <tr>
             <td style="white-space:nowrap;">{{ utc_to_local_str(it["due_at_utc"], tz) }}</td>
-            <td><span class="badge">{% if it["type"]=="exam" %}exam{% else %}assignment{% endif %}</span></td>
+            <td><span class="badge">{% if it["type"]=="exam" %}Exam{% elif it["type"]=="lab" %}Lab{% else %}Assignment{% endif %}</span></td>
             <td style="font-weight:900; overflow-wrap:anywhere;">
               <a href="/items/{{ it['id'] }}" style="color:inherit; text-decoration:none;">
                 {{ it["title"] }}

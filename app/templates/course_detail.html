@@ -44,9 +44,11 @@
 
           <td class="py-3 pr-3 border-b border-slate-100/70 dark:border-slate-800/50">
             {% if it["type"]=="exam" %}
-              <span class="badge">exam</span>
+              <span class="badge">Exam</span>
+            {% elif it["type"]=="lab" %}
+              <span class="badge">Lab</span>
             {% else %}
-              <span class="badge">assignment</span>
+              <span class="badge">Assignment</span>
             {% endif %}
           </td>
 

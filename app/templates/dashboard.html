@@ -70,7 +70,7 @@
                       {{ utc_to_local_str(it["due_at_utc"], tz) }} • {{ it["course_name"] }}
                     </div>
                   </div>
-                  <span class="badge" style="flex:0 0 auto;">{% if it["type"]=="exam" %}exam{% else %}assignment{% endif %}</span>
+                  <span class="badge" style="flex:0 0 auto;">{% if it["type"]=="exam" %}Exam{% elif it["type"]=="lab" %}Lab{% else %}Assignment{% endif %}</span>
                 </div>
               </div>
             </a>
@@ -110,7 +110,7 @@
 
               <td>
                 <span class="badge" style="display:inline-flex; max-width:100%; white-space:nowrap;">
-                  {% if it["type"]=="exam" %}exam{% else %}assignment{% endif %}
+                  {% if it["type"]=="exam" %}Exam{% elif it["type"]=="lab" %}Lab{% else %}Assignment{% endif %}
                 </span>
               </td>
 
