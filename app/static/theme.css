@@ -263,3 +263,20 @@ html, body { overflow-x: hidden; }
   .actions .btn, .toolbar .btn { width: 100%; justify-content: center; }
   .nav a { padding: 10px 10px; }               /* more tappable */
 }
+
+
+/* Prevent "Due" + "Type" from colliding in Upcoming table */
+.table-wrap{
+  overflow-x: auto;
+}
+
+.table-upcoming{
+  min-width: 760px; /* tweak: 700–900 depending on your date format */
+}
+
+.table-upcoming th:nth-child(1),
+.table-upcoming td:nth-child(1),
+.table-upcoming th:nth-child(2),
+.table-upcoming td:nth-child(2){
+  white-space: nowrap;
+}
