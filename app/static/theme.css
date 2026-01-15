@@ -180,12 +180,13 @@ html.dark .btn-primary{
   justify-content: center;
 
   /* key fixes */
-  width: fit-content;     /* prevents "background shrinking" */
+  width: auto;     /* prevents "background shrinking" */
   max-width: 100%;
   flex: 0 0 auto;
   white-space: nowrap;    /* never break inside the badge */
   word-break: keep-all;
   overflow-wrap: normal;
+  line-height: 1;
 
   /* keep your existing styling below (colors/border/shadow/etc) */
   padding: .35rem .65rem;
@@ -300,10 +301,6 @@ html, body { overflow-x: hidden; }
 .table-fixed td {
   vertical-align: top;
   overflow: hidden;          /* prevents bleed into neighboring cells */
-}
-
-.badge {
-  white-space: nowrap;        /* stops "Assignme nt" wrapping weirdly */
 }
 
 .table-upcoming th:nth-child(2),
