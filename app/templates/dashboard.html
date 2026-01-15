@@ -78,65 +78,76 @@
         </div>
       </div>
 
-      <!-- Desktop table -->
-      <div class="hidden sm:block">
-        <div class="table-wrap">
-          <table class="table table-upcoming" style="table-layout:fixed; width:100%;">
-            <thead>
-              <tr>
-                <!-- Fixed widths to prevent overlap -->
-                <th style="width:160px;">Due</th>
-                <th style="width:120px;">Type</th>
-                <th>Title</th>
-                <th style="width:240px;">Course</th>
-                <th style="width:120px;">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for it in upcoming %}
-              <tr>
-                <!-- Allow wrap INSIDE Due cell so it never bleeds into Type -->
-                <td style="white-space:normal; line-height:1.15; word-break:break-word;">
-                  {{ utc_to_local_str(it["due_at_utc"], tz) }}
-                </td>
+      <!-- Desktop table (NO SCROLL) -->
+      <div class="hidden sm:block" style="overflow-x:hidden;">
+        <table class="table" style="width:100%; table-layout:fixed; max-width:100%;">
+          <!-- Responsive column sizing (prevents overflow + prevents overlap) -->
+          <colgroup>
+            <col style="width:22%;">
+            <col style="width:14%;">
+            <col style="width:28%;">
+            <col style="width:22%;">
+            <col style="width:14%;">
+          </colgroup>
 
-                <td>
-                  <span class="badge" style="display:inline-flex; flex:0 0 auto;">
-                    {% if it["type"]=="exam" %}exam{% else %}assignment{% endif %}
+          <thead>
+            <tr>
+              <th>Due</th>
+              <th>Type</th>
+              <th>Title</th>
+              <th>Course</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for it in upcoming %}
+            <tr>
+              <!-- Let date wrap inside its own cell so it NEVER bleeds into Type -->
+              <td style="white-space:normal; line-height:1.15; word-break:break-word;">
+                {{ utc_to_local_str(it["due_at_utc"], tz) }}
+              </td>
+
+              <td>
+                <span class="badge" style="display:inline-flex; max-width:100%; white-space:nowrap;">
+                  {% if it["type"]=="exam" %}exam{% else %}assignment{% endif %}
+                </span>
+              </td>
+
+              <!-- Keep the table shape: title stays one line, truncates if long -->
+              <td style="font-weight:900; min-width:0;">
+                <a href="/items/{{ it['id'] }}"
+                   style="color:inherit; text-decoration:none; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                  {{ it["title"] }}
+                </a>
+              </td>
+
+              <!-- Course stays one line, truncates if long -->
+              <td style="min-width:0;">
+                <span style="display:flex; align-items:center; gap:8px; min-width:0;">
+                  <span style="width:10px; height:10px; flex:0 0 auto; border-radius:999px; border:1px solid var(--border); background: {{ it['course_color'] or '#e2e8f0' }};"></span>
+                  <span style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    {{ it["course_name"] }}
                   </span>
-                </td>
+                </span>
+              </td>
 
-                <td style="font-weight:900; overflow:hidden;">
-                  <a href="/items/{{ it['id'] }}" style="color:inherit; text-decoration:none; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                    {{ it["title"] }}
-                  </a>
-                </td>
+              <td>
+                <span class="badge" style="display:inline-flex; max-width:100%; white-space:nowrap;">
+                  {{ it["status"] }}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
 
-                <td style="overflow:hidden;">
-                  <span style="display:inline-flex; align-items:center; gap:8px; min-width:0; max-width:100%;">
-                    <span style="width:10px; height:10px; flex:0 0 auto; border-radius:999px; border:1px solid var(--border); background: {{ it['course_color'] or '#e2e8f0' }};"></span>
-                    <span style="display:block; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                      {{ it["course_name"] }}
-                    </span>
-                  </span>
-                </td>
-
-                <td>
-                  <span class="badge" style="display:inline-flex; flex:0 0 auto;">{{ it["status"] }}</span>
-                </td>
-              </tr>
-              {% endfor %}
-
-              {% if upcoming|length == 0 %}
-              <tr>
-                <td class="muted" colspan="5">No upcoming items. Add one to get started 🎉</td>
-              </tr>
-              {% endif %}
-            </tbody>
-          </table>
-        </div>
+            {% if upcoming|length == 0 %}
+            <tr>
+              <td class="muted" colspan="5">No upcoming items. Add one to get started 🎉</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
       </div>
-
     </div>
   </div>
 
