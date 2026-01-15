@@ -111,7 +111,12 @@ def _create_default_item_reminders(conn, item_id: int, item_type: str, title: st
     if item_type == "exam":
         default_csv = _get_setting(conn, "exam_template_minutes", "10080,4320,1440,120,30")
         minutes_list = _parse_csv_ints(default_csv, [10080, 4320, 1440, 120, 30])
-    else:
+
+    elif item_type == "lab":
+        default_csv = _get_setting(conn, "lab_template_minutes", "4320,1440,180,60")
+        minutes_list = _parse_csv_ints(default_csv, [4320, 1440, 180, 60])
+
+    else:  # assignment (default)
         default_csv = _get_setting(conn, "assignment_template_minutes", "10080,4320,1440,180")
         minutes_list = _parse_csv_ints(default_csv, [10080, 4320, 1440, 180])
 
@@ -1171,6 +1176,7 @@ def settings_page(request: Request):
         data = {
             "assignment_template_minutes": _get_setting(conn, "assignment_template_minutes", "10080,4320,1440,180"),
             "exam_template_minutes": _get_setting(conn, "exam_template_minutes", "10080,4320,1440,120,30"),
+            "lab_template_minutes": _get_setting(conn, "lab_template_minutes", "4320,1440,180,60"),
             "expense_template_minutes": _get_setting(conn, "expense_template_minutes", "4320,1440,180"),
             "expense_dayof_local_time": _get_setting(conn, "expense_dayof_local_time", "09:00"),
             "quiet_start": _get_setting(conn, "quiet_start", "23:00"),
@@ -1183,6 +1189,7 @@ def settings_page(request: Request):
 def settings_save(
     assignment_template_minutes: str = Form(...),
     exam_template_minutes: str = Form(...),
+    lab_template_minutes: str = Form(...),
     expense_template_minutes: str = Form(...),
     expense_dayof_local_time: str = Form(...),
     quiet_start: str = Form(...),
@@ -1191,6 +1198,7 @@ def settings_save(
     with get_conn() as conn:
         _set_setting(conn, "assignment_template_minutes", assignment_template_minutes.strip())
         _set_setting(conn, "exam_template_minutes", exam_template_minutes.strip())
+        _set_setting(conn, "lab_template_minutes", lab_template_minutes.strip())
         _set_setting(conn, "expense_template_minutes", expense_template_minutes.strip())
         _set_setting(conn, "expense_dayof_local_time", expense_dayof_local_time.strip())
         _set_setting(conn, "quiet_start", quiet_start.strip())
