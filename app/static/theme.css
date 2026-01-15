@@ -203,3 +203,54 @@ html.dark .btn-primary{
   border:none;
   margin: 14px 0;
 }
+
+
+
+/* ---------- Mobile polish / no sideways scroll ---------- */
+html, body { overflow-x: hidden; }
+
+/* Buttons should never split weirdly like "+ \n Add" */
+.btn {
+  white-space: nowrap;
+  line-height: 1.1;
+}
+
+/* Helpers */
+.clamp-1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.clamp-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.break-anywhere { overflow-wrap: anywhere; word-break: break-word; }
+
+/* Tables: behave better on narrow screens */
+.table { table-layout: fixed; }                 /* prevents a single cell forcing width */
+.table th, .table td { overflow-wrap: anywhere; }
+.table td a { overflow-wrap: anywhere; }
+
+/* Toolbars / filter rows should wrap nicely */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+}
+.toolbar > * {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Mobile: stack controls and make action buttons full-width */
+@media (max-width: 640px) {
+  .toolbar > * { flex: 1 1 100%; }
+  .actions .btn, .toolbar .btn { width: 100%; justify-content: center; }
+  .nav a { padding: 10px 10px; }               /* more tappable */
+}

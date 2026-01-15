@@ -29,6 +29,36 @@
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5">
   <!-- Upcoming items -->
+   <div class="sm:hidden space-y-2">
+  {% for it in upcoming %}
+    <div class="card">
+      <div class="card-b">
+        <div class="hstack spread" style="align-items:flex-start;">
+          <div class="min-w-0">
+            <div class="h2 clamp-2">
+              <a href="/items/{{ it['id'] }}" style="text-decoration:none; color:inherit;">
+                {{ it["title"] }}
+              </a>
+            </div>
+            <div class="small break-anywhere" style="margin-top:4px;">
+              {{ it["course_name"] }} • {{ utc_to_local_str(it["due_at_utc"], tz) }}
+            </div>
+          </div>
+
+          <span class="badge">
+            {% if it["type"]=="exam" %}Exam{% else %}Assignment{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+
+  {% if upcoming|length == 0 %}
+    <div class="muted">Nothing upcoming 🎉</div>
+  {% endif %}
+</div>
+
+<div class="hidden sm:block">
   <div class="card p-6 lg:col-span-2">
     <div class="flex items-center justify-between">
       <div>
@@ -93,7 +123,7 @@
       </table>
     </div>
   </div>
-
+  </div>
   <!-- Right column -->
   <div class="space-y-5">
     <div class="card p-6">

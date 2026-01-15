@@ -11,6 +11,7 @@
   </div>
 
   <form method="get" class="mt-6 grid grid-cols-1 md:grid-cols-5 gap-3">
+    <div class="toolbar">
     <input class="input md:col-span-2" name="q" value="{{ filters.q }}" placeholder="Search title / category / notes…" />
     <select class="input" name="status">
       <option value="all" {% if filters.status=="all" %}selected{% endif %}>All</option>
@@ -35,6 +36,7 @@
       <a class="btn" href="/expenses?status=unpaid&when=overdue">Overdue</a>
       <a class="btn" href="/expenses?status=unpaid&when=next7">Next 7</a>
     </div>
+    </div>
   </form>
 
   <div class="mt-6 overflow-x-auto">
@@ -50,6 +52,32 @@
         </tr>
       </thead>
       <tbody>
+        <div class="sm:hidden space-y-2">
+          {% for e in expenses %}
+            <div class="card">
+              <div class="card-b">
+                <div class="hstack spread" style="align-items:flex-start;">
+                  <div class="min-w-0">
+                    <div class="h2 clamp-2">
+                      <a href="/expenses/{{ e['id'] }}" style="text-decoration:none; color:inherit;">
+                        {{ e["title"] }}
+                      </a>
+                    </div>
+                    <div class="small break-anywhere" style="margin-top:4px;">
+                      {{ utc_to_local_str(e["due_at_utc"], tz) }} • {{ e["category"] or "—" }}
+                    </div>
+                  </div>
+                  <div class="hstack" style="gap:6px;">
+                    <span class="badge">${{ "%.2f"|format(e["amount"]) }}</span>
+                    <span class="badge">{{ e["status"] }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        
+        <div class="hidden sm:block">
         {% for e in expenses %}
         <tr class="hover:bg-slate-50">
           <td class="py-3 pr-3 border-b border-slate-100 whitespace-nowrap">{{ utc_to_local_str(e["due_at_utc"], tz) }}</td>
@@ -73,6 +101,7 @@
         {% if expenses|length == 0 %}
         <tr><td class="py-6 muted" colspan="6">No expenses match your filters.</td></tr>
         {% endif %}
+        </div>
       </tbody>
     </table>
   </div>

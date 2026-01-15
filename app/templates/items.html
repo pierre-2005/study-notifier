@@ -11,6 +11,7 @@
   </div>
 
   <form method="get" class="mt-6 grid grid-cols-1 md:grid-cols-6 gap-3">
+    <div class="toolbar">
     <div class="md:col-span-2">
       <input class="input" name="q" value="{{ filters.q }}" placeholder="Search title / notes / course…" />
     </div>
@@ -59,13 +60,13 @@
         <option value="created" {% if filters.sort=="created" %}selected{% endif %}>Sort: created</option>
       </select>
     </div>
-
     <div class="md:col-span-6 flex gap-2">
       <button class="btn btn-primary" type="submit">Apply</button>
       <a class="btn" href="/items">Reset</a>
       <a class="btn" href="/items?when=today&status=open">Today</a>
       <a class="btn" href="/items?when=next7&status=open">Next 7</a>
       <a class="btn" href="/items?when=overdue&status=open">Overdue</a>
+    </div>
     </div>
   </form>
 
@@ -83,6 +84,33 @@
       </thead>
 
       <tbody>
+        <div class="sm:hidden space-y-2">
+          {% for it in items %}
+            <div class="card">
+              <div class="card-b">
+                <div class="hstack spread" style="align-items:flex-start;">
+                  <div class="min-w-0">
+                    <div class="h2 clamp-2">
+                      <a href="/items/{{ it['id'] }}" style="text-decoration:none; color:inherit;">
+                        {{ it["title"] }}
+                      </a>
+                    </div>
+                    <div class="small break-anywhere" style="margin-top:4px;">
+                      {{ it["course_name"] }} • {{ utc_to_local_str(it["due_at_utc"], tz) }}
+                    </div>
+                  </div>
+                  <div class="hstack" style="gap:6px;">
+                    <span class="badge">{% if it["type"]=="exam" %}Exam{% else %}Assignment{% endif %}</span>
+                    <span class="badge">{{ it["status"] }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+
+        <div class="hidden sm:block">
         {% for it in items %}
         <tr class="hover:bg-slate-50">
           <td class="py-3 pr-3 border-b border-slate-100 whitespace-nowrap">{{ utc_to_local_str(it["due_at_utc"], tz) }}</td>
@@ -113,6 +141,7 @@
         {% if items|length == 0 %}
         <tr><td class="py-6 muted" colspan="6">No items match your filters.</td></tr>
         {% endif %}
+        </div>
       </tbody>
     </table>
   </div>
