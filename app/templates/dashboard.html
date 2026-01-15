@@ -1,190 +1,200 @@
 {% extends "base.html" %}
 {% block content %}
 
+<!-- Top stats -->
 <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
-  <div class="card p-5">
-    <div class="muted text-xs uppercase tracking-wide">Due today</div>
-    <div class="mt-1 text-3xl font-extrabold">{{ stats.due_today }}</div>
-    <a class="btn btn-primary mt-4 w-full" href="/items?when=today&status=open">Open</a>
-  </div>
-
-  <div class="card p-5">
-    <div class="muted text-xs uppercase tracking-wide">Overdue</div>
-    <div class="mt-1 text-3xl font-extrabold">{{ stats.overdue }}</div>
-    <a class="btn btn-primary mt-4 w-full" href="/items?when=overdue&status=open">Fix now</a>
-  </div>
-
-  <div class="card p-5">
-    <div class="muted text-xs uppercase tracking-wide">Next 7 days</div>
-    <div class="mt-1 text-3xl font-extrabold">{{ stats.next7 }}</div>
-    <a class="btn btn-primary mt-4 w-full" href="/items?when=next7&status=open">Plan</a>
-  </div>
-
-  <div class="card p-5">
-    <div class="muted text-xs uppercase tracking-wide">Unpaid expenses</div>
-    <div class="mt-1 text-3xl font-extrabold">{{ stats.unpaid_expenses }}</div>
-    <a class="btn btn-primary mt-4 w-full" href="/expenses?status=unpaid">Review</a>
-  </div>
-</div>
-
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5">
-  <!-- Upcoming items -->
-   <div class="sm:hidden space-y-2">
-  {% for it in upcoming %}
-    <div class="card">
-      <div class="card-b">
-        <div class="hstack spread" style="align-items:flex-start;">
-          <div class="min-w-0">
-            <div class="h2 clamp-2">
-              <a href="/items/{{ it['id'] }}" style="text-decoration:none; color:inherit;">
-                {{ it["title"] }}
-              </a>
-            </div>
-            <div class="small break-anywhere" style="margin-top:4px;">
-              {{ it["course_name"] }} • {{ utc_to_local_str(it["due_at_utc"], tz) }}
-            </div>
-          </div>
-
-          <span class="badge">
-            {% if it["type"]=="exam" %}Exam{% else %}Assignment{% endif %}
-          </span>
-        </div>
-      </div>
+  <div class="card">
+    <div class="card-b">
+      <div class="muted text-xs uppercase tracking-wide">Due today</div>
+      <div style="margin-top:6px; font-size:32px; font-weight:900;">{{ stats.due_today }}</div>
+      <a class="btn btn-primary" style="margin-top:12px; width:100%; justify-content:center;" href="/items?when=today&status=open">Open</a>
     </div>
-  {% endfor %}
+  </div>
 
-  {% if upcoming|length == 0 %}
-    <div class="muted">Nothing upcoming 🎉</div>
-  {% endif %}
+  <div class="card">
+    <div class="card-b">
+      <div class="muted text-xs uppercase tracking-wide">Overdue</div>
+      <div style="margin-top:6px; font-size:32px; font-weight:900;">{{ stats.overdue }}</div>
+      <a class="btn btn-primary" style="margin-top:12px; width:100%; justify-content:center;" href="/items?when=overdue&status=open">Fix now</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-b">
+      <div class="muted text-xs uppercase tracking-wide">Next 7 days</div>
+      <div style="margin-top:6px; font-size:32px; font-weight:900;">{{ stats.next7 }}</div>
+      <a class="btn btn-primary" style="margin-top:12px; width:100%; justify-content:center;" href="/items?when=next7&status=open">Plan</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-b">
+      <div class="muted text-xs uppercase tracking-wide">Unpaid expenses</div>
+      <div style="margin-top:6px; font-size:32px; font-weight:900;">{{ stats.unpaid_expenses }}</div>
+      <a class="btn btn-primary" style="margin-top:12px; width:100%; justify-content:center;" href="/expenses?status=unpaid">Review</a>
+    </div>
+  </div>
 </div>
 
-<div class="hidden sm:block">
-  <div class="card p-6 lg:col-span-2">
-    <div class="flex items-center justify-between">
+<!-- Main area -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5" style="margin-top:18px;">
+
+  <!-- Upcoming (spans 2 on desktop) -->
+  <div class="card lg:col-span-2">
+    <div class="card-h">
       <div>
-        <h2 class="text-lg font-extrabold">Upcoming</h2>
-        <p class="muted mt-1">Next items you haven’t completed yet.</p>
+        <div class="h2">Upcoming</div>
+        <div class="muted" style="margin-top:4px;">Next items you haven’t completed yet.</div>
       </div>
-      <div class="flex gap-2">
+      <div class="hstack">
         <a class="btn" href="/items">All</a>
         <a class="btn btn-primary" href="/items/new">+ New</a>
       </div>
     </div>
 
-    <div class="mt-5 overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead class="text-slate-500 text-xs uppercase tracking-wide">
-          <tr>
-            <th class="text-left py-3 pr-3 border-b border-slate-200">Due</th>
-            <th class="text-left py-3 pr-3 border-b border-slate-200">Type</th>
-            <th class="text-left py-3 pr-3 border-b border-slate-200">Title</th>
-            <th class="text-left py-3 pr-3 border-b border-slate-200">Course</th>
-            <th class="text-left py-3 border-b border-slate-200">Status</th>
-          </tr>
-        </thead>
-        <tbody>
+    <div class="card-b">
+      <!-- Mobile cards -->
+      <div class="sm:hidden">
+        {% if upcoming|length == 0 %}
+          <div class="muted">No upcoming items. Add one to get started 🎉</div>
+        {% endif %}
+
+        <div class="space-y-2">
           {% for it in upcoming %}
-          <tr class="hover:bg-slate-50">
-            <td class="py-3 pr-3 border-b border-slate-100 whitespace-nowrap">{{ utc_to_local_str(it["due_at_utc"], tz) }}</td>
-            <td class="py-3 pr-3 border-b border-slate-100">
-              {% if it["type"] == "exam" %}
-                <span class="badge badge-amber">exam</span>
-              {% else %}
-                <span class="badge badge-indigo">assignment</span>
-              {% endif %}
-            </td>
-            <td class="py-3 pr-3 border-b border-slate-100 font-extrabold">
-              <a class="hover:underline" href="/items/{{ it['id'] }}">{{ it["title"] }}</a>
-            </td>
-            <td class="py-3 pr-3 border-b border-slate-100">
-              <div class="flex items-center gap-2">
-                <span
-                  class="h-3 w-3 rounded-full border border-slate-200 dark:border-slate-700"
-                  style="--dot: {{ it['course_color'] or '#e2e8f0' }}; background-color: var(--dot);">
-                </span>
-                <span>{{ it["course_name"] }}</span>
+            <a href="/items/{{ it['id'] }}" class="card" style="display:block; text-decoration:none; color:inherit;">
+              <div class="card-b">
+                <div class="hstack spread" style="align-items:flex-start;">
+                  <div style="min-width:0;">
+                    <div class="h2" style="overflow-wrap:anywhere;">{{ it["title"] }}</div>
+                    <div class="small" style="margin-top:4px; overflow-wrap:anywhere;">
+                      {{ utc_to_local_str(it["due_at_utc"], tz) }} • {{ it["course_name"] }}
+                    </div>
+                  </div>
+                  <span class="badge">{% if it["type"]=="exam" %}exam{% else %}assignment{% endif %}</span>
+                </div>
               </div>
-            </td>
-            <td class="py-3 border-b border-slate-100">
-              {% if it["status"] == "done" %}
-                <span class="badge badge-green">done</span>
-              {% elif it["status"] == "doing" %}
-                <span class="badge badge-amber">doing</span>
-              {% else %}
-                <span class="badge">todo</span>
-              {% endif %}
-            </td>
-          </tr>
+            </a>
           {% endfor %}
-          {% if upcoming|length == 0 %}
-          <tr><td class="py-5 muted" colspan="5">No upcoming items. Add one to get started 🎉</td></tr>
-          {% endif %}
-        </tbody>
-      </table>
+        </div>
+      </div>
+
+      <!-- Desktop table -->
+      <div class="hidden sm:block">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Due</th>
+              <th>Type</th>
+              <th>Title</th>
+              <th>Course</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for it in upcoming %}
+            <tr>
+              <td style="white-space:nowrap;">{{ utc_to_local_str(it["due_at_utc"], tz) }}</td>
+              <td><span class="badge">{% if it["type"]=="exam" %}exam{% else %}assignment{% endif %}</span></td>
+              <td style="font-weight:900; overflow-wrap:anywhere;">
+                <a href="/items/{{ it['id'] }}" style="color:inherit; text-decoration:none;">
+                  {{ it["title"] }}
+                </a>
+              </td>
+              <td style="overflow-wrap:anywhere;">
+                <span style="display:inline-flex; align-items:center; gap:8px;">
+                  <span style="width:10px; height:10px; border-radius:999px; border:1px solid var(--border); background: {{ it['course_color'] or '#e2e8f0' }};"></span>
+                  {{ it["course_name"] }}
+                </span>
+              </td>
+              <td><span class="badge">{{ it["status"] }}</span></td>
+            </tr>
+            {% endfor %}
+
+            {% if upcoming|length == 0 %}
+            <tr>
+              <td class="muted" colspan="5">No upcoming items. Add one to get started 🎉</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
     </div>
   </div>
-  </div>
+
   <!-- Right column -->
   <div class="space-y-5">
-    <div class="card p-6">
-      <div class="flex items-center justify-between">
-        <h3 class="text-lg font-extrabold">Next reminders</h3>
+
+    <!-- Next reminders -->
+    <div class="card">
+      <div class="card-h">
+        <div class="h2">Next reminders</div>
         <span class="badge">{{ next_reminders|length }}</span>
       </div>
 
-      <div class="mt-4">
+      <div class="card-b">
+        {% if next_reminders|length == 0 %}
+          <div class="muted">No reminders scheduled.</div>
+        {% endif %}
+
         {% for r in next_reminders %}
-          <div class="row py-3">
-            <div class="muted text-xs uppercase tracking-wide">
+          <div class="row" style="padding-top:12px; padding-bottom:12px; {% if loop.first %}border-top:0;{% endif %}">
+            <div class="small" style="text-transform:uppercase; letter-spacing:.06em;">
               {{ utc_to_local_str(r["remind_at_utc"], tz) }}
             </div>
-            <div class="mt-1 font-extrabold">
+            <div style="margin-top:6px; font-weight:900; overflow-wrap:anywhere;">
               {{ r["message"] }}
             </div>
           </div>
         {% endfor %}
-
-        {% if next_reminders|length == 0 %}
-          <div class="muted mt-2">No reminders scheduled.</div>
-        {% endif %}
       </div>
     </div>
 
-    <div class="card p-6">
-      <div class="flex items-center justify-between">
+    <!-- Unpaid expenses -->
+    <div class="card">
+      <div class="card-h">
         <div>
-          <h2 class="text-lg font-extrabold">Unpaid expenses</h2>
-          <p class="muted mt-1">Bills you haven’t marked paid yet.</p>
+          <div class="h2">Unpaid expenses</div>
+          <div class="muted" style="margin-top:4px;">Bills you haven’t marked paid yet.</div>
         </div>
         <a class="btn btn-primary" href="/expenses/new">+ New</a>
       </div>
 
-      <div class="mt-4 space-y-3">
+      <div class="card-b">
+        {% if expenses_due|length == 0 %}
+          <div class="muted">No unpaid expenses 🎉</div>
+        {% endif %}
+
         {% for e in expenses_due %}
-        <a href="/expenses/{{ e['id'] }}" class="block rounded-2xl border border-slate-200 p-3 bg-white hover:bg-slate-50 transition">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="font-extrabold">{{ e["title"] }}</div>
-              <div class="muted text-xs uppercase tracking-wide mt-1">
-                Due: {{ utc_to_local_str(e["due_at_utc"], tz) }}
+          <a href="/expenses/{{ e['id'] }}"
+             style="display:block; text-decoration:none; color:inherit;"
+             class="row"
+             {% if loop.first %}style="display:block; text-decoration:none; color:inherit; border-top:0; padding-top:12px; padding-bottom:12px;"
+             {% else %}style="display:block; text-decoration:none; color:inherit; padding-top:12px; padding-bottom:12px;"
+             {% endif %}>
+            <div class="hstack spread" style="align-items:flex-start;">
+              <div style="min-width:0;">
+                <div style="font-weight:900; overflow-wrap:anywhere;">{{ e["title"] }}</div>
+                <div class="small" style="margin-top:4px; text-transform:uppercase; letter-spacing:.06em;">
+                  Due: {{ utc_to_local_str(e["due_at_utc"], tz) }}
+                </div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-weight:900;">${{ "%.2f"|format(e["amount"]) }}</div>
+                <div style="margin-top:6px;">
+                  {% if e["is_overdue"] %}
+                    <span class="badge">overdue</span>
+                  {% else %}
+                    <span class="badge">upcoming</span>
+                  {% endif %}
+                </div>
               </div>
             </div>
-            <div class="text-right">
-              <div class="font-extrabold">${{ "%.2f"|format(e["amount"]) }}</div>
-              {% if e["is_overdue"] %}
-                <div class="mt-1 badge badge-red">overdue</div>
-              {% else %}
-                <div class="mt-1 badge badge-amber">upcoming</div>
-              {% endif %}
-            </div>
-          </div>
-        </a>
+          </a>
         {% endfor %}
-        {% if expenses_due|length == 0 %}
-        <div class="muted">No unpaid expenses 🎉</div>
-        {% endif %}
       </div>
     </div>
+
   </div>
 </div>
 
