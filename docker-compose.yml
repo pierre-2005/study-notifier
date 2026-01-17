@@ -15,5 +15,4 @@ services:
 
 volumes:
   study_notifier_data:
-
-
+  
