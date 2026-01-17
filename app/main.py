@@ -40,13 +40,7 @@ APP_USERNAME = os.getenv("APP_USERNAME", "")
 APP_PASSWORD = os.getenv("APP_PASSWORD", "")
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").lower() in ("1", "true", "yes", "on")
 
-# Signed cookie sessions
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=SESSION_SECRET or "dev-insecure-change-me",
-    same_site="lax",
-    https_only=COOKIE_SECURE,
-)
+
 
 # Redirect to /login if not authenticated
 @app.middleware("http")
@@ -65,10 +59,27 @@ async def require_auth(request: Request, call_next):
     next_url = path
     if request.url.query:
         next_url += "?" + request.url.query
+
+    if path.startswith("/static") or path in ("/login", "/logout", "/favicon.ico"):
+        return await call_next(request)
+
     return RedirectResponse(
         url="/login?next=" + urllib.parse.quote(next_url),
         status_code=303
     )
+
+# Signed cookie sessions (MUST be added after require_auth so it runs first)
+if not SESSION_SECRET:
+    # optional but recommended: fail fast so you don't accidentally expose with dev key
+    raise RuntimeError("SESSION_SECRET is not set")
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET,
+    same_site="lax",
+    https_only=COOKIE_SECURE,
+)
+
 
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
