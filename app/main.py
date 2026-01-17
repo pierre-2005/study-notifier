@@ -7,6 +7,10 @@ from datetime import timedelta, datetime, timezone
 from zoneinfo import ZoneInfo
 from fastapi.staticfiles import StaticFiles
 import calendar
+import os
+import urllib.parse
+from starlette.middleware.sessions import SessionMiddleware
+
 
 from app.config import settings
 from app.db import init_db, get_conn
@@ -29,6 +33,43 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+# --- Simple login/session auth ---
+SESSION_SECRET = os.getenv("SESSION_SECRET", "")
+APP_USERNAME = os.getenv("APP_USERNAME", "")
+APP_PASSWORD = os.getenv("APP_PASSWORD", "")
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").lower() in ("1", "true", "yes", "on")
+
+# Signed cookie sessions
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET or "dev-insecure-change-me",
+    same_site="lax",
+    https_only=COOKIE_SECURE,
+)
+
+# Redirect to /login if not authenticated
+@app.middleware("http")
+async def require_auth(request: Request, call_next):
+    path = request.url.path
+
+    # Allow login + static assets without auth
+    if path.startswith("/static") or path in ("/login", "/logout"):
+        return await call_next(request)
+
+    # Already logged in
+    if request.session.get("user"):
+        return await call_next(request)
+
+    # Not logged in -> send to login with ?next=
+    next_url = path
+    if request.url.query:
+        next_url += "?" + request.url.query
+    return RedirectResponse(
+        url="/login?next=" + urllib.parse.quote(next_url),
+        status_code=303
+    )
+
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
@@ -1353,3 +1394,39 @@ def settings_test_notification():
     notifier = build_notifier()
     notifier.send("Test notification", "✅ Your notifier is working.")
     return RedirectResponse("/settings", status_code=303)
+
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request, next: str = "/"):
+    return templates.TemplateResponse("login.html", {"request": request, "next": next, "error": ""})
+
+
+@app.post("/login", response_class=HTMLResponse)
+def login_submit(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    next: str = Form("/"),
+):
+    # If you forgot to set env vars, fail closed (safer)
+    if not APP_USERNAME or not APP_PASSWORD or not SESSION_SECRET:
+        return templates.TemplateResponse(
+            "login.html",
+            {
+                "request": request,
+                "next": next,
+                "error": "Server login is not configured yet. Set SESSION_SECRET, APP_USERNAME, APP_PASSWORD.",
+            },
+        )
+
+    if username == APP_USERNAME and password == APP_PASSWORD:
+        request.session["user"] = username
+        return RedirectResponse(next or "/", status_code=303)
+
+    return templates.TemplateResponse("login.html", {"request": request, "next": next, "error": "Invalid login."})
+
+
+@app.post("/logout")
+def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse("/login", status_code=303)

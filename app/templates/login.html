@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card p-6 max-w-md">
+  <div>
+    <h2 class="text-2xl font-extrabold">Sign in</h2>
+    <div class="muted mt-1">Enter your Study Notifier login.</div>
+  </div>
+
+  {% if error %}
+    <div class="row mt-4" style="border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.08);">
+      <div style="font-weight:700;">{{ error }}</div>
+    </div>
+  {% endif %}
+
+  <form method="post" action="/login" class="mt-5 grid gap-3">
+    <input type="hidden" name="next" value="{{ next }}">
+
+    <div>
+      <div class="label">Username</div>
+      <input class="input mt-1" name="username" autocomplete="username" required>
+    </div>
+
+    <div>
+      <div class="label">Password</div>
+      <input class="input mt-1" type="password" name="password" autocomplete="current-password" required>
+    </div>
+
+    <button class="btn btn-primary mt-2" type="submit" style="justify-content:center;">Login</button>
+  </form>
+</div>
+
+{% endblock %}

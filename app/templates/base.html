@@ -51,25 +51,33 @@
         </div>
       </div>
 
-      <div class="hstack">
+      <div class="hstack" style="align-items:center; gap:10px;">
         <button id="themeToggle" class="btn" type="button" aria-label="Toggle theme">
           🌙 <span class="hidden sm:inline">Dark</span>
         </button>
+
+        {% if request.session.get("user") %}
+          <form method="post" action="/logout" style="display:inline; margin:0;">
+            <button class="btn" type="submit">Logout</button>
+          </form>
+        {% endif %}
       </div>
     </div>
 
-    {% set p = request.url.path %}
-    <div class="topbar-inner" style="padding-top:0; padding-bottom:12px;">
-      <div class="nav">
-        <a class="{{ 'active' if p=='/' else '' }}" href="/">Dashboard</a>
-        <a class="{{ 'active' if p.startswith('/courses') else '' }}" href="/courses">Courses</a>
-        <a class="{{ 'active' if p.startswith('/items') else '' }}" href="/items">Assignments/Exams/Labs</a>
-        <a class="{{ 'active' if p.startswith('/jobs') else '' }}" href="/jobs">Jobs</a>
-        <a class="{{ 'active' if p.startswith('/expenses') else '' }}" href="/expenses">Expenses</a>
-        <a class="{{ 'active' if (p.startswith('/schedule') or p.startswith('/classes') or p.startswith('/events')) else '' }}" href="/schedule">Schedule</a>
-        <a class="{{ 'active' if p.startswith('/settings') else '' }}" href="/settings">Settings</a>
+    {% if request.session.get("user") %}
+      {% set p = request.url.path %}
+      <div class="topbar-inner" style="padding-top:0; padding-bottom:12px;">
+        <div class="nav">
+          <a class="{{ 'active' if p=='/' else '' }}" href="/">Dashboard</a>
+          <a class="{{ 'active' if p.startswith('/courses') else '' }}" href="/courses">Courses</a>
+          <a class="{{ 'active' if p.startswith('/items') else '' }}" href="/items">Assignments/Exams/Labs</a>
+          <a class="{{ 'active' if p.startswith('/jobs') else '' }}" href="/jobs">Jobs</a>
+          <a class="{{ 'active' if p.startswith('/expenses') else '' }}" href="/expenses">Expenses</a>
+          <a class="{{ 'active' if (p.startswith('/schedule') or p.startswith('/classes') or p.startswith('/events')) else '' }}" href="/schedule">Schedule</a>
+          <a class="{{ 'active' if p.startswith('/settings') else '' }}" href="/settings">Settings</a>
+        </div>
       </div>
-    </div>
+    {% endif %}
   </div>
 
   <div class="shell">
