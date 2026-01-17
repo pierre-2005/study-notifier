@@ -5,3 +5,4 @@ python-dotenv
 apscheduler
 requests
 python-multipart
+itsdangerous>=2.0
