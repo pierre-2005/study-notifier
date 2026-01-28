@@ -10,8 +10,8 @@ services:
       NTFY_TOPIC: study-9f3a2c1d4e6b7a8f
       STUDY_NOTIFIER_DB: /data/study_notifier.db
       SESSION_SECRET: hj435gh3g545hjv4332ll5k436k3khv4kj234v235
-      APP_USERNAME: pero
-      APP_PASSWORD: "212005"
+      APP_USERNAME: Pierre
+      APP_PASSWORD: "Pero@MLO-212005"
       COOKIE_SECURE: "true"
     volumes:
       - study_notifier_data:/data
