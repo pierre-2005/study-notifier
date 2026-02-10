@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <div class="card-h">
+    <div>
+      <div class="h1">New to-do</div>
+      <div class="muted" style="margin-top:4px;">Add a personal task (optional due date).</div>
+    </div>
+    <a class="btn" href="/todos">Back</a>
+  </div>
+
+  <div class="card-b">
+    <form method="post" action="/todos/new" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="md:col-span-2">
+        <div class="label">Title</div>
+        <input class="input mt-1" name="title" required placeholder="e.g., Finish lab report">
+      </div>
+
+      <div>
+        <div class="label">Status</div>
+        <select class="select mt-1" name="status">
+          <option value="todo" selected>Todo</option>
+          <option value="doing">Doing</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+
+      <div>
+        <div class="label">Due date/time (local)</div>
+        <input class="input mt-1" type="datetime-local" name="due_at_local">
+        <div class="small mt-1">Optional — leave blank if it has no due date.</div>
+      </div>
+
+      <div class="md:col-span-2">
+        <div class="label">Notes</div>
+        <textarea class="textarea mt-1" name="notes" rows="4" placeholder="Optional notes…"></textarea>
+      </div>
+
+      <div class="md:col-span-2 flex gap-2">
+        <button class="btn btn-primary" type="submit">Create to-do</button>
+        <a class="btn" href="/todos">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

@@ -64,6 +64,18 @@ CREATE TABLE IF NOT EXISTS jobs (
   updated_at_utc TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS todos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  notes TEXT,
+  due_at_utc TEXT,
+  status TEXT NOT NULL DEFAULT 'todo' CHECK(status IN ('todo','doing','done')),
+  created_at_utc TEXT NOT NULL,
+  updated_at_utc TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_todos_status_due ON todos(status, due_at_utc);
+
 -- Include recurrence columns in base schema for new installs
 CREATE TABLE IF NOT EXISTS expenses (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -218,6 +230,9 @@ def init_db() -> None:
             "expense_dayof_local_time": "09:00",
             "quiet_start": "23:00",
             "quiet_end": "07:00",
+            "todo_reminder_enabled": "off",
+            "todo_reminder_minutes": "60",
+            "todo_reminder_last_sent_utc": "",
         }
 
         for k, v in defaults.items():

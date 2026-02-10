@@ -854,6 +854,262 @@ def add_item_reminder_preset(item_id: int, minutes: int = Form(...)):
     return RedirectResponse(f"/items/{item_id}", status_code=303)
 
 
+# ----------------- TODOS -----------------
+TODO_INTERVAL_OPTIONS = [
+    (60, "Every 1 hour"),
+    (120, "Every 2 hours"),
+    (180, "Every 3 hours"),
+    (240, "Every 4 hours"),
+    (300, "Every 5 hours"),
+    (360, "Every 6 hours"),
+    (720, "Every 12 hours"),
+    (1440, "Every 1 day"),
+]
+
+def _todo_interval_human(minutes: int) -> str:
+    if minutes < 60:
+        return f"{minutes} min"
+    if minutes % 1440 == 0:
+        d = minutes // 1440
+        return "1 day" if d == 1 else f"{d} days"
+    if minutes % 60 == 0:
+        h = minutes // 60
+        return "1 hour" if h == 1 else f"{h} hours"
+    return f"{minutes} min"
+
+
+@app.get("/todos", response_class=HTMLResponse)
+def todos(request: Request, q: str = "", status: str = "open", sort: str = "due"):
+    q = (q or "").strip()
+    status = (status or "open").strip()
+    sort = (sort or "due").strip()
+
+    where = ["1=1"]
+    params = []
+
+    if q:
+        where.append("(title LIKE ? OR notes LIKE ?)")
+        params.extend([f"%{q}%", f"%{q}%"])
+
+    if status == "open":
+        where.append("status != 'done'")
+    elif status in ("todo", "doing", "done"):
+        where.append("status = ?")
+        params.append(status)
+    # else: "all"
+
+    sort_sql = {
+        "due": "(due_at_utc IS NULL) ASC, due_at_utc ASC, updated_at_utc DESC",
+        "created": "created_at_utc DESC",
+        "updated": "updated_at_utc DESC",
+    }.get(sort, "(due_at_utc IS NULL) ASC, due_at_utc ASC, updated_at_utc DESC")
+
+    now = now_utc()
+
+    with get_conn() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT *
+            FROM todos
+            WHERE {' AND '.join(where)}
+            ORDER BY {sort_sql}
+            """,
+            tuple(params),
+        ).fetchall()
+
+        enabled = _get_setting(conn, "todo_reminder_enabled", "off").strip().lower() == "on"
+        try:
+            minutes = int(_get_setting(conn, "todo_reminder_minutes", "60"))
+        except Exception:
+            minutes = 60
+
+    # compute overdue flag for display
+    view = []
+    for r in rows:
+        d = dict(r)
+        d["is_overdue"] = False
+        if d.get("due_at_utc") and d.get("status") != "done":
+            try:
+                due_dt = datetime.fromisoformat(d["due_at_utc"])
+                if due_dt.tzinfo is None:
+                    due_dt = due_dt.replace(tzinfo=timezone.utc)
+                d["is_overdue"] = due_dt < now
+            except Exception:
+                d["is_overdue"] = False
+        view.append(d)
+
+    reminder_options = [{"value": v, "label": lbl} for (v, lbl) in TODO_INTERVAL_OPTIONS]
+
+    return templates.TemplateResponse(
+        "todos.html",
+        {
+            "request": request,
+            "todos": view,
+            "filters": {"q": q, "status": status, "sort": sort},
+            "tz": settings.timezone,
+            "utc_to_local_str": utc_to_local_str,
+            "reminder": {
+                "enabled": enabled,
+                "minutes": minutes,
+                "human": _todo_interval_human(minutes),
+                "options": reminder_options,
+            },
+        },
+    )
+
+
+@app.get("/todos/new", response_class=HTMLResponse)
+def new_todo(request: Request):
+    return templates.TemplateResponse("new_todo.html", {"request": request, "tz": settings.timezone})
+
+
+@app.post("/todos/new")
+def create_todo(
+    title: str = Form(...),
+    notes: str = Form(""),
+    due_at_local: str = Form(""),
+    status: str = Form("todo"),
+):
+    status = (status or "todo").strip()
+    if status not in ("todo", "doing", "done"):
+        status = "todo"
+
+    due_utc_iso = None
+    if (due_at_local or "").strip():
+        due_utc_iso = parse_local_datetime_localinput(due_at_local, settings.timezone).isoformat()
+
+    now_iso = now_utc().isoformat()
+
+    with get_conn() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO todos(title, notes, due_at_utc, status, created_at_utc, updated_at_utc)
+            VALUES(?,?,?,?,?,?)
+            """,
+            (title.strip(), notes.strip(), due_utc_iso, status, now_iso, now_iso),
+        )
+        todo_id = cur.lastrowid
+        conn.commit()
+
+    return RedirectResponse(f"/todos/{todo_id}", status_code=303)
+
+
+@app.get("/todos/{todo_id}", response_class=HTMLResponse)
+def todo_detail(request: Request, todo_id: int):
+    with get_conn() as conn:
+        todo = conn.execute("SELECT * FROM todos WHERE id=?", (todo_id,)).fetchone()
+
+    due_local_value = ""
+    if todo and todo["due_at_utc"]:
+        due_local_value = _utc_iso_to_local_input(todo["due_at_utc"])
+
+    return templates.TemplateResponse(
+        "todo_detail.html",
+        {
+            "request": request,
+            "todo": todo,
+            "due_at_local_value": due_local_value,
+            "tz": settings.timezone,
+            "utc_to_local_str": utc_to_local_str,
+        },
+    )
+
+
+@app.post("/todos/{todo_id}/status")
+def set_todo_status(todo_id: int, status: str = Form(...)):
+    status = (status or "todo").strip()
+    if status not in ("todo", "doing", "done"):
+        status = "todo"
+
+    now_iso = now_utc().isoformat()
+    with get_conn() as conn:
+        conn.execute("UPDATE todos SET status=?, updated_at_utc=? WHERE id=?", (status, now_iso, todo_id))
+        conn.commit()
+
+    return RedirectResponse(f"/todos/{todo_id}", status_code=303)
+
+
+@app.post("/todos/{todo_id}/update")
+def update_todo(
+    todo_id: int,
+    title: str = Form(...),
+    notes: str = Form(""),
+    due_at_local: str = Form(""),
+):
+    due_utc_iso = None
+    if (due_at_local or "").strip():
+        due_utc_iso = parse_local_datetime_localinput(due_at_local, settings.timezone).isoformat()
+
+    now_iso = now_utc().isoformat()
+
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE todos SET title=?, notes=?, due_at_utc=?, updated_at_utc=? WHERE id=?",
+            (title.strip(), notes.strip(), due_utc_iso, now_iso, todo_id),
+        )
+        conn.commit()
+
+    return RedirectResponse(f"/todos/{todo_id}", status_code=303)
+
+
+@app.post("/todos/{todo_id}/delete")
+def delete_todo(todo_id: int):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM todos WHERE id=?", (todo_id,))
+        conn.commit()
+    return RedirectResponse("/todos", status_code=303)
+
+
+@app.post("/todos/reminder/save")
+def save_todo_reminder_settings(
+    enabled: str = Form("off"),
+    minutes: int = Form(60),
+):
+    allowed = {v for (v, _) in TODO_INTERVAL_OPTIONS}
+    if minutes not in allowed:
+        minutes = 60
+
+    enabled_norm = "on" if (enabled or "").strip().lower() == "on" else "off"
+
+    with get_conn() as conn:
+        _set_setting(conn, "todo_reminder_enabled", enabled_norm)
+        _set_setting(conn, "todo_reminder_minutes", str(int(minutes)))
+
+        # Start the clock when enabled so it doesn't instantly ping
+        if enabled_norm == "on":
+            _set_setting(conn, "todo_reminder_last_sent_utc", now_utc().isoformat())
+
+        conn.commit()
+
+    return RedirectResponse("/todos", status_code=303)
+
+
+@app.post("/todos/reminder/test")
+def test_todo_reminder_now():
+    notifier = build_notifier()
+
+    with get_conn() as conn:
+        todos = conn.execute(
+            """
+            SELECT title
+            FROM todos
+            WHERE status != 'done'
+            ORDER BY (due_at_utc IS NULL) ASC, due_at_utc ASC, updated_at_utc DESC
+            LIMIT 8
+            """
+        ).fetchall()
+
+    if not todos:
+        notifier.send("To-Do reminder (test)", "No open to-dos 🎉")
+        return RedirectResponse("/todos", status_code=303)
+
+    body = "Open to-dos:\n" + "\n".join([f"- {t['title']}" for t in todos])
+    notifier.send("To-Do reminder (test)", body)
+    return RedirectResponse("/todos", status_code=303)
+
+
+
+
 # ----------------- JOBS -----------------
 @app.get("/jobs", response_class=HTMLResponse)
 def jobs(request: Request, q: str = "", status: str = "all"):
