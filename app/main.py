@@ -385,7 +385,7 @@ def dashboard(request: Request):
         d["is_overdue"] = due_dt < now_dt
         expenses_due.append(d)
 
-    return templates.TemplateResponse(request,request,
+    return templates.TemplateResponse(request,
         "dashboard.html",
         {
             "request": request,
