@@ -385,7 +385,7 @@ def dashboard(request: Request):
         d["is_overdue"] = due_dt < now_dt
         expenses_due.append(d)
 
-    return templates.TemplateResponse(request,request,request,request,request,
+    return templates.TemplateResponse(request,request,
         "dashboard.html",
         {
             "request": request,
@@ -429,12 +429,12 @@ def courses(request: Request, q: str = ""):
                 ORDER BY c.name ASC
                 """
             ).fetchall()
-    return templates.TemplateResponse(request,request,request,request,"courses.html", {"request": request, "courses": rows, "q": q})
+    return templates.TemplateResponse(request,"courses.html", {"request": request, "courses": rows, "q": q})
 
 
 @app.get("/courses/new", response_class=HTMLResponse)
 def new_course(request: Request):
-    return templates.TemplateResponse(request,request,request,request,"new_course.html", {"request": request})
+    return templates.TemplateResponse(request,"new_course.html", {"request": request})
 
 
 @app.post("/courses/new")
@@ -468,7 +468,7 @@ def course_detail(request: Request, course_id: int):
             (course_id,),
         ).fetchall()
 
-    return templates.TemplateResponse(request,request,request,request,
+    return templates.TemplateResponse(request,
         "course_detail.html",
         {
             "request": request,
@@ -576,7 +576,7 @@ def items(
             tuple(params),
         ).fetchall()
 
-    return templates.TemplateResponse(request,request,request,request,
+    return templates.TemplateResponse(request,
         "items.html",
         {
             "request": request,
@@ -593,7 +593,7 @@ def items(
 def new_item(request: Request):
     with get_conn() as conn:
         courses = conn.execute("SELECT * FROM courses ORDER BY name ASC").fetchall()
-    return templates.TemplateResponse(request,request,request,request,"new_item.html", {"request": request, "courses": courses})
+    return templates.TemplateResponse(request,"new_item.html", {"request": request, "courses": courses})
 
 
 @app.post("/items/new")
@@ -657,7 +657,7 @@ def item_detail(request: Request, item_id: int):
             (item_id,),
         ).fetchall()
 
-    return templates.TemplateResponse(request,request,request,request,
+    return templates.TemplateResponse(request,
         "item_detail.html",
         {
             "request": request,
@@ -940,7 +940,7 @@ def todos(request: Request, q: str = "", status: str = "open", sort: str = "due"
 
     reminder_options = [{"value": v, "label": lbl} for (v, lbl) in TODO_INTERVAL_OPTIONS]
 
-    return templates.TemplateResponse(request,request,request,request,
+    return templates.TemplateResponse(request,
         "todos.html",
         {
             "request": request,
@@ -960,7 +960,7 @@ def todos(request: Request, q: str = "", status: str = "open", sort: str = "due"
 
 @app.get("/todos/new", response_class=HTMLResponse)
 def new_todo(request: Request):
-    return templates.TemplateResponse(request,request,request,request,"new_todo.html", {"request": request, "tz": settings.timezone})
+    return templates.TemplateResponse(request,"new_todo.html", {"request": request, "tz": settings.timezone})
 
 
 @app.post("/todos/new")
@@ -1003,7 +1003,7 @@ def todo_detail(request: Request, todo_id: int):
     if todo and todo["due_at_utc"]:
         due_local_value = _utc_iso_to_local_input(todo["due_at_utc"])
 
-    return templates.TemplateResponse(request,request,request,request,
+    return templates.TemplateResponse(request,
         "todo_detail.html",
         {
             "request": request,
@@ -1131,7 +1131,7 @@ def jobs(request: Request, q: str = "", status: str = "all"):
             tuple(params),
         ).fetchall()
 
-    return templates.TemplateResponse(request,request,request,request,
+    return templates.TemplateResponse(request,
         "jobs.html",
         {"request": request, "jobs": rows, "filters": {"q": q, "status": status}, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str},
     )
@@ -1139,7 +1139,7 @@ def jobs(request: Request, q: str = "", status: str = "all"):
 
 @app.get("/jobs/new", response_class=HTMLResponse)
 def new_job(request: Request):
-    return templates.TemplateResponse(request,request,request,request,"new_job.html", {"request": request})
+    return templates.TemplateResponse(request,"new_job.html", {"request": request})
 
 
 @app.post("/jobs/new")
@@ -1193,7 +1193,7 @@ def job_detail(request: Request, job_id: int):
             (job_id,),
         ).fetchall()
 
-    return templates.TemplateResponse(request,request,request,request,
+    return templates.TemplateResponse(request,
         "job_detail.html",
         {"request": request, "job": job, "reminders": reminders, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str},
     )
@@ -1275,7 +1275,7 @@ def expenses(
             tuple(params),
         ).fetchall()
 
-    return templates.TemplateResponse(request,request,request,request,
+    return templates.TemplateResponse(request,
         "expenses.html",
         {"request": request, "expenses": rows, "filters": {"q": q, "status": status, "when": when, "sort": sort}, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str},
     )
@@ -1283,7 +1283,7 @@ def expenses(
 
 @app.get("/expenses/new", response_class=HTMLResponse)
 def new_expense(request: Request):
-    return templates.TemplateResponse(request,request,request,request,"new_expense.html", {"request": request, "tz": settings.timezone})
+    return templates.TemplateResponse(request,"new_expense.html", {"request": request, "tz": settings.timezone})
 
 
 @app.post("/expenses/new")
@@ -1336,7 +1336,7 @@ def expense_detail(request: Request, expense_id: int):
             (expense_id,),
         ).fetchall()
 
-    return templates.TemplateResponse(request,request,request,request,
+    return templates.TemplateResponse(request,
         "expense_detail.html",
         {"request": request, "expense": expense, "reminders": reminders, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str},
     )
@@ -1456,7 +1456,7 @@ def schedule_home(request: Request):
             (now_iso,),
         ).fetchall()
 
-    return templates.TemplateResponse(request,request,request,request,
+    return templates.TemplateResponse(request,
         "schedule.html",
         {"request": request, "class_next": class_next, "events_next": events_next, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str},
     )
@@ -1471,12 +1471,12 @@ def classes(request: Request):
         d = dict(r)
         d["weekday_name"] = _weekday_name(int(r["weekday"]))
         view.append(d)
-    return templates.TemplateResponse(request,request,request,request,"classes.html", {"request": request, "classes": view, "tz": settings.timezone})
+    return templates.TemplateResponse(request,"classes.html", {"request": request, "classes": view, "tz": settings.timezone})
 
 
 @app.get("/classes/new", response_class=HTMLResponse)
 def new_class(request: Request):
-    return templates.TemplateResponse(request,request,request,request,"new_class.html", {"request": request, "tz": settings.timezone})
+    return templates.TemplateResponse(request,"new_class.html", {"request": request, "tz": settings.timezone})
 
 
 @app.post("/classes/new")
@@ -1535,12 +1535,12 @@ def events(request: Request):
             """,
             (now_iso,),
         ).fetchall()
-    return templates.TemplateResponse(request,request,request,request,"events.html", {"request": request, "events": rows, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str})
+    return templates.TemplateResponse(request,"events.html", {"request": request, "events": rows, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str})
 
 
 @app.get("/events/new", response_class=HTMLResponse)
 def new_event(request: Request):
-    return templates.TemplateResponse(request,request,request,request,"new_event.html", {"request": request, "tz": settings.timezone})
+    return templates.TemplateResponse(request,"new_event.html", {"request": request, "tz": settings.timezone})
 
 
 @app.post("/events/new")
@@ -1582,7 +1582,7 @@ def event_detail(request: Request, event_id: int):
             """,
             (event_id,),
         ).fetchall()
-    return templates.TemplateResponse(request,request,request,request,"event_detail.html", {"request": request, "event": event, "reminders": reminders, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str})
+    return templates.TemplateResponse(request,"event_detail.html", {"request": request, "event": event, "reminders": reminders, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str})
 
 
 @app.post("/events/{event_id}/delete")
@@ -1631,7 +1631,7 @@ def settings_page(request: Request):
             "quiet_start": _get_setting(conn, "quiet_start", "23:00"),
             "quiet_end": _get_setting(conn, "quiet_end", "07:00"),
         }
-    return templates.TemplateResponse(request,request,request,request,"settings.html", {"request": request, "s": data, "tz": settings.timezone})
+    return templates.TemplateResponse(request,"settings.html", {"request": request, "s": data, "tz": settings.timezone})
 
 
 @app.post("/settings/save")
@@ -1665,7 +1665,7 @@ def settings_test_notification():
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request, next: str = "/"):
-    return templates.TemplateResponse(request,request,request,request,"login.html", {"request": request, "next": next, "error": ""})
+    return templates.TemplateResponse(request,"login.html", {"request": request, "next": next, "error": ""})
 
 
 @app.post("/login", response_class=HTMLResponse)
@@ -1677,7 +1677,7 @@ def login_submit(
 ):
     # If you forgot to set env vars, fail closed (safer)
     if not APP_USERNAME or not APP_PASSWORD or not SESSION_SECRET:
-        return templates.TemplateResponse(request,request,request,request,
+        return templates.TemplateResponse(request,
             "login.html",
             {
                 "request": request,
@@ -1690,7 +1690,7 @@ def login_submit(
         request.session["user"] = username
         return RedirectResponse(next or "/", status_code=303)
 
-    return templates.TemplateResponse(request,request,request,request,"login.html", {"request": request, "next": next, "error": "Invalid login."})
+    return templates.TemplateResponse(request,"login.html", {"request": request, "next": next, "error": "Invalid login."})
 
 
 @app.post("/logout")
