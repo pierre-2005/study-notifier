@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
@@ -456,6 +456,8 @@ def create_course(
 def course_detail(request: Request, course_id: int):
     with get_conn() as conn:
         course = conn.execute("SELECT * FROM courses WHERE id=?", (course_id,)).fetchone()
+        if not course:
+            raise HTTPException(status_code=404, detail="Course not found")
         # FIX: join courses so templates can use course_name/course_color safely if needed
         items = conn.execute(
             """
@@ -647,6 +649,9 @@ def item_detail(request: Request, item_id: int):
             """,
             (item_id,),
         ).fetchone()
+
+        if not item:
+            raise HTTPException(status_code=404, detail="Item not found")
 
         reminders = conn.execute(
             """
@@ -999,6 +1004,9 @@ def todo_detail(request: Request, todo_id: int):
     with get_conn() as conn:
         todo = conn.execute("SELECT * FROM todos WHERE id=?", (todo_id,)).fetchone()
 
+    if not todo:
+        raise HTTPException(status_code=404, detail="To-do not found")
+
     due_local_value = ""
     if todo and todo["due_at_utc"]:
         due_local_value = _utc_iso_to_local_input(todo["due_at_utc"])
@@ -1184,6 +1192,9 @@ def create_job(
 def job_detail(request: Request, job_id: int):
     with get_conn() as conn:
         job = conn.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+
         reminders = conn.execute(
             """
             SELECT * FROM reminders
@@ -1327,6 +1338,9 @@ def create_expense(
 def expense_detail(request: Request, expense_id: int):
     with get_conn() as conn:
         expense = conn.execute("SELECT * FROM expenses WHERE id=?", (expense_id,)).fetchone()
+        if not expense:
+            raise HTTPException(status_code=404, detail="Expense not found")
+
         reminders = conn.execute(
             """
             SELECT * FROM reminders
@@ -1574,6 +1588,9 @@ def create_event(
 def event_detail(request: Request, event_id: int):
     with get_conn() as conn:
         event = conn.execute("SELECT * FROM events WHERE id=?", (event_id,)).fetchone()
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+
         reminders = conn.execute(
             """
             SELECT * FROM reminders
