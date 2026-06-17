@@ -2,12 +2,12 @@
 
 /* LIGHT MODE (default) */
 :root{
-  --bg: #f6f7fb;          /* soft background (not pure white) */
-  --panel: #ffffff;       /* cards */
-  --panel2: #f1f5f9;      /* hover / table header */
-  --text: #0f172a;        /* slate-900 */
-  --muted: #475569;       /* slate-600 */
-  --border: #e2e8f0;      /* slate-200 */
+  --bg: #f6f7fb;
+  --panel: #ffffff;
+  --panel2: #f1f5f9;
+  --text: #0f172a;
+  --muted: #475569;
+  --border: #e2e8f0;
   --ring: rgba(15, 23, 42, .14);
   --shadow: 0 10px 30px rgba(15,23,42,.08);
 }
@@ -26,6 +26,7 @@ html.dark{
 
 *{ box-sizing:border-box; }
 html, body{ height:100%; }
+
 body{
   margin:0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
@@ -41,16 +42,14 @@ body{
 }
 
 /* Topbar */
-/* Topbar: sticky on desktop, normal on mobile */
 .topbar{
-  position: relative;             /* default (mobile): NOT sticky */
+  position: relative;
   z-index: 20;
   backdrop-filter: blur(10px);
   background: color-mix(in srgb, var(--bg) 86%, transparent);
   border-bottom: 1px solid var(--border);
 }
 
-/* Desktop only: keep it stuck to top */
 @media (min-width: 768px){
   .topbar{
     position: sticky;
@@ -67,6 +66,7 @@ body{
   justify-content:space-between;
   gap:12px;
 }
+
 .brand{
   display:flex;
   align-items:center;
@@ -75,12 +75,15 @@ body{
   letter-spacing: .2px;
   font-size: 26px;
 }
+
+/* Nav */
 .nav{
   display:flex;
   flex-wrap:wrap;
   gap: 6px;
   align-items:center;
 }
+
 .nav a{
   color: var(--text);
   text-decoration:none;
@@ -88,6 +91,7 @@ body{
   border-radius: 10px;
   border: 1px solid transparent;
 }
+
 .nav a:hover{
   background: var(--panel2);
   border-color: var(--border);
@@ -100,6 +104,7 @@ body{
   border-radius: 16px;
   box-shadow: var(--shadow);
 }
+
 .card-h{
   padding: 18px 18px 12px;
   border-bottom: 1px solid var(--border);
@@ -108,14 +113,36 @@ body{
   justify-content:space-between;
   gap: 10px;
 }
+
 .card-b{ padding: 16px 18px 18px; }
 
-.h1{ font-size: 26px; font-weight: 900; margin: 0; }
-.h2{ font-size: 18px; font-weight: 850; margin: 0; }
+.h1{
+  font-size: 26px;
+  font-weight: 900;
+  margin: 0;
+}
 
-.small{ font-size: 13px; color: var(--muted); }
-.muted{ color: var(--muted); font-size: 14px; }   /* backwards compatible */
-.label{ font-size: 14px; font-weight: 850; color: var(--text); } /* backwards compatible */
+.h2{
+  font-size: 18px;
+  font-weight: 850;
+  margin: 0;
+}
+
+.small{
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.muted{
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.label{
+  font-size: 14px;
+  font-weight: 850;
+  color: var(--text);
+}
 
 .hstack{
   display:flex;
@@ -123,8 +150,10 @@ body{
   flex-wrap:wrap;
   align-items:center;
 }
+
 .spread{ justify-content:space-between; }
 
+/* Buttons */
 .btn{
   appearance:none;
   border: 1px solid var(--border);
@@ -138,7 +167,10 @@ body{
   display:inline-flex;
   align-items:center;
   gap: 8px;
+  white-space: nowrap;
+  line-height: 1.1;
 }
+
 .btn:hover{ filter: brightness(0.98); }
 .btn:active{ transform: translateY(1px); }
 
@@ -147,6 +179,7 @@ body{
   color: var(--bg);
   border-color: color-mix(in srgb, var(--text) 70%, transparent);
 }
+
 html.dark .btn-primary{
   background: #e5e7eb;
   color: #0b1220;
@@ -159,6 +192,53 @@ html.dark .btn-primary{
   border-color: rgba(239,68,68,.3);
 }
 
+/* Theme selector: System | Light | Dark */
+.themeModeBar{
+  display: inline-flex;
+  align-items: stretch;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--panel);
+  box-shadow: 0 1px 2px rgba(15,23,42,.04);
+}
+
+.themeModeBtn{
+  appearance: none;
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  padding: 0 12px;
+  min-width: 64px;
+  height: 100%;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.themeModeBtn:last-child{
+  border-right: 0;
+}
+
+.themeModeBtn:hover{
+  background: var(--panel2);
+  color: var(--text);
+}
+
+.themeModeBtn.is-active{
+  background: var(--text);
+  color: var(--bg);
+}
+
+html.dark .themeModeBtn.is-active{
+  background: #e5e7eb;
+  color: #0b1220;
+}
+
+/* Inputs */
 .input, .select, .textarea{
   width:100%;
   padding: 10px 12px;
@@ -168,50 +248,64 @@ html.dark .btn-primary{
   color: var(--text);
   outline:none;
 }
+
 .input:focus, .select:focus, .textarea:focus{
   box-shadow: 0 0 0 4px var(--ring);
   border-color: color-mix(in srgb, var(--text) 28%, var(--border));
 }
 
-/* Badges should size to their text, not the table column */
+/* Badges */
 .badge{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
-  /* key fixes */
-  width: auto;     /* prevents "background shrinking" */
+  width: auto;
   max-width: 100%;
   flex: 0 0 auto;
-  white-space: nowrap;    /* never break inside the badge */
+  white-space: nowrap;
   word-break: keep-all;
   overflow-wrap: normal;
   line-height: 1;
-
-  /* keep your existing styling below (colors/border/shadow/etc) */
   padding: .35rem .65rem;
   border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  color: var(--text);
+  font-size: .75rem;
+  font-weight: 900;
 }
 
+/* Tables */
 .table{
   width:100%;
   border-collapse: collapse;
   overflow:hidden;
   border-radius: 14px;
   border: 1px solid var(--border);
+  table-layout: fixed;
 }
+
 .table th, .table td{
   text-align:left;
   padding: 12px 14px;
   border-bottom: 1px solid var(--border);
   vertical-align: top;
   font-size: 15px;
+  overflow-wrap: anywhere;
 }
+
+.table td a{
+  overflow-wrap: anywhere;
+}
+
 .table th{
   background: var(--panel2);
   font-weight: 900;
 }
-.table tr:last-child td{ border-bottom:none; }
+
+.table tr:last-child td{
+  border-bottom:none;
+}
 
 .hr{
   height:1px;
@@ -220,99 +314,80 @@ html.dark .btn-primary{
   margin: 14px 0;
 }
 
-
-
-.themeSwitch{
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--panel2);
-}
-
-.themeOption{
-  appearance: none;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--muted);
-  padding: 7px 10px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 900;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.themeOption:hover{
-  color: var(--text);
-  background: color-mix(in srgb, var(--panel) 70%, transparent);
-}
-
-.themeOption.is-active{
-  background: var(--text);
-  color: var(--bg);
-  border-color: color-mix(in srgb, var(--text) 55%, transparent);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, .14);
-}
-
-html.dark .themeOption.is-active{
-  background: #e5e7eb;
-  color: #0b1220;
-  border-color: rgba(229,231,235,.25);
-}
-
-
-/* ---------- Mobile polish / no sideways scroll ---------- */
-html, body { overflow-x: hidden; }
-
-/* Buttons should never split weirdly like "+ \n Add" */
-.btn {
-  white-space: nowrap;
-  line-height: 1.1;
+/* Mobile polish / no sideways scroll */
+html, body{
+  overflow-x: hidden;
 }
 
 /* Helpers */
-.clamp-1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.clamp-2 {
+.clamp-1{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clamp-2{
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
 }
-.break-anywhere { overflow-wrap: anywhere; word-break: break-word; }
 
-/* Tables: behave better on narrow screens */
-.table { table-layout: fixed; }                 /* prevents a single cell forcing width */
-.table th, .table td { overflow-wrap: anywhere; }
-.table td a { overflow-wrap: anywhere; }
+.break-anywhere{
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 
-/* Toolbars / filter rows should wrap nicely */
-.toolbar {
+/* Toolbars / filter rows */
+.toolbar{
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   align-items: end;
 }
-.toolbar > * {
+
+.toolbar > *{
   flex: 1 1 180px;
   min-width: 0;
 }
-.actions {
+
+.actions{
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
 }
 
-/* Mobile: stack controls and make action buttons full-width */
-@media (max-width: 640px) {
-  .toolbar > * { flex: 1 1 100%; }
-  .actions .btn, .toolbar .btn { width: 100%; justify-content: center; }
-  .nav a { padding: 10px 10px; }               /* more tappable */
-}
+/* Mobile */
+@media (max-width: 640px){
+  .topbar-inner{
+    align-items:flex-start;
+    flex-direction: column;
+  }
 
+  .toolbar > *{
+    flex: 1 1 100%;
+  }
+
+  .actions .btn,
+  .toolbar .btn{
+    width: 100%;
+    justify-content: center;
+  }
+
+  .nav a{
+    padding: 10px 10px;
+  }
+
+  .themeModeBar{
+    width: 100%;
+  }
+
+  .themeModeBtn{
+    flex: 1;
+    min-width: 0;
+  }
+}
 
 /* Prevent "Due" + "Type" from colliding in Upcoming table */
 .table-wrap{
@@ -320,7 +395,7 @@ html, body { overflow-x: hidden; }
 }
 
 .table-upcoming{
-  min-width: 760px; /* tweak: 700–900 depending on your date format */
+  min-width: 760px;
 }
 
 .table-upcoming th:nth-child(1),
@@ -330,19 +405,16 @@ html, body { overflow-x: hidden; }
   white-space: nowrap;
 }
 
-/* ================================
-   FIX: desktop table cell overlap
-   ================================ */
-
-.table-fixed {
+/* Desktop table cell overlap fix */
+.table-fixed{
   table-layout: fixed;
   width: 100%;
 }
 
 .table-fixed th,
-.table-fixed td {
+.table-fixed td{
   vertical-align: top;
-  overflow: hidden;          /* prevents bleed into neighboring cells */
+  overflow: hidden;
 }
 
 .table-upcoming th:nth-child(2),

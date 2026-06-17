@@ -12,30 +12,30 @@
   <script>
     (function () {
       try {
-        const stored = localStorage.getItem("theme") || "system";
-        const prefersDark = window.matchMedia &&
+        const mode = localStorage.getItem("theme") || "system";
+        const prefersDark =
+          window.matchMedia &&
           window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-        const useDark = stored === "dark" || (stored === "system" && prefersDark);
+        const useDark = mode === "dark" || (mode === "system" && prefersDark);
 
         document.documentElement.classList.toggle("dark", useDark);
-        document.documentElement.dataset.theme = stored;
+        document.documentElement.dataset.theme = mode;
       } catch (e) {}
     })();
   </script>
 
-  <!-- Your theme tokens + components -->
-  <link rel="stylesheet" href="/static/theme.css">
-  <script src="/static/theme.js" defer></script>
+  <!-- Theme tokens + components -->
+  <link rel="stylesheet" href="/static/theme.css?v=4">
+  <script src="/static/theme.js?v=4" defer></script>
 
   <!-- Keep Tailwind so older pages/templates still work -->
   <script>
-    tailwind = window.tailwind || {};
-    tailwind.config = { darkMode: 'class' };
+    window.tailwind = window.tailwind || {};
+    window.tailwind.config = { darkMode: "class" };
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Small helper styling for active nav button -->
   <style>
     .nav a.active {
       background: var(--panel2);
@@ -58,10 +58,10 @@
       </div>
 
       <div class="hstack" style="align-items:center; gap:10px;">
-        <div class="themeSwitch" role="group" aria-label="Theme mode">
-          <button class="themeOption" type="button" data-theme-choice="system">System</button>
-          <button class="themeOption" type="button" data-theme-choice="light">Light</button>
-          <button class="themeOption" type="button" data-theme-choice="dark">Dark</button>
+        <div class="themeModeBar" role="group" aria-label="Theme mode">
+          <button class="themeModeBtn" type="button" data-theme-choice="system">System</button>
+          <button class="themeModeBtn" type="button" data-theme-choice="light">Light</button>
+          <button class="themeModeBtn" type="button" data-theme-choice="dark">Dark</button>
         </div>
 
         {% if request.session.get("user") %}
@@ -98,33 +98,79 @@
   </div>
 
   <script>
-    function renderThemeSelection() {
-      const current = localStorage.getItem("theme") || "system";
+    (function () {
+      const validThemes = ["system", "light", "dark"];
 
-      document.querySelectorAll("[data-theme-choice]").forEach(function (btn) {
-        const selected = btn.dataset.themeChoice === current;
-        btn.classList.toggle("is-active", selected);
-        btn.setAttribute("aria-pressed", selected ? "true" : "false");
-      });
-    }
+      function systemPrefersDark() {
+        return window.matchMedia &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches;
+      }
 
-    document.addEventListener("DOMContentLoaded", function () {
-      renderThemeSelection();
+      function normalizeTheme(mode) {
+        return validThemes.includes(mode) ? mode : "system";
+      }
 
-      document.querySelectorAll("[data-theme-choice]").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          const mode = btn.dataset.themeChoice;
+      function applyThemeFallback(mode) {
+        mode = normalizeTheme(mode);
 
-          if (window.__setTheme) {
-            window.__setTheme(mode);
-          } else {
-            localStorage.setItem("theme", mode);
-          }
+        const useDark = mode === "dark" || (mode === "system" && systemPrefersDark());
 
-          renderThemeSelection();
+        document.documentElement.classList.toggle("dark", useDark);
+        document.documentElement.dataset.theme = mode;
+        localStorage.setItem("theme", mode);
+      }
+
+      function getThemeMode() {
+        if (window.__getTheme) {
+          return normalizeTheme(window.__getTheme());
+        }
+
+        return normalizeTheme(localStorage.getItem("theme") || "system");
+      }
+
+      function setThemeMode(mode) {
+        mode = normalizeTheme(mode);
+
+        if (window.__setTheme) {
+          window.__setTheme(mode);
+        } else {
+          applyThemeFallback(mode);
+        }
+
+        renderThemeBar();
+      }
+
+      function renderThemeBar() {
+        const current = getThemeMode();
+
+        document.querySelectorAll("[data-theme-choice]").forEach(function (btn) {
+          const active = btn.dataset.themeChoice === current;
+          btn.classList.toggle("is-active", active);
+          btn.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        renderThemeBar();
+
+        document.querySelectorAll("[data-theme-choice]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            setThemeMode(btn.dataset.themeChoice);
+          });
         });
       });
-    });
+
+      document.addEventListener("mlo:themechange", renderThemeBar);
+
+      if (window.matchMedia) {
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+          if (getThemeMode() === "system" && !window.__setTheme) {
+            applyThemeFallback("system");
+          }
+          renderThemeBar();
+        });
+      }
+    })();
   </script>
 </body>
 </html>
