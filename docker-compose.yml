@@ -7,7 +7,11 @@ services:
       NOTIFIER: ntfy
       TIMEZONE: America/Edmonton
       NTFY_BASE_URL: https://ntfy.sh
+      NTFY_TOPIC: ${NTFY_TOPIC}
       STUDY_NOTIFIER_DB: /data/study_notifier.db
+      SESSION_SECRET: ${SESSION_SECRET}
+      APP_USERNAME: ${APP_USERNAME}
+      APP_PASSWORD: ${APP_PASSWORD}
       COOKIE_SECURE: "true"
     volumes:
       - study_notifier_data:/data
