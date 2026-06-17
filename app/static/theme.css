@@ -222,6 +222,48 @@ html.dark .btn-primary{
 
 
 
+.themeSwitch{
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel2);
+}
+
+.themeOption{
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.themeOption:hover{
+  color: var(--text);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+}
+
+.themeOption.is-active{
+  background: var(--text);
+  color: var(--bg);
+  border-color: color-mix(in srgb, var(--text) 55%, transparent);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, .14);
+}
+
+html.dark .themeOption.is-active{
+  background: #e5e7eb;
+  color: #0b1220;
+  border-color: rgba(229,231,235,.25);
+}
+
+
 /* ---------- Mobile polish / no sideways scroll ---------- */
 html, body { overflow-x: hidden; }
 

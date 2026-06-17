@@ -12,7 +12,7 @@
   <script>
     (function () {
       try {
-        const stored = localStorage.getItem("theme") || "system"; // "system" | "light" | "dark"
+        const stored = localStorage.getItem("theme") || "system";
         const prefersDark = window.matchMedia &&
           window.matchMedia("(prefers-color-scheme: dark)").matches;
 
@@ -23,7 +23,6 @@
       } catch (e) {}
     })();
   </script>
-
 
   <!-- Your theme tokens + components -->
   <link rel="stylesheet" href="/static/theme.css">
@@ -59,9 +58,11 @@
       </div>
 
       <div class="hstack" style="align-items:center; gap:10px;">
-        <button id="themeToggle" class="btn" type="button" aria-label="Toggle theme">
-          🌙 <span class="hidden sm:inline">Dark</span>
-        </button>
+        <div class="themeSwitch" role="group" aria-label="Theme mode">
+          <button class="themeOption" type="button" data-theme-choice="system">System</button>
+          <button class="themeOption" type="button" data-theme-choice="light">Light</button>
+          <button class="themeOption" type="button" data-theme-choice="dark">Dark</button>
+        </div>
 
         {% if request.session.get("user") %}
           <form method="post" action="/logout" style="display:inline; margin:0;">
@@ -97,37 +98,32 @@
   </div>
 
   <script>
-    function savedThemeMode() {
-      return localStorage.getItem("theme") || "system";
-    }
+    function renderThemeSelection() {
+      const current = localStorage.getItem("theme") || "system";
 
-    function renderThemeButton() {
-      const btn = document.getElementById("themeToggle");
-      if (!btn) return;
-
-      const mode = savedThemeMode();
-
-      if (mode === "system") {
-        btn.innerHTML = `🖥️ <span class="hidden sm:inline">System</span>`;
-      } else if (mode === "light") {
-        btn.innerHTML = `🌙 <span class="hidden sm:inline">Dark</span>`;
-      } else {
-        btn.innerHTML = `☀️ <span class="hidden sm:inline">Light</span>`;
-      }
+      document.querySelectorAll("[data-theme-choice]").forEach(function (btn) {
+        const selected = btn.dataset.themeChoice === current;
+        btn.classList.toggle("is-active", selected);
+        btn.setAttribute("aria-pressed", selected ? "true" : "false");
+      });
     }
 
     document.addEventListener("DOMContentLoaded", function () {
-      renderThemeButton();
+      renderThemeSelection();
 
-      const btn = document.getElementById("themeToggle");
-      if (btn) {
+      document.querySelectorAll("[data-theme-choice]").forEach(function (btn) {
         btn.addEventListener("click", function () {
-          if (window.__toggleTheme) {
-            window.__toggleTheme();
+          const mode = btn.dataset.themeChoice;
+
+          if (window.__setTheme) {
+            window.__setTheme(mode);
+          } else {
+            localStorage.setItem("theme", mode);
           }
-          renderThemeButton();
+
+          renderThemeSelection();
         });
-      }
+      });
     });
   </script>
 </body>

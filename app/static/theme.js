@@ -39,4 +39,14 @@
     setSaved(next);
     return next;
   };
+  window.__setTheme = function (mode) {
+  if (!["system", "light", "dark"].includes(mode)) {
+    mode = "system";
+  }
+  setSaved(mode);
+  return mode;
+};
+window.__getTheme = function () {
+  return getSaved();
+};
 })();
