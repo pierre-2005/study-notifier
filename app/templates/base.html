@@ -12,11 +12,18 @@
   <script>
     (function () {
       try {
-        const stored = localStorage.getItem("theme") || "light"; // "light" | "dark"
-        document.documentElement.classList.toggle("dark", stored === "dark");
+        const stored = localStorage.getItem("theme") || "system"; // "system" | "light" | "dark"
+        const prefersDark = window.matchMedia &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+        const useDark = stored === "dark" || (stored === "system" && prefersDark);
+
+        document.documentElement.classList.toggle("dark", useDark);
+        document.documentElement.dataset.theme = stored;
       } catch (e) {}
     })();
   </script>
+
 
   <!-- Your theme tokens + components -->
   <link rel="stylesheet" href="/static/theme.css">
@@ -90,32 +97,35 @@
   </div>
 
   <script>
-    function applyTheme(theme) {
-      document.documentElement.classList.toggle("dark", theme === "dark");
-      localStorage.setItem("theme", theme);
-      renderThemeButton();
-    }
-
-    function currentTheme() {
-      return document.documentElement.classList.contains("dark") ? "dark" : "light";
+    function savedThemeMode() {
+      return localStorage.getItem("theme") || "system";
     }
 
     function renderThemeButton() {
       const btn = document.getElementById("themeToggle");
       if (!btn) return;
-      const t = currentTheme();
 
-      btn.innerHTML = (t === "dark")
-        ? `☀️ <span class="hidden sm:inline">Light</span>`
-        : `🌙 <span class="hidden sm:inline">Dark</span>`;
+      const mode = savedThemeMode();
+
+      if (mode === "system") {
+        btn.innerHTML = `🖥️ <span class="hidden sm:inline">System</span>`;
+      } else if (mode === "light") {
+        btn.innerHTML = `🌙 <span class="hidden sm:inline">Dark</span>`;
+      } else {
+        btn.innerHTML = `☀️ <span class="hidden sm:inline">Light</span>`;
+      }
     }
 
     document.addEventListener("DOMContentLoaded", function () {
       renderThemeButton();
+
       const btn = document.getElementById("themeToggle");
       if (btn) {
         btn.addEventListener("click", function () {
-          applyTheme(currentTheme() === "dark" ? "light" : "dark");
+          if (window.__toggleTheme) {
+            window.__toggleTheme();
+          }
+          renderThemeButton();
         });
       }
     });
