@@ -1,6 +1,7 @@
 import requests
 from .base import Notifier
 
+
 class NtfyNotifier(Notifier):
     def __init__(self, base_url: str, topic: str):
         if not topic:
@@ -9,14 +10,15 @@ class NtfyNotifier(Notifier):
 
     def send(self, title: str, message: str) -> bool:
         headers = {"Title": title}
+
         try:
-            resp = requests.post(
+            response = requests.post(
                 self.url,
                 data=message.encode("utf-8"),
                 headers=headers,
                 timeout=10,
             )
-            resp.raise_for_status()
+            response.raise_for_status()
             return True
         except Exception as e:
             print(f"[ntfy] send failed: {e}")

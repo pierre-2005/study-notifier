@@ -38,7 +38,8 @@ def _in_quiet_hours(now_local: datetime, start_hhmm: str, end_hhmm: str) -> bool
 def _safe_send(notifier, title: str, body: str) -> bool:
     try:
         return bool(notifier.send(title, body))
-    except Exception:
+    except Exception as e:
+        print(f"[scheduler] notification failed: {e}")
         return False
 
 def process_due_reminders() -> None:
