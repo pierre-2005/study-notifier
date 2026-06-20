@@ -39,7 +39,8 @@
           </div>
 
           <div class="flex flex-wrap gap-2">
-            <form method="post" action="/classes/{{ c['id'] }}/regen">
+            <a class="btn" href="/classes/{{ c['id'] }}/edit">Edit</a>
+            <form method="post" action="/classes/{{ c['id'] }}/regen">              
               <button class="btn" type="submit">Regenerate reminders</button>
             </form>
             <form method="post" action="/classes/{{ c['id'] }}/delete" onsubmit="return confirm('Delete this class and its reminders?');">

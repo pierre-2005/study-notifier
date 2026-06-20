@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card p-5">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <div class="text-xl font-extrabold">Edit Class</div>
+      <div class="muted mt-1">Update this weekly class. Pending reminders will be rebuilt automatically.</div>
+    </div>
+    <a class="btn" href="/classes">Back</a>
+  </div>
+</div>
+
+<div class="mt-6 card p-5">
+  <form method="post" action="/classes/{{ c['id'] }}/update" class="space-y-5">
+    <div>
+      <div class="label mb-2">Title</div>
+      <input class="input" name="title" value="{{ c['title'] }}" required>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <div class="label mb-2">Weekday</div>
+        <select class="input" name="weekday" required>
+          <option value="0" {% if c["weekday"]|int == 0 %}selected{% endif %}>Monday</option>
+          <option value="1" {% if c["weekday"]|int == 1 %}selected{% endif %}>Tuesday</option>
+          <option value="2" {% if c["weekday"]|int == 2 %}selected{% endif %}>Wednesday</option>
+          <option value="3" {% if c["weekday"]|int == 3 %}selected{% endif %}>Thursday</option>
+          <option value="4" {% if c["weekday"]|int == 4 %}selected{% endif %}>Friday</option>
+          <option value="5" {% if c["weekday"]|int == 5 %}selected{% endif %}>Saturday</option>
+          <option value="6" {% if c["weekday"]|int == 6 %}selected{% endif %}>Sunday</option>
+        </select>
+      </div>
+
+      <div>
+        <div class="label mb-2">Start time local</div>
+        <input class="input" type="time" name="start_time_local" value="{{ c['start_time_local'] }}" required>
+        <div class="muted mt-2">Timezone: {{ tz }}</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <div class="label mb-2">Duration minutes</div>
+        <input class="input" type="number" name="duration_minutes" value="{{ c['duration_minutes'] }}" min="5" max="600">
+      </div>
+
+      <div>
+        <div class="label mb-2">Remind before minutes</div>
+        <input class="input" type="number" name="remind_before_minutes" value="{{ c['remind_before_minutes'] }}" min="0" max="1440">
+      </div>
+    </div>
+
+    <div>
+      <div class="label mb-2">Location optional</div>
+      <input class="input" name="location" value="{{ c['location'] or '' }}">
+    </div>
+
+    <div>
+      <div class="label mb-2">Notes optional</div>
+      <textarea class="input" name="notes" rows="4">{{ c["notes"] or "" }}</textarea>
+    </div>
+
+    <div class="flex flex-wrap gap-2">
+      <button class="btn btn-primary" type="submit">Save changes</button>
+      <a class="btn" href="/classes">Cancel</a>
+    </div>
+
+    <div class="muted">
+      Saving changes will clear pending class reminders and regenerate them for the next ~120 days.
+    </div>
+  </form>
+</div>
+{% endblock %}

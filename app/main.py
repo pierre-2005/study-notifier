@@ -1627,6 +1627,19 @@ def classes(request: Request):
 def new_class(request: Request):
     return templates.TemplateResponse(request,"new_class.html", {"request": request, "tz": settings.timezone})
 
+@app.get("/classes/{class_id}/edit", response_class=HTMLResponse)
+def edit_class(request: Request, class_id: int):
+    with get_conn() as conn:
+        c = conn.execute("SELECT * FROM class_meetings WHERE id=?", (class_id,)).fetchone()
+
+    if not c:
+        raise HTTPException(status_code=404, detail="Class not found")
+
+    return templates.TemplateResponse(
+        request,
+        "edit_class.html",
+        {"request": request, "c": c, "tz": settings.timezone},
+    )
 
 @app.post("/classes/new")
 def create_class(
@@ -1654,6 +1667,69 @@ def create_class(
         conn.commit()
     return RedirectResponse("/classes", status_code=303)
 
+@app.post("/classes/{class_id}/update")
+def update_class(
+    class_id: int,
+    title: str = Form(...),
+    weekday: int = Form(...),
+    start_time_local: str = Form(...),
+    duration_minutes: int = Form(50),
+    location: str = Form(""),
+    remind_before_minutes: int = Form(15),
+    notes: str = Form(""),
+):
+    weekday = max(0, min(int(weekday), 6))
+    duration_minutes = max(5, min(int(duration_minutes), 600))
+    remind_before_minutes = max(0, min(int(remind_before_minutes), 1440))
+
+    now_iso = now_utc().isoformat()
+
+    with get_conn() as conn:
+        c = conn.execute("SELECT * FROM class_meetings WHERE id=?", (class_id,)).fetchone()
+
+        if not c:
+            raise HTTPException(status_code=404, detail="Class not found")
+
+        conn.execute(
+            """
+            UPDATE class_meetings
+            SET title=?,
+                weekday=?,
+                start_time_local=?,
+                duration_minutes=?,
+                location=?,
+                remind_before_minutes=?,
+                notes=?,
+                updated_at_utc=?
+            WHERE id=?
+            """,
+            (
+                title.strip(),
+                weekday,
+                start_time_local.strip(),
+                duration_minutes,
+                location.strip(),
+                remind_before_minutes,
+                notes.strip(),
+                now_iso,
+                class_id,
+            ),
+        )
+
+        conn.execute(
+            """
+            DELETE FROM reminders
+            WHERE entity_type='class'
+              AND entity_id=?
+              AND sent_at_utc IS NULL
+            """,
+            (class_id,),
+        )
+
+        _generate_class_reminders(conn, class_id, horizon_days=120)
+        conn.commit()
+
+    return RedirectResponse("/classes", status_code=303)
 
 @app.post("/classes/{class_id}/regen")
 def regen_class_reminders(class_id: int):
