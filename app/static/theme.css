@@ -25,7 +25,11 @@ html.dark{
 }
 
 *{ box-sizing:border-box; }
-html, body{ height:100%; }
+
+html, body{
+  height:100%;
+  overflow-x:hidden;
+}
 
 body{
   margin:0;
@@ -114,7 +118,9 @@ body{
   gap: 10px;
 }
 
-.card-b{ padding: 16px 18px 18px; }
+.card-b{
+  padding: 16px 18px 18px;
+}
 
 .h1{
   font-size: 26px;
@@ -151,7 +157,9 @@ body{
   align-items:center;
 }
 
-.spread{ justify-content:space-between; }
+.spread{
+  justify-content:space-between;
+}
 
 /* Buttons */
 .btn{
@@ -171,8 +179,13 @@ body{
   line-height: 1.1;
 }
 
-.btn:hover{ filter: brightness(0.98); }
-.btn:active{ transform: translateY(1px); }
+.btn:hover{
+  filter: brightness(0.98);
+}
+
+.btn:active{
+  transform: translateY(1px);
+}
 
 .btn-primary{
   background: var(--text);
@@ -255,7 +268,6 @@ html.dark .themeModeBtn.is-active{
 }
 
 /* Badges */
-/* Badges */
 .badge{
   display:inline-flex;
   align-items:center;
@@ -278,7 +290,6 @@ html.dark .themeModeBtn.is-active{
   color:var(--text);
 }
 
-/* Prevent table cells from shrinking badge bubbles */
 .table .badge{
   max-width:none !important;
 }
@@ -320,11 +331,6 @@ html.dark .themeModeBtn.is-active{
   background: var(--border);
   border:none;
   margin: 14px 0;
-}
-
-/* Mobile polish / no sideways scroll */
-html, body{
-  overflow-x: hidden;
 }
 
 /* Helpers */
@@ -397,23 +403,11 @@ html, body{
   }
 }
 
-/* Prevent "Due" + "Type" from colliding in Upcoming table */
+/* Generic table helpers */
 .table-wrap{
   overflow-x: auto;
 }
 
-.table-upcoming{
-  min-width: 760px;
-}
-
-.table-upcoming th:nth-child(1),
-.table-upcoming td:nth-child(1),
-.table-upcoming th:nth-child(2),
-.table-upcoming td:nth-child(2){
-  white-space: nowrap;
-}
-
-/* Desktop table cell overlap fix */
 .table-fixed{
   table-layout: fixed;
   width: 100%;
@@ -424,12 +418,6 @@ html, body{
   vertical-align: top;
   overflow: hidden;
 }
-
-.table-upcoming th:nth-child(2),
-.table-upcoming td:nth-child(2){
-  width: 140px;
-}
-
 
 /* =========================================================
    Local utility compatibility layer
@@ -560,7 +548,10 @@ html, body{
 .border-b{ border-bottom:1px solid var(--border) !important; }
 
 /* Slate compatibility mapped to your theme */
-.text-slate-500{ color:var(--muted) !important; }
+.text-slate-500{
+  color:var(--muted) !important;
+}
+
 .border-slate-100,
 .border-slate-100\/70,
 .border-slate-200,
@@ -569,7 +560,9 @@ html, body{
 }
 
 /* Hover utilities */
-.hover\:underline:hover{ text-decoration:underline !important; }
+.hover\:underline:hover{
+  text-decoration:underline !important;
+}
 
 .hover\:bg-slate-50:hover,
 .hover\:bg-slate-50\/70:hover{
@@ -635,7 +628,6 @@ html.dark .dark\:hover\:bg-slate-950\/30:hover{
 
 /* =========================================================
    Dashboard Upcoming table fixes
-   Fixes Assignment badge overflow and keeps the table clean
    ========================================================= */
 
 .dashboard-upcoming-wrap{
@@ -650,11 +642,25 @@ html.dark .dark\:hover\:bg-slate-950\/30:hover{
   table-layout:fixed;
 }
 
-.dashboard-upcoming-table .dash-col-due{ width:20%; }
-.dashboard-upcoming-table .dash-col-type{ width:132px; }
-.dashboard-upcoming-table .dash-col-title{ width:auto; }
-.dashboard-upcoming-table .dash-col-course{ width:22%; }
-.dashboard-upcoming-table .dash-col-status{ width:106px; }
+.dashboard-upcoming-table .dash-col-due{
+  width:20%;
+}
+
+.dashboard-upcoming-table .dash-col-type{
+  width:150px;
+}
+
+.dashboard-upcoming-table .dash-col-title{
+  width:auto;
+}
+
+.dashboard-upcoming-table .dash-col-course{
+  width:22%;
+}
+
+.dashboard-upcoming-table .dash-col-status{
+  width:112px;
+}
 
 .dashboard-upcoming-table th,
 .dashboard-upcoming-table td{
@@ -674,20 +680,10 @@ html.dark .dark\:hover\:bg-slate-950\/30:hover{
   overflow:visible;
 }
 
-.dashboard-upcoming-table .dash-title-cell,
+.dashboard-upcoming-table .dashboard-title-cell,
 .dashboard-upcoming-table .dash-course-cell{
   min-width:0;
   overflow:hidden;
-}
-
-.dashboard-upcoming-table .dash-title-link{
-  display:block;
-  color:inherit;
-  text-decoration:none;
-  font-weight:900;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
 }
 
 .dashboard-upcoming-table .dash-course-wrap{
@@ -734,31 +730,56 @@ html.dark .dark\:hover\:bg-slate-950\/30:hover{
   box-sizing:border-box;
 }
 
-/* Dashboard title link should look like normal text, not a browser hyperlink */
+/* Dashboard title opens item but looks like normal text */
 .dashboard-title-cell{
   font-weight:900;
   min-width:0;
 }
 
-.dashboard-title-link,
-.dashboard-title-link:visited,
-.dashboard-title-link:hover,
-.dashboard-title-link:active{
+.dashboard-title-cell form,
+.dashboard-title-form{
+  margin:0;
+  padding:0;
   display:block;
   max-width:100%;
+}
+
+.dashboard-title-cell button,
+.dashboard-title-button{
+  appearance:none;
+  border:0;
+  background:transparent;
+  color:var(--text) !important;
+  padding:0;
+  margin:0;
+  width:100%;
+  max-width:100%;
+
+  display:block;
+  text-align:left;
+  font:inherit;
+  font-weight:900;
+  line-height:1.2;
+
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
 
-  color:var(--text) !important;
-  text-decoration:none !important;
-  font-weight:900;
-
-  background:transparent;
-  border:0;
   cursor:pointer;
 }
 
-.dashboard-title-link:hover{
+.dashboard-title-cell button:hover,
+.dashboard-title-button:hover{
   opacity:.82;
+}
+
+.dashboard-title-cell button:focus,
+.dashboard-title-button:focus{
+  outline:none;
+}
+
+.dashboard-title-cell button:focus-visible,
+.dashboard-title-button:focus-visible{
+  box-shadow:0 0 0 4px var(--ring);
+  border-radius:8px;
 }
