@@ -1545,10 +1545,28 @@ def create_class(
 @app.post("/classes/{class_id}/regen")
 def regen_class_reminders(class_id: int):
     with get_conn() as conn:
+        class_row = conn.execute(
+            "SELECT id FROM class_meetings WHERE id=? AND active=1",
+            (class_id,),
+        ).fetchone()
+
+        if not class_row:
+            return RedirectResponse("/classes", status_code=303)
+
+        conn.execute(
+            """
+            DELETE FROM reminders
+            WHERE entity_type='class'
+              AND entity_id=?
+              AND sent_at_utc IS NULL
+            """,
+            (class_id,),
+        )
+
         _generate_class_reminders(conn, class_id, horizon_days=120)
         conn.commit()
-    return RedirectResponse("/classes", status_code=303)
 
+    return RedirectResponse("/classes", status_code=303)
 
 @app.post("/classes/{class_id}/delete")
 def delete_class(class_id: int):
