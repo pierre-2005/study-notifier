@@ -36,6 +36,55 @@
       </div>
       {% endif %}
     </div>
+
+    <div class="card p-6">
+      <h3 class="text-lg font-extrabold">Edit job</h3>
+
+      <form class="mt-4 space-y-3" method="post" action="/jobs/{{ job['id'] }}/update">
+        <div>
+          <div class="label">Company</div>
+          <input class="input mt-1" name="company" value="{{ job['company'] }}" required>
+        </div>
+
+        <div>
+          <div class="label">Role</div>
+          <input class="input mt-1" name="role" value="{{ job['role'] }}" required>
+        </div>
+
+        <div>
+          <div class="label">Link</div>
+          <input class="input mt-1" name="link" value="{{ job['link'] or '' }}">
+        </div>
+
+        <div>
+          <div class="label">Status</div>
+          <select class="input mt-1" name="status">
+            <option value="interested" {% if job["status"]=="interested" %}selected{% endif %}>Interested</option>
+            <option value="applied" {% if job["status"]=="applied" %}selected{% endif %}>Applied</option>
+            <option value="interview" {% if job["status"]=="interview" %}selected{% endif %}>Interview</option>
+            <option value="offer" {% if job["status"]=="offer" %}selected{% endif %}>Offer</option>
+            <option value="rejected" {% if job["status"]=="rejected" %}selected{% endif %}>Rejected</option>
+          </select>
+        </div>
+
+        <div>
+          <div class="label">Applied at</div>
+          <input class="input mt-1" type="datetime-local" name="applied_at_local" value="{{ applied_at_local_value }}">
+        </div>
+
+        <div>
+          <div class="label">Follow up at</div>
+          <input class="input mt-1" type="datetime-local" name="followup_at_local" value="{{ followup_at_local_value }}">
+        </div>
+
+        <div>
+          <div class="label">Notes</div>
+          <textarea class="input mt-1" name="notes" rows="5">{{ job["notes"] or "" }}</textarea>
+        </div>
+
+        <button class="btn btn-primary" type="submit">Save changes</button>
+      </form>
+    </div>
   </div>
 
   <div class="space-y-5">

@@ -1214,6 +1214,7 @@ def create_job(
 def job_detail(request: Request, job_id: int):
     with get_conn() as conn:
         job = conn.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
+
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
 
@@ -1226,11 +1227,123 @@ def job_detail(request: Request, job_id: int):
             (job_id,),
         ).fetchall()
 
-    return templates.TemplateResponse(request,
+    applied_at_local_value = ""
+    if job["applied_at_utc"]:
+        applied_at_local_value = _utc_iso_to_local_input(job["applied_at_utc"])
+
+    followup_at_local_value = ""
+    if job["followup_at_utc"]:
+        followup_at_local_value = _utc_iso_to_local_input(job["followup_at_utc"])
+
+    return templates.TemplateResponse(
+        request,
         "job_detail.html",
-        {"request": request, "job": job, "reminders": reminders, "tz": settings.timezone, "utc_to_local_str": utc_to_local_str},
+        {
+            "request": request,
+            "job": job,
+            "reminders": reminders,
+            "applied_at_local_value": applied_at_local_value,
+            "followup_at_local_value": followup_at_local_value,
+            "tz": settings.timezone,
+            "utc_to_local_str": utc_to_local_str,
+        },
     )
 
+@app.post("/jobs/{job_id}/update")
+def update_job(
+    job_id: int,
+    company: str = Form(...),
+    role: str = Form(...),
+    link: str = Form(""),
+    status: str = Form("interested"),
+    applied_at_local: str = Form(""),
+    followup_at_local: str = Form(""),
+    notes: str = Form(""),
+):
+    status = (status or "interested").strip()
+    if status not in ("interested", "applied", "interview", "offer", "rejected"):
+        status = "interested"
+
+    applied_utc = (
+        parse_local_datetime_localinput(applied_at_local, settings.timezone).isoformat()
+        if applied_at_local.strip()
+        else None
+    )
+
+    followup_utc = (
+        parse_local_datetime_localinput(followup_at_local, settings.timezone).isoformat()
+        if followup_at_local.strip()
+        else None
+    )
+
+    now_iso = now_utc().isoformat()
+    company_clean = company.strip()
+    role_clean = role.strip()
+
+    with get_conn() as conn:
+        job = conn.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
+
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+
+        old_company = (job["company"] or "").strip()
+        old_role = (job["role"] or "").strip()
+
+        conn.execute(
+            """
+            UPDATE jobs
+            SET company=?,
+                role=?,
+                link=?,
+                status=?,
+                applied_at_utc=?,
+                followup_at_utc=?,
+                notes=?,
+                updated_at_utc=?
+            WHERE id=?
+            """,
+            (
+                company_clean,
+                role_clean,
+                link.strip(),
+                status,
+                applied_utc,
+                followup_utc,
+                notes.strip(),
+                now_iso,
+                job_id,
+            ),
+        )
+
+        if old_company and old_company != company_clean:
+            conn.execute(
+                """
+                UPDATE reminders
+                SET message = REPLACE(message, ?, ?)
+                WHERE entity_type='job'
+                  AND entity_id=?
+                  AND sent_at_utc IS NULL
+                  AND message IS NOT NULL
+                """,
+                (old_company, company_clean, job_id),
+            )
+
+        if old_role and old_role != role_clean:
+            conn.execute(
+                """
+                UPDATE reminders
+                SET message = REPLACE(message, ?, ?)
+                WHERE entity_type='job'
+                  AND entity_id=?
+                  AND sent_at_utc IS NULL
+                  AND message IS NOT NULL
+                """,
+                (old_role, role_clean, job_id),
+            )
+
+        conn.commit()
+
+    return RedirectResponse(f"/jobs/{job_id}", status_code=303)
 
 @app.post("/jobs/{job_id}/reminders/new")
 def add_job_reminder(job_id: int, remind_at_local: str = Form(...), message: str = Form(...)):
