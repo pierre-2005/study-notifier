@@ -86,6 +86,26 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 # ----------------- helpers -----------------
+ITEM_TYPES = {"assignment", "exam", "lab"}
+ITEM_STATUSES = {"todo", "doing", "done"}
+JOB_STATUSES = {"interested", "applied", "interview", "offer", "rejected"}
+EXPENSE_STATUSES = {"unpaid", "paid"}
+EXPENSE_RECURRENCES = {"none", "weekly", "monthly", "yearly"}
+
+
+def _clean_choice(value: str | None, allowed: set[str], default: str) -> str:
+    value = (value or "").strip().lower()
+    return value if value in allowed else default
+
+
+def _clamp_int(value, default: int, min_value: int, max_value: int) -> int:
+    try:
+        n = int(value)
+    except Exception:
+        n = default
+    return max(min_value, min(n, max_value))
+
+
 def _course_name(conn, course_id: int) -> str:
     row = conn.execute("SELECT name FROM courses WHERE id=?", (course_id,)).fetchone()
     return row["name"] if row else "Unknown Course"
@@ -631,6 +651,8 @@ def create_item(
     weight: str = Form(""),
     auto_template: str = Form("on"),
 ):
+    type = _clean_choice(type, ITEM_TYPES, "assignment")
+    priority = _clamp_int(priority, 2, 1, 5)
     due_utc = parse_local_datetime_localinput(due_at_local, settings.timezone)
     w = None
     if weight.strip():
@@ -700,6 +722,7 @@ def item_detail(request: Request, item_id: int):
 @app.post("/items/{item_id}/status")
 def set_item_status(item_id: int, status: str = Form(...)):
     now = now_utc().isoformat()
+    status = _clean_choice(status, ITEM_STATUSES, "todo")
     with get_conn() as conn:
         conn.execute("UPDATE items SET status=?, updated_at_utc=? WHERE id=?", (status, now, item_id))
         conn.commit()
@@ -1185,7 +1208,7 @@ def create_job(
     applied_utc = parse_local_datetime_localinput(applied_at_local, settings.timezone).isoformat() if applied_at_local else None
     followup_utc = parse_local_datetime_localinput(followup_at_local, settings.timezone).isoformat() if followup_at_local else None
     now = now_utc().isoformat()
-
+    status = _clean_choice(status, JOB_STATUSES, "interested")
     with get_conn() as conn:
         cur = conn.execute(
             """
@@ -1450,7 +1473,8 @@ def create_expense(
 
     due_utc = parse_local_datetime_localinput(due_at_local, settings.timezone)
     now = now_utc().isoformat()
-
+    recurrence = _clean_choice(recurrence, EXPENSE_RECURRENCES, "none")
+    recurrence_interval = _clamp_int(recurrence_interval, 1, 1, 24)
     with get_conn() as conn:
         cur = conn.execute(
             """
@@ -1494,6 +1518,7 @@ def expense_detail(request: Request, expense_id: int):
 @app.post("/expenses/{expense_id}/status")
 def set_expense_status(expense_id: int, status: str = Form(...)):
     now = now_utc().isoformat()
+    status = _clean_choice(status, EXPENSE_STATUSES, "unpaid")
     with get_conn() as conn:
         exp = conn.execute("SELECT * FROM expenses WHERE id=?", (expense_id,)).fetchone()
         if not exp:
@@ -1651,6 +1676,9 @@ def create_class(
     remind_before_minutes: int = Form(15),
     notes: str = Form(""),
 ):
+    weekday = _clamp_int(weekday, 0, 0, 6)
+    duration_minutes = _clamp_int(duration_minutes, 50, 5, 600)
+    remind_before_minutes = _clamp_int(remind_before_minutes, 15, 0, 1440)
     now = now_utc().isoformat()
     with get_conn() as conn:
         cur = conn.execute(
@@ -1659,8 +1687,8 @@ def create_class(
                                        remind_before_minutes, notes, active, created_at_utc, updated_at_utc)
             VALUES(?,?,?,?,?,?,?,?,?,?)
             """,
-            (title.strip(), int(weekday), start_time_local.strip(), int(duration_minutes), location.strip(),
-             int(remind_before_minutes), notes.strip(), 1, now, now),
+        (title.strip(), weekday, start_time_local.strip(), duration_minutes, location.strip(),
+         remind_before_minutes, notes.strip(), 1, now, now),
         )
         class_id = cur.lastrowid
         _generate_class_reminders(conn, class_id, horizon_days=120)
@@ -1678,10 +1706,10 @@ def update_class(
     remind_before_minutes: int = Form(15),
     notes: str = Form(""),
 ):
-    weekday = max(0, min(int(weekday), 6))
-    duration_minutes = max(5, min(int(duration_minutes), 600))
-    remind_before_minutes = max(0, min(int(remind_before_minutes), 1440))
-
+    weekday = _clamp_int(weekday, 0, 0, 6)
+    duration_minutes = _clamp_int(duration_minutes, 50, 5, 600)
+    remind_before_minutes = _clamp_int(remind_before_minutes, 15, 0, 1440)
+    
     now_iso = now_utc().isoformat()
 
     with get_conn() as conn:
