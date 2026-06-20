@@ -733,3 +733,32 @@ html.dark .dark\:hover\:bg-slate-950\/30:hover{
   overflow:hidden !important;
   box-sizing:border-box;
 }
+
+/* Dashboard title link should look like normal text, not a browser hyperlink */
+.dashboard-title-cell{
+  font-weight:900;
+  min-width:0;
+}
+
+.dashboard-title-link,
+.dashboard-title-link:visited,
+.dashboard-title-link:hover,
+.dashboard-title-link:active{
+  display:block;
+  max-width:100%;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+
+  color:var(--text) !important;
+  text-decoration:none !important;
+  font-weight:900;
+
+  background:transparent;
+  border:0;
+  cursor:pointer;
+}
+
+.dashboard-title-link:hover{
+  opacity:.82;
+}
