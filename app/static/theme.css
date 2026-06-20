@@ -255,24 +255,32 @@ html.dark .themeModeBtn.is-active{
 }
 
 /* Badges */
+/* Badges */
 .badge{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: auto;
-  max-width: 100%;
-  flex: 0 0 auto;
-  white-space: nowrap;
-  word-break: keep-all;
-  overflow-wrap: normal;
-  line-height: 1;
-  padding: .35rem .65rem;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--panel2);
-  color: var(--text);
-  font-size: .75rem;
-  font-weight: 900;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:max-content;
+  max-width:none;
+  flex:0 0 auto;
+  white-space:nowrap;
+  word-break:normal;
+  overflow-wrap:normal;
+  line-height:1;
+
+  padding:.32rem .7rem;
+  border-radius:999px;
+  font-size:.78rem;
+  font-weight:900;
+
+  border:1px solid var(--border);
+  background:var(--panel2);
+  color:var(--text);
+}
+
+/* Prevent table cells from shrinking badge bubbles */
+.table .badge{
+  max-width:none !important;
 }
 
 /* Tables */
