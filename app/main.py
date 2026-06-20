@@ -48,9 +48,9 @@ async def require_auth(request: Request, call_next):
     path = request.url.path
 
     # Allow login + static assets without auth
-    if path.startswith("/static") or path in ("/login", "/logout"):
+    if path.startswith("/static") or path in ("/login", "/logout", "/favicon.ico", "/health"):
         return await call_next(request)
-
+    
     # Already logged in
     if request.session.get("user"):
         return await call_next(request)
@@ -326,6 +326,9 @@ def clear_item_reminders(item_id: int):
         conn.commit()
     return RedirectResponse(f"/items/{item_id}", status_code=303)
 
+@app.get("/health")
+def health():
+    return {"ok": True}
 
 # ----------------- DASHBOARD -----------------
 @app.get("/", response_class=HTMLResponse)
