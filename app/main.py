@@ -294,7 +294,27 @@ def _generate_class_reminders(conn, class_id: int, horizon_days: int = 120):
             (class_id, remind_iso, msg, now_utc().isoformat()),
         )
 
+def _safe_next_url(next_url: str | None) -> str:
+    if not next_url:
+        return "/"
 
+    next_url = next_url.strip()
+
+    # Must be a local path
+    if not next_url.startswith("/"):
+        return "/"
+
+    # Block protocol-relative URLs like //evil.com
+    if next_url.startswith("//"):
+        return "/"
+
+    parsed = urllib.parse.urlparse(next_url)
+
+    # Block full external URLs
+    if parsed.scheme or parsed.netloc:
+        return "/"
+
+    return next_url
 
 @app.post("/items/{item_id}/reminders/clear")
 def clear_item_reminders(item_id: int):
@@ -1682,7 +1702,8 @@ def settings_test_notification():
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request, next: str = "/"):
-    return templates.TemplateResponse(request,"login.html", {"request": request, "next": next, "error": ""})
+    next = _safe_next_url(next)
+    return templates.TemplateResponse(request, "login.html", {"request": request, "next": next, "error": ""})
 
 
 @app.post("/login", response_class=HTMLResponse)
@@ -1692,6 +1713,7 @@ def login_submit(
     password: str = Form(...),
     next: str = Form("/"),
 ):
+    next = _safe_next_url(next)
     # If you forgot to set env vars, fail closed (safer)
     if not APP_USERNAME or not APP_PASSWORD or not SESSION_SECRET:
         return templates.TemplateResponse(request,
@@ -1706,7 +1728,7 @@ def login_submit(
     if username == APP_USERNAME and password == APP_PASSWORD:
         request.session["user"] = username
         return RedirectResponse(next or "/", status_code=303)
-
+    
     return templates.TemplateResponse(request,"login.html", {"request": request, "next": next, "error": "Invalid login."})
 
 
