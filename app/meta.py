@@ -1,4 +1,5 @@
 from datetime import datetime
 
-VERSION = "1.4"
+APP_VERSION = "1.2.9"
+VERSION = APP_VERSION
 BUILD_DATE = datetime.now().strftime("%Y-%m-%d")
