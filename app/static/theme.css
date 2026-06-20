@@ -632,3 +632,104 @@ html.dark .dark\:hover\:bg-slate-950\/30:hover{
   .lg\:grid-cols-4{ grid-template-columns:repeat(4,minmax(0,1fr)) !important; }
   .lg\:col-span-2{ grid-column:span 2 / span 2 !important; }
 }
+
+/* =========================================================
+   Dashboard Upcoming table fixes
+   Fixes Assignment badge overflow and keeps the table clean
+   ========================================================= */
+
+.dashboard-upcoming-wrap{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+}
+
+.dashboard-upcoming-table{
+  width:100%;
+  max-width:100%;
+  table-layout:fixed;
+}
+
+.dashboard-upcoming-table .dash-col-due{ width:20%; }
+.dashboard-upcoming-table .dash-col-type{ width:132px; }
+.dashboard-upcoming-table .dash-col-title{ width:auto; }
+.dashboard-upcoming-table .dash-col-course{ width:22%; }
+.dashboard-upcoming-table .dash-col-status{ width:106px; }
+
+.dashboard-upcoming-table th,
+.dashboard-upcoming-table td{
+  overflow-wrap:normal;
+  word-break:normal;
+}
+
+.dashboard-upcoming-table .dash-due-cell{
+  white-space:normal;
+  line-height:1.18;
+  overflow:hidden;
+}
+
+.dashboard-upcoming-table .dash-type-cell,
+.dashboard-upcoming-table .dash-status-cell{
+  white-space:nowrap;
+  overflow:visible;
+}
+
+.dashboard-upcoming-table .dash-title-cell,
+.dashboard-upcoming-table .dash-course-cell{
+  min-width:0;
+  overflow:hidden;
+}
+
+.dashboard-upcoming-table .dash-title-link{
+  display:block;
+  color:inherit;
+  text-decoration:none;
+  font-weight:900;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.dashboard-upcoming-table .dash-course-wrap{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  max-width:100%;
+}
+
+.dashboard-upcoming-table .dash-course-dot{
+  width:10px;
+  height:10px;
+  flex:0 0 auto;
+  border-radius:999px;
+  border:1px solid var(--border);
+}
+
+.dashboard-upcoming-table .dash-course-name{
+  min-width:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.badge.badge-type{
+  width:7.25rem !important;
+  min-width:7.25rem !important;
+  max-width:7.25rem !important;
+  padding:.36rem .7rem !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:clip !important;
+  box-sizing:border-box;
+}
+
+.badge.badge-status{
+  width:4.8rem !important;
+  min-width:4.8rem !important;
+  max-width:4.8rem !important;
+  padding:.36rem .65rem !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  box-sizing:border-box;
+}

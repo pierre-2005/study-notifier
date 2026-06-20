@@ -39,7 +39,7 @@
 <!-- Main area -->
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-5" style="margin-top:18px;">
 
-  <!-- Upcoming (spans 2 on desktop) -->
+  <!-- Upcoming -->
   <div class="card lg:col-span-2">
     <div class="card-h">
       <div>
@@ -70,7 +70,9 @@
                       {{ utc_to_local_str(it["due_at_utc"], tz) }} • {{ it["course_name"] }}
                     </div>
                   </div>
-                  <span class="badge" style="flex:0 0 auto;">{% if it["type"]=="exam" %}Exam{% elif it["type"]=="lab" %}Lab{% else %}Assignment{% endif %}</span>
+                  <span class="badge badge-type" style="flex:0 0 auto;">
+                    {% if it["type"]=="exam" %}Exam{% elif it["type"]=="lab" %}Lab{% else %}Assignment{% endif %}
+                  </span>
                 </div>
               </div>
             </a>
@@ -78,16 +80,15 @@
         </div>
       </div>
 
-      <!-- Desktop table (NO SCROLL) -->
-      <div class="hidden sm:block" style="overflow-x:hidden;">
-        <table class="table" style="width:100%; table-layout:fixed; max-width:100%;">
-          <!-- Responsive column sizing (prevents overflow + prevents overlap) -->
+      <!-- Desktop table -->
+      <div class="hidden sm:block dashboard-upcoming-wrap">
+        <table class="table dashboard-upcoming-table">
           <colgroup>
-            <col style="width:22%;">
-            <col style="width:14%;">
-            <col style="width:28%;">
-            <col style="width:22%;">
-            <col style="width:14%;">
+            <col class="dash-col-due">
+            <col class="dash-col-type">
+            <col class="dash-col-title">
+            <col class="dash-col-course">
+            <col class="dash-col-status">
           </colgroup>
 
           <thead>
@@ -103,39 +104,31 @@
           <tbody>
             {% for it in upcoming %}
             <tr>
-              <!-- Let date wrap inside its own cell so it NEVER bleeds into Type -->
-              <td style="white-space:normal; line-height:1.15; word-break:break-word;">
+              <td class="dash-due-cell">
                 {{ utc_to_local_str(it["due_at_utc"], tz) }}
               </td>
 
-              <td>
-                <span class="badge" style="display:inline-flex; white-space:nowrap;">
+              <td class="dash-type-cell">
+                <span class="badge badge-type">
                   {% if it["type"]=="exam" %}Exam{% elif it["type"]=="lab" %}Lab{% else %}Assignment{% endif %}
                 </span>
               </td>
 
-              <!-- Keep the table shape: title stays one line, truncates if long -->
-              <td style="font-weight:900; min-width:0;">
-                <a href="/items/{{ it['id'] }}"
-                   style="color:inherit; text-decoration:none; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              <td class="dash-title-cell">
+                <a href="/items/{{ it['id'] }}" class="dash-title-link">
                   {{ it["title"] }}
                 </a>
               </td>
 
-              <!-- Course stays one line, truncates if long -->
-              <td style="min-width:0;">
-                <span style="display:flex; align-items:center; gap:8px; min-width:0;">
-                  <span style="width:10px; height:10px; flex:0 0 auto; border-radius:999px; border:1px solid var(--border); background: {{ it['course_color'] or '#e2e8f0' }};"></span>
-                  <span style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                    {{ it["course_name"] }}
-                  </span>
+              <td class="dash-course-cell">
+                <span class="dash-course-wrap">
+                  <span class="dash-course-dot" style="background: {{ it['course_color'] or '#e2e8f0' }};"></span>
+                  <span class="dash-course-name">{{ it["course_name"] }}</span>
                 </span>
               </td>
 
-              <td>
-                <span class="badge" style="display:inline-flex; max-width:100%; white-space:nowrap;">
-                  {{ it["status"] }}
-                </span>
+              <td class="dash-status-cell">
+                <span class="badge badge-status">{{ it["status"] }}</span>
               </td>
             </tr>
             {% endfor %}
