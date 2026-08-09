@@ -10,6 +10,7 @@ import calendar
 import os
 import urllib.parse
 from starlette.middleware.sessions import SessionMiddleware
+from app.finance.routes import router as finance_router
 
 
 from app.config import settings
@@ -58,9 +59,6 @@ async def require_auth(request: Request, call_next):
     next_url = path
     if request.url.query:
         next_url += "?" + request.url.query
-
-    if path.startswith("/static") or path in ("/login", "/logout", "/favicon.ico"):
-        return await call_next(request)
 
     return RedirectResponse(
         url="/login?next=" + urllib.parse.quote(next_url),
@@ -1968,6 +1966,8 @@ def login_submit(
     
     return templates.TemplateResponse(request,"login.html", {"request": request, "next": next, "error": "Invalid login."})
 
+
+app.include_router(finance_router)
 
 @app.post("/logout")
 def logout(request: Request):

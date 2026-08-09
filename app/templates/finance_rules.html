@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card p-5">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <div class="h1">Merchant rules</div>
+      <div class="muted mt-1">Rules automatically categorize imported statement transactions.</div>
+    </div>
+    <a class="btn" href="/finance">Back to Finance</a>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5">
+  <div class="card p-5">
+    <div class="h2">Add custom category</div>
+    <form method="post" action="/finance/rules/category" class="space-y-3 mt-3">
+      <input class="input" name="name" placeholder="Example: Rent" required>
+      <button class="btn btn-primary" type="submit">Add category</button>
+    </form>
+  </div>
+
+  <div class="card p-5 lg:col-span-2">
+    <div class="h2">Add merchant rule</div>
+    <form method="post" action="/finance/rules/add" class="toolbar mt-3">
+      <div>
+        <div class="label">Category</div>
+        <select class="input" name="category">
+          {% for c in categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <div class="label">Merchant keyword</div>
+        <input class="input" name="keyword" placeholder="Example: COSTCO GAS" required>
+      </div>
+      <button class="btn btn-primary" type="submit">Add rule</button>
+    </form>
+  </div>
+</div>
+
+<div class="card mt-5">
+  <div class="card-h"><div class="h2">Current rules</div></div>
+  <div class="card-b">
+    {% for c in categories %}
+      <div class="row py-4" {% if loop.first %}style="border-top:0;"{% endif %}>
+        <div style="font-weight:900;">{{ c }}</div>
+        <div class="hstack mt-2">
+          {% for kw in rules.get(c, []) %}
+            <form method="post" action="/finance/rules/delete" style="display:inline-flex; margin:0;">
+              <input type="hidden" name="category" value="{{ c }}">
+              <input type="hidden" name="keyword" value="{{ kw }}">
+              <button class="badge" type="submit" title="Click to delete">{{ kw }} ×</button>
+            </form>
+          {% endfor %}
+          {% if rules.get(c, [])|length == 0 %}<span class="muted">No rules yet.</span>{% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}

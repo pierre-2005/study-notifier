@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card p-5">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <div class="h1">Import bank statements</div>
+      <div class="muted mt-1">Upload BMO and Scotiabank PDF statements. Duplicate PDFs are skipped automatically.</div>
+    </div>
+    <a class="btn" href="/finance">Back to Finance</a>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5">
+  <div class="card lg:col-span-2 p-5">
+    <form method="post" action="/finance/import" enctype="multipart/form-data" class="space-y-3">
+      <div class="label">PDF statements</div>
+      <input class="input" type="file" name="files" accept="application/pdf,.pdf" multiple required>
+      <button class="btn btn-primary" type="submit">Import PDFs</button>
+    </form>
+
+    {% if error %}
+      <div class="card p-5 mt-5" style="border-color:#ef4444;">
+        <div class="h2">Some files failed</div>
+        <pre class="muted" style="white-space:pre-wrap;">{{ error }}</pre>
+      </div>
+    {% endif %}
+
+    {% if results %}
+      <div class="mt-5">
+        <div class="h2">Import results</div>
+        <div class="overflow-x-auto mt-3">
+          <table class="table">
+            <thead><tr><th>File</th><th>Status</th><th>Bank</th><th>Parsed</th><th>New</th></tr></thead>
+            <tbody>
+              {% for r in results %}
+              <tr>
+                <td>{{ r.filename }}</td>
+                <td><span class="badge">{{ r.status }}</span></td>
+                <td>{{ r.bank or "—" }}</td>
+                <td>{{ r.parsed }}</td>
+                <td>{{ r.inserted }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="card p-5">
+    <div class="h2">Imported history</div>
+    <div class="muted mt-1">Only clear this if you want to remove all imported statement transactions.</div>
+    <div class="mt-4 space-y-2">
+      {% for i in imports %}
+        <div class="row py-3" {% if loop.first %}style="border-top:0;"{% endif %}>
+          <div style="font-weight:900; overflow-wrap:anywhere;">{{ i["filename"] }}</div>
+          <div class="small mt-1">{{ i["bank"] }} • {{ i["transaction_count"] }} parsed</div>
+        </div>
+      {% endfor %}
+      {% if imports|length == 0 %}
+        <div class="muted">No imports yet.</div>
+      {% endif %}
+    </div>
+    <form method="post" action="/finance/clear" class="mt-5" onsubmit="return confirm('Clear all imported finance transactions and import history? Budget and rules stay saved.');">
+      <button class="btn btn-danger" type="submit">Clear statement history</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

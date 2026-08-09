@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card p-5">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <div class="h1">Transactions</div>
+      <div class="muted mt-1">Rename, recategorize, and choose whether each transaction counts toward spending.</div>
+    </div>
+    <div class="hstack">
+      <a class="btn" href="/finance/import">Import PDFs</a>
+      <a class="btn" href="/finance/export/transactions.csv">Export CSV</a>
+      <a class="btn" href="/finance/export/summary.csv">Summary CSV</a>
+    </div>
+  </div>
+</div>
+
+<div class="card p-5 mt-5">
+  <form method="get" action="/finance/transactions" class="toolbar">
+    <div>
+      <div class="label">Category</div>
+      <select class="input" name="category">
+        <option value="All" {% if selected_category == "All" %}selected{% endif %}>All</option>
+        {% for c in categories %}
+          <option value="{{ c }}" {% if selected_category == c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <div class="label">Month</div>
+      <select class="input" name="month">
+        <option value="" {% if not selected_month %}selected{% endif %}>All months</option>
+        {% for m in months %}
+          <option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>{{ m }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <label class="hstack" style="align-self:center; margin-top:24px;">
+      <input type="checkbox" name="show_excluded" value="true" {% if show_excluded %}checked{% endif %}>
+      <span>Show excluded</span>
+    </label>
+    <button class="btn btn-primary" type="submit">Apply filters</button>
+  </form>
+  <div class="mt-3 muted">Showing {{ rows|length }} rows • included spending total {{ money(total) }}</div>
+</div>
+
+<div class="card mt-5">
+  <div class="card-b overflow-x-auto">
+    <table class="table">
+      <thead>
+        <tr><th>Date</th><th>Bank</th><th>Description</th><th>Amount</th><th>Category</th><th>Type</th><th>Counts?</th></tr>
+      </thead>
+      <tbody>
+        {% for t in rows %}
+        <tr {% if not t["included"] %}style="opacity:.62;"{% endif %}>
+          <td>{{ t["date"] }}</td>
+          <td>{{ t["bank"] }}</td>
+          <td>
+            <a href="/finance/transactions/{{ t['id'] }}" style="color:var(--text); text-decoration:none; font-weight:900;">{{ t["description"] }}</a>
+            <div class="small mt-1">{{ t["source_file"] }}</div>
+          </td>
+          <td>{{ money(t["amount"]) }}</td>
+          <td><span class="badge">{{ t["category"] }}</span></td>
+          <td>{{ t["transaction_type"] }}</td>
+          <td>{% if t["included"] %}<span class="badge">Yes</span>{% else %}<span class="badge">No</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+        {% if rows|length == 0 %}
+        <tr><td class="muted" colspan="7">No transactions match these filters.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

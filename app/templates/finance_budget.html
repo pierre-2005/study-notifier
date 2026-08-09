@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card p-5">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <div class="h1">Budget Calculator</div>
+      <div class="muted mt-1">Enter income, expenses, and savings goals. Amounts can be annual, quarterly, semi-annual, monthly, biweekly, or weekly.</div>
+    </div>
+    <div class="hstack">
+      <a class="btn" href="/finance">Finance</a>
+      <a class="btn" href="/finance/monthly">Monthly comparison</a>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-4 mt-5">
+  <div class="card"><div class="card-b"><div class="muted text-xs uppercase tracking-wide">Monthly income</div><div style="font-size:24px; font-weight:900; margin-top:6px;">{{ money(analysis.planned.total_income) }}</div></div></div>
+  <div class="card"><div class="card-b"><div class="muted text-xs uppercase tracking-wide">Budgeted expenses</div><div style="font-size:24px; font-weight:900; margin-top:6px;">{{ money(analysis.planned.total_expenses) }}</div></div></div>
+  <div class="card"><div class="card-b"><div class="muted text-xs uppercase tracking-wide">Actual avg spend</div><div style="font-size:24px; font-weight:900; margin-top:6px;">{{ money(analysis.actual_total) }}</div></div></div>
+  <div class="card"><div class="card-b"><div class="muted text-xs uppercase tracking-wide">Savings goals</div><div style="font-size:24px; font-weight:900; margin-top:6px;">{{ money(analysis.planned.total_savings) }}</div></div></div>
+  <div class="card"><div class="card-b"><div class="muted text-xs uppercase tracking-wide">Cash left</div><div style="font-size:24px; font-weight:900; margin-top:6px;">{{ money(analysis.actual_cash_after) }}</div></div></div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5">
+  <div class="card lg:col-span-2 p-5">
+    <form method="post" action="/finance/budget/save">
+      <div class="label">Name optional</div>
+      <input class="input mt-1" name="name" value="{{ data.name or '' }}">
+
+      {% for group_name, rows in grouped.items() %}
+        <div class="h2 mt-5">{{ group_name }}</div>
+        <div class="overflow-x-auto mt-3">
+          <table class="table">
+            <thead><tr><th>Category</th><th>Amount</th><th>Frequency</th></tr></thead>
+            <tbody>
+              {% for r in rows %}
+              <tr>
+                <td style="font-weight:900;">{{ r.name }}</td>
+                <td>
+                  <input type="hidden" name="row_key" value="{{ r.key }}">
+                  <input type="hidden" name="section__{{ r.key }}" value="{{ r.section }}">
+                  <input type="hidden" name="name__{{ r.key }}" value="{{ r.name }}">
+                  <input class="input" name="amount__{{ r.key }}" value="{{ r.amount }}">
+                </td>
+                <td>
+                  <select class="input" name="frequency__{{ r.key }}">
+                    {% for f in frequencies %}
+                      <option value="{{ f }}" {% if r.frequency == f %}selected{% endif %}>{{ f }}</option>
+                    {% endfor %}
+                  </select>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endfor %}
+
+      <button class="btn btn-primary mt-5" type="submit">Save budget</button>
+    </form>
+  </div>
+
+  <div class="space-y-5">
+    <div class="card p-5">
+      <div class="h2">Add custom row</div>
+      <form method="post" action="/finance/budget/custom" class="space-y-3 mt-3">
+        <div>
+          <div class="label">Type</div>
+          <select class="input mt-1" name="section">
+            <option value="custom_income">Custom income</option>
+            <option value="expenses">Custom expense/category</option>
+            <option value="custom_savings">Custom savings goal</option>
+          </select>
+        </div>
+        <div>
+          <div class="label">Name</div>
+          <input class="input mt-1" name="name" required>
+        </div>
+        <button class="btn" type="submit">Add</button>
+      </form>
+    </div>
+
+    <div class="card p-5">
+      <div class="h2">Budget coach</div>
+      <div class="muted mt-1">Actual spending uses {{ analysis.months }} loaded calendar month(s).</div>
+      <div class="space-y-3 mt-4">
+        {% for rec in analysis.recommendations %}
+          <div class="row py-3" {% if loop.first %}style="border-top:0;"{% endif %}>{{ rec }}</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-5">
+  <div class="card-h"><div class="h2">Budget vs actual monthly spending</div></div>
+  <div class="card-b overflow-x-auto">
+    <table class="table">
+      <thead><tr><th>Category</th><th>Budget</th><th>Actual avg</th><th>Remaining / Over</th><th>% Used</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for r in analysis.rows %}
+          {% if r.budget > 0 or r.actual > 0 %}
+          <tr>
+            <td style="font-weight:900;">{{ r.category }}</td>
+            <td>{{ money(r.budget) }}</td>
+            <td>{{ money(r.actual) }}</td>
+            <td>{{ money(r.difference) }}</td>
+            <td>{% if r.budget > 0 %}{{ '%.0f'|format(r.utilization * 100) }}%{% else %}—{% endif %}</td>
+            <td><span class="badge">{{ r.status }}</span></td>
+          </tr>
+          {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card p-5">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <div class="h1">Monthly Comparison</div>
+      <div class="muted mt-1">Scotiabank + BMO spending combined by each transaction's actual calendar month.</div>
+    </div>
+    <div class="hstack">
+      <a class="btn" href="/finance/budget">Budget</a>
+      <a class="btn" href="/finance/export/monthly.csv">Export CSV</a>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mt-5">
+  <div class="card"><div class="card-b"><div class="muted text-xs uppercase tracking-wide">Average / month</div><div style="font-size:24px; font-weight:900; margin-top:6px;">{{ money(overview.average) }}</div></div></div>
+  <div class="card"><div class="card-b"><div class="muted text-xs uppercase tracking-wide">Highest month</div><div style="font-size:20px; font-weight:900; margin-top:6px;">{% if overview.highest %}{{ overview.highest.label }}<br>{{ money(overview.highest.total) }}{% else %}—{% endif %}</div></div></div>
+  <div class="card"><div class="card-b"><div class="muted text-xs uppercase tracking-wide">Lowest month</div><div style="font-size:20px; font-weight:900; margin-top:6px;">{% if overview.lowest %}{{ overview.lowest.label }}<br>{{ money(overview.lowest.total) }}{% else %}—{% endif %}</div></div></div>
+  <div class="card"><div class="card-b"><div class="muted text-xs uppercase tracking-wide">Latest change</div><div style="font-size:20px; font-weight:900; margin-top:6px;">{% if overview.current_change %}{{ money(overview.current_change.delta) }}{% if overview.current_change.percent is not none %} ({{ percent(overview.current_change.percent) }}){% endif %}{% else %}Need 2 months{% endif %}</div></div></div>
+</div>
+
+<div class="card mt-5">
+  <div class="card-h"><div class="h2">All months</div></div>
+  <div class="card-b overflow-x-auto">
+    <table class="table">
+      <thead><tr><th>Month</th><th>Total spending</th><th>Monthly budget</th><th>Under / over</th><th>Status</th><th>Largest category</th><th>Scotia</th><th>BMO</th><th></th></tr></thead>
+      <tbody>
+        {% for r in overview.rows %}
+        <tr>
+          <td style="font-weight:900;">{{ r.label }}</td>
+          <td>{{ money(r.total) }}</td>
+          <td>{{ money(r.budget) }}</td>
+          <td>{{ money(r.difference) }}</td>
+          <td><span class="badge">{{ r.status }}</span></td>
+          <td>{{ r.top_category }} {% if r.top_category != "—" %}({{ money(r.top_amount) }}){% endif %}</td>
+          <td>{{ money(r.scotia) }}</td>
+          <td>{{ money(r.bmo) }}</td>
+          <td>
+            <form method="post" action="/finance/monthly/remove" onsubmit="return confirm('Remove all saved transactions dated in {{ r.label }}?');">
+              <input type="hidden" name="month_key" value="{{ r.month }}">
+              <button class="btn btn-danger" type="submit">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if overview.rows|length == 0 %}
+          <tr><td colspan="9" class="muted">Import statements to build monthly history.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card p-5 mt-5">
+  <div class="h2">Compare two months</div>
+  <form method="get" action="/finance/monthly" class="toolbar mt-3">
+    <div>
+      <div class="label">Earlier month</div>
+      <select class="input" name="a">
+        {% for m in months %}<option value="{{ m }}" {% if selected_a == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <div class="label">Later month</div>
+      <select class="input" name="b">
+        {% for m in months %}<option value="{{ m }}" {% if selected_b == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
+      </select>
+    </div>
+    <button class="btn btn-primary" type="submit">Compare</button>
+  </form>
+
+  {% if comparison %}
+    <div class="card p-5 mt-5" style="box-shadow:none;">
+      <div style="font-weight:900;">
+        {{ comparison.label_b }} spending
+        {% if comparison.total_delta > 0 %}increased{% elif comparison.total_delta < 0 %}decreased{% else %}did not change{% endif %}
+        by {{ money(comparison.total_delta if comparison.total_delta >= 0 else -comparison.total_delta) }} versus {{ comparison.label_a }}.
+      </div>
+      <div class="muted mt-1">Total change: {{ money(comparison.total_delta) }}{% if comparison.total_percent is not none %} • {{ percent(comparison.total_percent) }}{% endif %}</div>
+    </div>
+
+    <div class="overflow-x-auto mt-5">
+      <table class="table">
+        <thead><tr><th>Category</th><th>Earlier</th><th>Later</th><th>Change</th><th>Change %</th><th>Budget</th></tr></thead>
+        <tbody>
+          {% for r in comparison.rows %}
+            {% if r.a|abs > 0.005 or r.b|abs > 0.005 or r.budget > 0 %}
+            <tr>
+              <td style="font-weight:900;">{{ r.category }}</td>
+              <td>{{ money(r.a) }}</td>
+              <td>{{ money(r.b) }}</td>
+              <td>{{ money(r.delta) }}</td>
+              <td>{{ percent(r.percent) }}</td>
+              <td>{{ money(r.budget) }}</td>
+            </tr>
+            {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5">
+      <div class="card p-5" style="box-shadow:none;"><div class="h2">Biggest increases</div>{% for r in comparison.increases[:5] %}<div class="row py-3">{{ r.category }}: {{ money(r.delta) }}</div>{% else %}<div class="muted mt-3">No increases.</div>{% endfor %}</div>
+      <div class="card p-5" style="box-shadow:none;"><div class="h2">Biggest decreases</div>{% for r in comparison.decreases[:5] %}<div class="row py-3">{{ r.category }}: {{ money(r.delta) }}</div>{% else %}<div class="muted mt-3">No decreases.</div>{% endfor %}</div>
+      <div class="card p-5" style="box-shadow:none;"><div class="h2">Over budget</div>{% for r in comparison.over_budget[:6] %}<div class="row py-3">{{ r.category }}: {{ money(r.over) }} over</div>{% else %}<div class="muted mt-3">No category over budget.</div>{% endfor %}</div>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}
