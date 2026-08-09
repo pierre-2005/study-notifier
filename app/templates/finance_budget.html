@@ -1,119 +1,90 @@
 {% extends "base.html" %}
 {% block content %}
+<div class="finance-back-row"><a class="back-link" href="/finance">← Finance overview</a><a class="back-link" href="/finance/monthly">Monthly comparison</a></div>
 
-<div class="card p-5">
-  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <div>
-      <div class="h1">Budget Calculator</div>
-      <div class="muted mt-1">Enter income, expenses, and savings goals. Amounts can be annual, quarterly, semi-annual, monthly, biweekly, or weekly.</div>
-    </div>
-    <div class="hstack">
-      <a class="btn" href="/finance">Finance</a>
-      <a class="btn" href="/finance/monthly">Monthly comparison</a>
-    </div>
-  </div>
+<div class="page-heading finance-page-head">
+  <div><div class="eyebrow">Finance</div><h1>Budget calculator</h1><p>Enter income, expenses and savings goals using the frequency that matches how you actually pay or receive them.</p></div>
+  <a class="btn" href="/finance">Back to Finance</a>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-5 gap-4 mt-5">
-  <div class="card"><div class="card-b"><div class="muted text-xs uppercase tracking-wide">Monthly income</div><div style="font-size:24px; font-weight:900; margin-top:6px;">{{ money(analysis.planned.total_income) }}</div></div></div>
-  <div class="card"><div class="card-b"><div class="muted text-xs uppercase tracking-wide">Budgeted expenses</div><div style="font-size:24px; font-weight:900; margin-top:6px;">{{ money(analysis.planned.total_expenses) }}</div></div></div>
-  <div class="card"><div class="card-b"><div class="muted text-xs uppercase tracking-wide">Actual avg spend</div><div style="font-size:24px; font-weight:900; margin-top:6px;">{{ money(analysis.actual_total) }}</div></div></div>
-  <div class="card"><div class="card-b"><div class="muted text-xs uppercase tracking-wide">Savings goals</div><div style="font-size:24px; font-weight:900; margin-top:6px;">{{ money(analysis.planned.total_savings) }}</div></div></div>
-  <div class="card"><div class="card-b"><div class="muted text-xs uppercase tracking-wide">Cash left</div><div style="font-size:24px; font-weight:900; margin-top:6px;">{{ money(analysis.actual_cash_after) }}</div></div></div>
+<nav class="subnav" aria-label="Finance sections">
+  <a href="/finance">Overview</a><a href="/finance/transactions">Transactions</a><a class="active" href="/finance/budget">Budget</a><a href="/finance/monthly">Monthly</a><a href="/finance/rules">Rules</a>
+</nav>
+
+<div class="budget-step-nav" aria-label="Budget sections">
+  <a href="#budget-income"><strong>1</strong> Income</a><a href="#budget-expenses"><strong>2</strong> Expenses</a><a href="#budget-savings"><strong>3</strong> Savings</a><a href="#budget-results"><strong>4</strong> Results</a>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5">
-  <div class="card lg:col-span-2 p-5">
-    <form method="post" action="/finance/budget/save">
-      <div class="label">Name optional</div>
-      <input class="input mt-1" name="name" value="{{ data.name or '' }}">
+<div class="metric-grid finance-metric-grid">
+  <div class="metric-card"><span class="metric-label">Monthly income</span><strong class="metric-value metric-money">{{ money(analysis.planned.total_income) }}</strong><span class="metric-note">Income entered</span></div>
+  <div class="metric-card"><span class="metric-label">Budgeted expenses</span><strong class="metric-value metric-money">{{ money(analysis.planned.total_expenses) }}</strong><span class="metric-note">Monthly equivalent</span></div>
+  <div class="metric-card"><span class="metric-label">Actual avg spend</span><strong class="metric-value metric-money">{{ money(analysis.actual_total) }}</strong><span class="metric-note">From loaded statements</span></div>
+  <div class="metric-card"><span class="metric-label">Cash left</span><strong class="metric-value metric-money">{{ money(analysis.actual_cash_after) }}</strong><span class="metric-note">After actual spend + goals</span></div>
+</div>
+
+<div class="budget-layout">
+  <section class="card budget-form-card">
+    <form method="post" action="/finance/budget/save" class="card-b">
+      <label class="field"><span class="label">Budget name (optional)</span><input class="input mt-1" name="name" value="{{ data.name or '' }}" placeholder="Pierre's monthly plan"></label>
 
       {% for group_name, rows in grouped.items() %}
-        <div class="h2 mt-5">{{ group_name }}</div>
-        <div class="overflow-x-auto mt-3">
-          <table class="table">
-            <thead><tr><th>Category</th><th>Amount</th><th>Frequency</th></tr></thead>
-            <tbody>
-              {% for r in rows %}
-              <tr>
-                <td style="font-weight:900;">{{ r.name }}</td>
-                <td>
-                  <input type="hidden" name="row_key" value="{{ r.key }}">
-                  <input type="hidden" name="section__{{ r.key }}" value="{{ r.section }}">
-                  <input type="hidden" name="name__{{ r.key }}" value="{{ r.name }}">
-                  <input class="input" name="amount__{{ r.key }}" value="{{ r.amount }}">
-                </td>
-                <td>
-                  <select class="input" name="frequency__{{ r.key }}">
-                    {% for f in frequencies %}
-                      <option value="{{ f }}" {% if r.frequency == f %}selected{% endif %}>{{ f }}</option>
-                    {% endfor %}
-                  </select>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+        {% set anchor = 'budget-income' if group_name in ['Income','Custom income'] else 'budget-savings' if 'Savings' in group_name or 'savings' in group_name else 'budget-expenses' %}
+        <div class="budget-section-block" id="{{ anchor }}">
+          <div class="budget-section-title">{{ group_name }}</div>
+          <div class="overflow-x-auto">
+            <table class="table budget-table">
+              <thead><tr><th>Category</th><th>Amount</th><th>Frequency</th></tr></thead>
+              <tbody>
+                {% for r in rows %}
+                <tr data-budget-row data-budget-kind="{{ r.chart_kind }}" data-budget-group="{{ r.chart_group }}">
+                  <td style="font-weight:650; min-width:210px;">{{ r.name }}</td>
+                  <td>
+                    <input type="hidden" name="row_key" value="{{ r.key }}"><input type="hidden" name="section__{{ r.key }}" value="{{ r.section }}"><input type="hidden" name="name__{{ r.key }}" value="{{ r.name }}">
+                    <input class="input" data-budget-amount inputmode="decimal" name="amount__{{ r.key }}" value="{{ r.amount }}">
+                  </td>
+                  <td><select class="input" data-budget-frequency name="frequency__{{ r.key }}">{% for f in frequencies %}<option value="{{ f }}" {% if r.frequency == f %}selected{% endif %}>{{ f }}</option>{% endfor %}</select></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
       {% endfor %}
 
-      <button class="btn btn-primary mt-5" type="submit">Save budget</button>
+      <div class="hstack mt-5"><button class="btn btn-primary" type="submit">Save budget</button><a class="btn" href="#budget-results">View results</a></div>
     </form>
-  </div>
+  </section>
 
-  <div class="space-y-5">
-    <div class="card p-5">
-      <div class="h2">Add custom row</div>
-      <form method="post" action="/finance/budget/custom" class="space-y-3 mt-3">
-        <div>
-          <div class="label">Type</div>
-          <select class="input mt-1" name="section">
-            <option value="custom_income">Custom income</option>
-            <option value="expenses">Custom expense/category</option>
-            <option value="custom_savings">Custom savings goal</option>
-          </select>
+  <aside class="budget-side" data-budget-chart>
+    <div class="budget-chart-card">
+      <div class="budget-chart-body">
+        <h2 class="budget-chart-title">Annual budget breakdown</h2>
+        <div class="budget-donut-wrap"><div class="budget-donut" data-budget-donut aria-label="Annual budget breakdown donut chart"></div></div>
+        <div class="budget-chart-legend">
+          {% set chart_rows = [
+            ('Housing','var(--chart-1)'),('Essentials','var(--chart-2)'),('Transportation','var(--chart-3)'),('Living','var(--chart-4)'),('Personal spending','var(--chart-5)'),('Savings','var(--chart-6)')
+          ] %}
+          {% for label,color in chart_rows %}<div class="budget-chart-row" data-chart-group="{{ label }}"><span class="budget-chart-dot" style="--dot:{{ color }}"></span><span>{{ label }}</span><strong data-chart-percent>0%</strong><span data-chart-amount>$0</span></div>{% endfor %}
         </div>
-        <div>
-          <div class="label">Name</div>
-          <input class="input mt-1" name="name" required>
-        </div>
-        <button class="btn" type="submit">Add</button>
-      </form>
-    </div>
-
-    <div class="card p-5">
-      <div class="h2">Budget coach</div>
-      <div class="muted mt-1">Actual spending uses {{ analysis.months }} loaded calendar month(s).</div>
-      <div class="space-y-3 mt-4">
-        {% for rec in analysis.recommendations %}
-          <div class="row py-3" {% if loop.first %}style="border-top:0;"{% endif %}>{{ rec }}</div>
-        {% endfor %}
+      </div>
+      <div class="budget-chart-totals">
+        <div class="budget-chart-total-row"><span>Total income</span><strong data-chart-income>$0</strong></div>
+        <div class="budget-chart-total-row"><span>Total expenses + savings</span><strong data-chart-expenses>$0</strong></div>
+        <div class="budget-chart-total-row cash-left"><span>Annual amount left</span><strong data-chart-left>$0</strong></div>
       </div>
     </div>
-  </div>
+  </aside>
 </div>
 
-<div class="card mt-5">
-  <div class="card-h"><div class="h2">Budget vs actual monthly spending</div></div>
-  <div class="card-b overflow-x-auto">
-    <table class="table">
-      <thead><tr><th>Category</th><th>Budget</th><th>Actual avg</th><th>Remaining / Over</th><th>% Used</th><th>Status</th></tr></thead>
-      <tbody>
-        {% for r in analysis.rows %}
-          {% if r.budget > 0 or r.actual > 0 %}
-          <tr>
-            <td style="font-weight:900;">{{ r.category }}</td>
-            <td>{{ money(r.budget) }}</td>
-            <td>{{ money(r.actual) }}</td>
-            <td>{{ money(r.difference) }}</td>
-            <td>{% if r.budget > 0 %}{{ '%.0f'|format(r.utilization * 100) }}%{% else %}—{% endif %}</td>
-            <td><span class="badge">{{ r.status }}</span></td>
-          </tr>
-          {% endif %}
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5">
+  <section class="card"><div class="card-h"><div><div class="h2">Add custom budget row</div><div class="muted mt-1">Create your own income, expense category, or savings goal.</div></div></div><form method="post" action="/finance/budget/custom" class="card-b space-y-3"><label class="field"><span class="label">Type</span><select class="input" name="section"><option value="custom_income">Custom income</option><option value="expenses">Custom expense/category</option><option value="custom_savings">Custom savings goal</option></select></label><label class="field"><span class="label">Name</span><input class="input" name="name" required></label><button class="btn" type="submit">Add row</button></form></section>
+  <section class="card lg:col-span-2"><div class="card-h"><div><div class="h2">Budget coach</div><div class="muted mt-1">Actual spending uses {{ analysis.months }} loaded calendar month(s).</div></div></div><div class="card-b space-y-3">{% for rec in analysis.recommendations %}<div class="row py-3" {% if loop.first %}style="border-top:0"{% endif %}>{{ rec }}</div>{% endfor %}</div></section>
 </div>
 
+<section class="card mt-5 budget-section-block" id="budget-results">
+  <div class="card-h"><div><div class="h2">Budget vs actual monthly spending</div><div class="muted mt-1">See which categories are comfortable, close to the limit, or over budget.</div></div></div>
+  <div class="card-b overflow-x-auto"><table class="table"><thead><tr><th>Category</th><th>Budget</th><th>Actual avg</th><th>Remaining / Over</th><th>% Used</th><th>Status</th></tr></thead><tbody>
+    {% for r in analysis.rows %}{% if r.budget > 0 or r.actual > 0 %}<tr><td style="font-weight:650">{{ r.category }}</td><td>{{ money(r.budget) }}</td><td>{{ money(r.actual) }}</td><td>{{ money(r.difference) }}</td><td>{% if r.budget > 0 %}{{ '%.0f'|format(r.utilization * 100) }}%{% else %}—{% endif %}</td><td><span class="badge">{{ r.status }}</span></td></tr>{% endif %}{% endfor %}
+  </tbody></table></div>
+</section>
 {% endblock %}

@@ -1,35 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
-
 <section class="card login-card">
   <div class="login-brand-row">
     <span class="workspace-icon" aria-hidden="true">M</span>
-    <div>
-      <div class="eyebrow">Personal workspace</div>
-      <h1>My Life Organized</h1>
-    </div>
+    <div><div class="eyebrow">Personal workspace</div><h1>My Life Organized</h1></div>
   </div>
-  <p class="muted login-intro">Sign in to your organizer, reminders, schedule, and finance workspace.</p>
-
-  {% if error %}
-    <div class="login-error" role="alert">{{ error }}</div>
-  {% endif %}
+  <p class="muted login-intro">Sign in to your workspace.</p>
 
   <form method="post" action="/login" class="login-form">
     <input type="hidden" name="next" value="{{ next }}">
-
-    <label class="field">
-      <span class="label">Username</span>
-      <input class="input" name="username" autocomplete="username" autofocus required>
-    </label>
-
-    <label class="field">
-      <span class="label">Password</span>
-      <input class="input" type="password" name="password" autocomplete="current-password" required>
-    </label>
-
+    <label class="field"><span class="label">Username</span><input class="input" name="username" autocomplete="username" required autofocus></label>
+    <label class="field"><span class="label">Password</span><input class="input" type="password" name="password" autocomplete="current-password" required></label>
     <button class="btn btn-primary login-submit" type="submit">Sign in</button>
   </form>
-</section>
 
+  {% if error %}<div class="login-error" role="alert">{{ error }}</div>{% endif %}
+  {% if message %}<div class="login-success" role="status">{{ message }}</div>{% endif %}
+
+  <div class="login-alt">New here? <a href="/signup">Create an account</a>. New accounts stay locked until an administrator approves them.</div>
+</section>
 {% endblock %}

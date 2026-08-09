@@ -390,6 +390,12 @@ def budget_rows_for_template(data: dict) -> list[dict]:
     ]:
         for idx, (name, src) in enumerate(data.get(section, {}).items()):
             key = f"{section}_{idx}"
+            if section in ("income", "custom_income"):
+                chart_kind, chart_group = "income", ""
+            elif section in ("savings", "custom_savings"):
+                chart_kind, chart_group = "outflow", "Savings"
+            else:
+                chart_kind, chart_group = "outflow", budget.chart_group_for_expense(name)
             rows.append({
                 "key": key,
                 "section": section,
@@ -397,6 +403,8 @@ def budget_rows_for_template(data: dict) -> list[dict]:
                 "name": name,
                 "amount": src.get("amount", 0),
                 "frequency": src.get("frequency", "Monthly"),
+                "chart_kind": chart_kind,
+                "chart_group": chart_group,
             })
     return rows
 

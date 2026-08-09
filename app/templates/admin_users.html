@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading">
+  <div><div class="eyebrow">Administration</div><h1>Users</h1><p>Approve new accounts and control access. Member accounts can use sections shared with them, create their own sections, and use timers; your personal school, finance, jobs, and expenses stay private.</p></div>
+</div>
+
+<section class="card">
+  <div class="card-h"><div><div class="h2">Workspace accounts</div><div class="muted mt-1">Pending users cannot sign in until you approve them.</div></div></div>
+  <div class="card-b user-list">
+    {% for u in users %}
+    <div class="user-row">
+      <div class="user-row-main">
+        <div class="user-row-title"><strong>{{ u['display_name'] or u['username'] }}</strong><span class="muted">@{{ u['username'] }}</span>
+          {% if u['role'] == 'admin' %}<span class="status-pill approved">Admin</span>
+          {% elif not u['active'] %}<span class="status-pill disabled">Disabled</span>
+          {% elif u['approved'] %}<span class="status-pill approved">Approved</span>
+          {% else %}<span class="status-pill pending">Pending</span>{% endif %}
+        </div>
+        <div class="small mt-1">Joined {{ u['created_at_utc'][:10] }}</div>
+      </div>
+      {% if u['role'] != 'admin' %}
+      <div class="user-actions">
+        {% if not u['approved'] %}<form method="post" action="/admin/users/{{ u['id'] }}/approval"><input type="hidden" name="approved" value="1"><button class="btn btn-primary" type="submit">Approve</button></form>
+        {% else %}<form method="post" action="/admin/users/{{ u['id'] }}/approval"><input type="hidden" name="approved" value="0"><button class="btn" type="submit">Revoke approval</button></form>{% endif %}
+        {% if u['active'] %}<form method="post" action="/admin/users/{{ u['id'] }}/active"><input type="hidden" name="active" value="0"><button class="btn btn-danger" type="submit">Disable</button></form>
+        {% else %}<form method="post" action="/admin/users/{{ u['id'] }}/active"><input type="hidden" name="active" value="1"><button class="btn" type="submit">Enable</button></form>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

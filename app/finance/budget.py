@@ -261,3 +261,18 @@ def top_transactions_for_category(transactions: list[Transaction], category: str
         if tx.included and tx.transaction_type == "Purchase" and tx.category == category and tx.amount > 0
     ]
     return sorted(candidates, key=lambda t: t.amount, reverse=True)[:limit]
+
+# Visual grouping used by the CIBC-inspired annual breakdown card.
+BUDGET_CHART_GROUPS = ["Housing", "Essentials", "Transportation", "Living", "Personal spending", "Savings"]
+
+
+def chart_group_for_expense(name: str) -> str:
+    if name in EXPENSE_GROUPS.get("Housing", []):
+        return "Housing"
+    if name in EXPENSE_GROUPS.get("Transportation", []):
+        return "Transportation"
+    if name in (EXPENSE_GROUPS.get("Communications", []) + EXPENSE_GROUPS.get("Food", []) + EXPENSE_GROUPS.get("Debt payments", [])):
+        return "Essentials"
+    if name in (EXPENSE_GROUPS.get("Family", []) + EXPENSE_GROUPS.get("Health and wellbeing", [])):
+        return "Living"
+    return "Personal spending"

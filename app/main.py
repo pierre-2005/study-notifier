@@ -13,6 +13,12 @@ import urllib.parse
 from starlette.middleware.sessions import SessionMiddleware
 from app.finance.routes import router as finance_router
 from app.finance.db import init_finance_schema
+from app.auth import (
+    init_auth_schema, ensure_bootstrap_admin, get_user_by_username, get_user_by_id,
+    verify_password, create_pending_user, list_users, set_user_approval, set_user_active,
+)
+from app.workspace import router as workspace_router, init_workspace_schema, list_sections_for_user
+from app.timers import router as timers_router, init_timer_schema, active_timer_for_user
 
 
 from app.config import settings
@@ -29,7 +35,11 @@ templates.env.globals["APP_VERSION"] = APP_VERSION
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    init_auth_schema()
+    ensure_bootstrap_admin(APP_USERNAME, APP_PASSWORD)
     init_finance_schema()
+    init_workspace_schema()
+    init_timer_schema()
     sched = start_scheduler(settings.timezone)
     yield
     sched.shutdown(wait=False)
@@ -45,28 +55,42 @@ COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").lower() in ("1", "true", "yes
 
 
 
-# Redirect to /login if not authenticated
+# Resolve the signed-in database user and protect private routes.
 @app.middleware("http")
 async def require_auth(request: Request, call_next):
     path = request.url.path
-
-    # Allow login + static assets without auth
-    if path.startswith("/static") or path in ("/login", "/logout", "/favicon.ico", "/health"):
-        return await call_next(request)
-    
-    # Already logged in
-    if request.session.get("user"):
+    public_paths = {"/login", "/signup", "/logout", "/favicon.ico", "/health"}
+    if path.startswith("/static") or path in public_paths:
         return await call_next(request)
 
-    # Not logged in -> send to login with ?next=
-    next_url = path
-    if request.url.query:
-        next_url += "?" + request.url.query
+    user = None
+    user_id = request.session.get("user_id")
+    if user_id:
+        user = get_user_by_id(int(user_id))
+    elif request.session.get("user"):
+        # Upgrade sessions created by the pre-1.4 login system.
+        user = get_user_by_username(str(request.session.get("user")))
 
-    return RedirectResponse(
-        url="/login?next=" + urllib.parse.quote(next_url),
-        status_code=303
-    )
+    if not user or not user["approved"] or not user["active"]:
+        request.session.clear()
+        next_url = path + (("?" + request.url.query) if request.url.query else "")
+        return RedirectResponse(url="/login?next=" + urllib.parse.quote(next_url), status_code=303)
+
+    request.session["user_id"] = int(user["id"])
+    request.session["user"] = user["username"]
+    request.session["role"] = user["role"]
+    request.state.current_user = user
+    request.state.custom_sections = list_sections_for_user(int(user["id"]), sidebar_only=True)
+    request.state.active_timer = active_timer_for_user(int(user["id"]))
+
+    # Member accounts are collaboration accounts by default. Personal school,
+    # finance, job, and expense data remains private to administrators.
+    if user["role"] != "admin":
+        member_allowed = ("/sections", "/timers", "/settings", "/logout")
+        if path == "/" or not path.startswith(member_allowed):
+            return RedirectResponse("/sections", status_code=303)
+
+    return await call_next(request)
 
 # Signed cookie sessions (MUST be added after require_auth so it runs first)
 if not SESSION_SECRET:
@@ -1973,6 +1997,7 @@ def settings_page(request: Request):
 
 @app.post("/settings/save")
 def settings_save(
+    request: Request,
     assignment_template_minutes: str = Form(...),
     exam_template_minutes: str = Form(...),
     lab_template_minutes: str = Form(...),
@@ -1981,6 +2006,7 @@ def settings_save(
     quiet_start: str = Form(...),
     quiet_end: str = Form(...),
 ):
+    _require_admin(request)
     with get_conn() as conn:
         _set_setting(conn, "assignment_template_minutes", assignment_template_minutes.strip())
         _set_setting(conn, "exam_template_minutes", exam_template_minutes.strip())
@@ -1994,16 +2020,17 @@ def settings_save(
 
 
 @app.post("/settings/test")
-def settings_test_notification():
+def settings_test_notification(request: Request):
+    _require_admin(request)
     notifier = build_notifier()
     notifier.send("Test notification", "✅ Your notifier is working.")
     return RedirectResponse("/settings", status_code=303)
 
 
 @app.get("/login", response_class=HTMLResponse)
-def login_page(request: Request, next: str = "/"):
+def login_page(request: Request, next: str = "/", message: str = ""):
     next = _safe_next_url(next)
-    return templates.TemplateResponse(request, "login.html", {"request": request, "next": next, "error": ""})
+    return templates.TemplateResponse(request, "login.html", {"request": request, "next": next, "error": "", "message": message})
 
 
 @app.post("/login", response_class=HTMLResponse)
@@ -2014,28 +2041,77 @@ def login_submit(
     next: str = Form("/"),
 ):
     next = _safe_next_url(next)
-    # If you forgot to set env vars, fail closed (safer)
-    if not APP_USERNAME or not APP_PASSWORD or not SESSION_SECRET:
-        return templates.TemplateResponse(request,
-            "login.html",
-            {
-                "request": request,
-                "next": next,
-                "error": "Server login is not configured yet. Set SESSION_SECRET, APP_USERNAME, APP_PASSWORD.",
-            },
-        )
+    user = get_user_by_username(username)
+    error = "Invalid username or password."
+    if user and verify_password(password, user["password_hash"]):
+        if not user["active"]:
+            error = "This account has been disabled by an administrator."
+        elif not user["approved"]:
+            error = "Your account is waiting for administrator approval."
+        else:
+            request.session.clear()
+            request.session["user_id"] = int(user["id"])
+            request.session["user"] = user["username"]
+            request.session["role"] = user["role"]
+            destination = next or "/"
+            if user["role"] != "admin" and destination == "/":
+                destination = "/sections"
+            return RedirectResponse(destination, status_code=303)
 
-    if (
-        secrets.compare_digest(username, APP_USERNAME)
-        and secrets.compare_digest(password, APP_PASSWORD)
-    ):
-        request.session["user"] = username
-        return RedirectResponse(next or "/", status_code=303)
-    
-    return templates.TemplateResponse(request,"login.html", {"request": request, "next": next, "error": "Invalid login."})
+    return templates.TemplateResponse(request, "login.html", {"request": request, "next": next, "error": error, "message": ""})
+
+
+@app.get("/signup", response_class=HTMLResponse)
+def signup_page(request: Request):
+    return templates.TemplateResponse(request, "signup.html", {"request": request, "error": "", "message": ""})
+
+
+@app.post("/signup", response_class=HTMLResponse)
+def signup_submit(
+    request: Request,
+    username: str = Form(...),
+    display_name: str = Form(""),
+    password: str = Form(...),
+    password_confirm: str = Form(...),
+):
+    if password != password_confirm:
+        return templates.TemplateResponse(request, "signup.html", {"request": request, "error": "Passwords do not match.", "message": ""})
+    ok, message = create_pending_user(username, display_name, password)
+    if not ok:
+        return templates.TemplateResponse(request, "signup.html", {"request": request, "error": message, "message": ""})
+    return templates.TemplateResponse(request, "signup.html", {"request": request, "error": "", "message": message})
+
+
+def _require_admin(request: Request):
+    user = getattr(request.state, "current_user", None)
+    if not user or user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Administrator access required")
+    return user
+
+
+@app.get("/admin/users", response_class=HTMLResponse)
+def admin_users(request: Request):
+    _require_admin(request)
+    return templates.TemplateResponse(request, "admin_users.html", {"request": request, "users": list_users()})
+
+
+@app.post("/admin/users/{user_id}/approval")
+def admin_user_approval(request: Request, user_id: int, approved: str = Form("0")):
+    admin = _require_admin(request)
+    set_user_approval(user_id, approved == "1", int(admin["id"]))
+    return RedirectResponse("/admin/users", status_code=303)
+
+
+@app.post("/admin/users/{user_id}/active")
+def admin_user_active(request: Request, user_id: int, active: str = Form("0")):
+    _require_admin(request)
+    set_user_active(user_id, active == "1")
+    return RedirectResponse("/admin/users", status_code=303)
 
 
 app.include_router(finance_router)
+app.include_router(workspace_router)
+app.include_router(timers_router)
 
 @app.post("/logout")
 def logout(request: Request):

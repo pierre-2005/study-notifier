@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading">
+  <div><div class="eyebrow">Workspace</div><h1>Sections</h1><p>Create flexible spaces for shared plans, lists, notes, groceries, recipes, and anything else you want to organize.</p></div>
+  <div class="page-actions"><a class="btn btn-primary" href="/sections/new">New section</a></div>
+</div>
+
+{% if sections %}
+<div class="section-grid">
+  {% for section in sections %}
+  <a class="section-card" href="/sections/{{ section['id'] }}">
+    <div class="section-card-icon">{{ section['icon'] }}</div>
+    <div class="section-card-title">{{ section['name'] }}</div>
+    <div class="section-card-desc">{{ section['description'] or ('Grocery and meal planning' if section['section_type']=='grocery' else 'Flexible notes and checklist') }}</div>
+    <div class="section-card-meta">{{ 'Grocery & meals' if section['section_type']=='grocery' else 'Flexible section' }} · {{ 'Owner' if section['is_owner'] else 'Shared with you' }}</div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<section class="card"><div class="card-b"><div class="empty-state"><strong>No sections yet.</strong><div class="muted mt-1">Create a blank section, or start with the Grocery & Meals template for a shared shopping list, recipes, and price history.</div><a class="btn btn-primary mt-4" href="/sections/new">Create your first section</a></div></div></section>
+{% endif %}
+{% endblock %}

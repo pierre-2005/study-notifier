@@ -1,25 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
-
+{% set is_admin = request.session.get('role') == 'admin' %}
 <div class="page-heading">
-  <div>
-    <div class="eyebrow">Preferences</div>
-    <h1>Settings</h1>
-    <p>Control the workspace interface, reminder templates, quiet hours and notifier.</p>
-  </div>
-  <form method="post" action="/settings/test">
-    <button class="btn" type="submit">Send test notification</button>
-  </form>
+  <div><div class="eyebrow">Preferences</div><h1>Settings</h1><p>Personalize the workspace appearance and navigation{% if is_admin %}, plus reminder templates and notifier behavior{% endif %}.</p></div>
+  {% if is_admin %}<form method="post" action="/settings/test"><button class="btn" type="submit">Send test notification</button></form>{% endif %}
 </div>
 
 <div class="settings-layout">
+  {% if is_admin %}
   <section class="card settings-card">
-    <div class="card-h">
-      <div>
-        <h2 class="h2">Navigation</h2>
-        <p class="muted mt-1">Choose which optional sections appear in your sidebar and mobile navigation.</p>
-      </div>
-    </div>
+    <div class="card-h"><div><h2 class="h2">Navigation</h2><p class="muted mt-1">Choose which optional built-in areas appear in your sidebar and mobile navigation.</p></div></div>
     <div class="card-b nav-toggle-list settings-nav-list">
       <label class="switch-row"><span><strong>To-Do</strong><small>Tasks and digest reminders</small></span><input type="checkbox" data-nav-setting="todos" checked><i></i></label>
       <label class="switch-row"><span><strong>Courses</strong><small>Your course workspace</small></span><input type="checkbox" data-nav-setting="courses" checked><i></i></label>
@@ -28,88 +18,50 @@
       <label class="switch-row"><span><strong>Finance</strong><small>Statements, budgets and analysis</small></span><input type="checkbox" data-nav-setting="finance" checked><i></i></label>
       <label class="switch-row"><span><strong>Expenses</strong><small>Upcoming payments</small></span><input type="checkbox" data-nav-setting="expenses" checked><i></i></label>
       <label class="switch-row"><span><strong>Jobs</strong><small>Applications and follow-ups</small></span><input type="checkbox" data-nav-setting="jobs" checked><i></i></label>
-      <div class="settings-inline-actions">
-        <button class="btn" type="button" data-nav-reset>Show all tabs</button>
-      </div>
+      <label class="switch-row"><span><strong>Timers</strong><small>Focus and countdown timers</small></span><input type="checkbox" data-nav-setting="timers" checked><i></i></label>
+      <div class="settings-inline-actions"><button class="btn" type="button" data-nav-reset>Show all tabs</button></div>
     </div>
   </section>
+  {% endif %}
 
-  <section class="card settings-card">
-    <div class="card-h">
+  <section class="card settings-card {% if not is_admin %}settings-card-wide{% endif %}">
+    <div class="card-h"><div><h2 class="h2">Appearance</h2><p class="muted mt-1">Choose light behavior and a workspace color palette. These preferences are instant and do not require a page reload.</p></div></div>
+    <div class="card-b space-y-4">
       <div>
-        <h2 class="h2">Appearance</h2>
-        <p class="muted mt-1">Use your system setting or choose a fixed light or dark theme.</p>
+        <div class="label mb-2">Mode</div>
+        <div class="themeModeBar settings-theme-bar" role="group" aria-label="Theme mode">
+          <button class="themeModeBtn" type="button" data-theme-choice="system">System</button><button class="themeModeBtn" type="button" data-theme-choice="light">Light</button><button class="themeModeBtn" type="button" data-theme-choice="dark">Dark</button>
+        </div>
       </div>
-    </div>
-    <div class="card-b">
-      <div class="themeModeBar settings-theme-bar" role="group" aria-label="Theme mode">
-        <button class="themeModeBtn" type="button" data-theme-choice="system">System</button>
-        <button class="themeModeBtn" type="button" data-theme-choice="light">Light</button>
-        <button class="themeModeBtn" type="button" data-theme-choice="dark">Dark</button>
+      <div>
+        <div class="label mb-2">Palette</div>
+        <div class="palette-grid" role="group" aria-label="Color palette">
+          <button class="palette-choice" type="button" data-palette-choice="neutral"><span class="palette-swatch" style="--swatch:#787774"></span><span><strong>Neutral</strong><small>Classic warm gray</small></span></button>
+          <button class="palette-choice" type="button" data-palette-choice="ocean"><span class="palette-swatch" style="--swatch:#2878c8"></span><span><strong>Ocean</strong><small>Cool blue</small></span></button>
+          <button class="palette-choice" type="button" data-palette-choice="sage"><span class="palette-swatch" style="--swatch:#4f7a64"></span><span><strong>Sage</strong><small>Calm green</small></span></button>
+          <button class="palette-choice" type="button" data-palette-choice="rose"><span class="palette-swatch" style="--swatch:#a85c6b"></span><span><strong>Rose</strong><small>Soft berry</small></span></button>
+          <button class="palette-choice" type="button" data-palette-choice="amber"><span class="palette-swatch" style="--swatch:#a76f18"></span><span><strong>Amber</strong><small>Warm gold</small></span></button>
+          <button class="palette-choice" type="button" data-palette-choice="lavender"><span class="palette-swatch" style="--swatch:#7659a9"></span><span><strong>Lavender</strong><small>Muted purple</small></span></button>
+        </div>
       </div>
     </div>
   </section>
 
+  {% if is_admin %}
   <section class="card settings-card settings-card-wide">
-    <div class="card-h">
-      <div>
-        <h2 class="h2">Reminder templates</h2>
-        <p class="muted mt-1">Comma-separated minutes before a due time. Existing reminders are not deleted.</p>
-      </div>
-    </div>
-
+    <div class="card-h"><div><h2 class="h2">Reminder templates</h2><p class="muted mt-1">Comma-separated minutes before a due time. Existing reminders are not deleted.</p></div></div>
     <form method="post" action="/settings/save" class="card-b settings-form-grid">
-      <label class="field settings-wide">
-        <span class="label">Assignment reminder template</span>
-        <input class="input" name="assignment_template_minutes" value="{{ s.assignment_template_minutes }}" inputmode="numeric" pattern="[0-9, ]+" required>
-        <small class="field-help">Example: <span class="kbd">10080,4320,1440,180</span> = 7d, 3d, 24h, 3h before.</small>
-      </label>
-
-      <label class="field settings-wide">
-        <span class="label">Exam reminder template</span>
-        <input class="input" name="exam_template_minutes" value="{{ s.exam_template_minutes }}" inputmode="numeric" pattern="[0-9, ]+" required>
-        <small class="field-help">Example: <span class="kbd">10080,4320,1440,120,30</span> = 7d, 3d, 24h, 2h, 30m.</small>
-      </label>
-
-      <label class="field settings-wide">
-        <span class="label">Lab reminder template</span>
-        <input class="input" name="lab_template_minutes" value="{{ s.lab_template_minutes }}" inputmode="numeric" pattern="[0-9, ]+" required>
-        <small class="field-help">Example: <span class="kbd">4320,1440,180,60</span> = 3d, 24h, 3h, 1h before.</small>
-      </label>
-
-      <label class="field settings-wide">
-        <span class="label">Expense reminder template</span>
-        <input class="input" name="expense_template_minutes" value="{{ s.expense_template_minutes }}" inputmode="numeric" pattern="[0-9, ]+" required>
-        <small class="field-help">Example: <span class="kbd">4320,1440,180</span> = 3d, 24h, 3h before.</small>
-      </label>
-
-      <label class="field">
-        <span class="label">Expense day-of time</span>
-        <input class="input" type="time" name="expense_dayof_local_time" value="{{ s.expense_dayof_local_time }}" required>
-      </label>
-
-      <label class="field">
-        <span class="label">Timezone</span>
-        <input class="input" value="{{ tz }}" disabled>
-        <small class="field-help">Configured through <span class="kbd">TIMEZONE</span>.</small>
-      </label>
-
-      <label class="field">
-        <span class="label">Quiet hours start</span>
-        <input class="input" type="time" name="quiet_start" value="{{ s.quiet_start }}" required>
-      </label>
-
-      <label class="field">
-        <span class="label">Quiet hours end</span>
-        <input class="input" type="time" name="quiet_end" value="{{ s.quiet_end }}" required>
-      </label>
-
-      <div class="settings-wide settings-save-row">
-        <div class="muted">Notifications that become due during quiet hours are delayed until quiet hours end.</div>
-        <button class="btn btn-primary" type="submit">Save reminder settings</button>
-      </div>
+      <label class="field settings-wide"><span class="label">Assignment reminder template</span><input class="input" name="assignment_template_minutes" value="{{ s.assignment_template_minutes }}" inputmode="numeric" pattern="[0-9, ]+" required><small class="field-help">Example: <span class="kbd">10080,4320,1440,180</span> = 7d, 3d, 24h, 3h before.</small></label>
+      <label class="field settings-wide"><span class="label">Exam reminder template</span><input class="input" name="exam_template_minutes" value="{{ s.exam_template_minutes }}" inputmode="numeric" pattern="[0-9, ]+" required><small class="field-help">Example: <span class="kbd">10080,4320,1440,120,30</span> = 7d, 3d, 24h, 2h, 30m.</small></label>
+      <label class="field settings-wide"><span class="label">Lab reminder template</span><input class="input" name="lab_template_minutes" value="{{ s.lab_template_minutes }}" inputmode="numeric" pattern="[0-9, ]+" required><small class="field-help">Example: <span class="kbd">4320,1440,180,60</span> = 3d, 24h, 3h, 1h before.</small></label>
+      <label class="field settings-wide"><span class="label">Expense reminder template</span><input class="input" name="expense_template_minutes" value="{{ s.expense_template_minutes }}" inputmode="numeric" pattern="[0-9, ]+" required><small class="field-help">Example: <span class="kbd">4320,1440,180</span> = 3d, 24h, 3h before.</small></label>
+      <label class="field"><span class="label">Expense day-of time</span><input class="input" type="time" name="expense_dayof_local_time" value="{{ s.expense_dayof_local_time }}" required></label>
+      <label class="field"><span class="label">Timezone</span><input class="input" value="{{ tz }}" disabled><small class="field-help">Configured through <span class="kbd">TIMEZONE</span>.</small></label>
+      <label class="field"><span class="label">Quiet hours start</span><input class="input" type="time" name="quiet_start" value="{{ s.quiet_start }}" required></label>
+      <label class="field"><span class="label">Quiet hours end</span><input class="input" type="time" name="quiet_end" value="{{ s.quiet_end }}" required></label>
+      <div class="settings-wide settings-save-row"><div class="muted">Notifications that become due during quiet hours are delayed until quiet hours end.</div><button class="btn btn-primary" type="submit">Save reminder settings</button></div>
     </form>
   </section>
+  {% endif %}
 </div>
-
 {% endblock %}

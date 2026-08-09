@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="finance-back-row"><a class="back-link" href="/sections">← All sections</a></div>
+<div class="page-heading"><div><div class="eyebrow">Create</div><h1>New section</h1><p>Start from a simple flexible page or a purpose-built shared grocery planner.</p></div></div>
+
+<form method="post" action="/sections/new" class="card">
+  <div class="card-b space-y-5">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <label class="field sm:col-span-2"><span class="label">Section name</span><input class="input" name="name" placeholder="Apartment groceries" maxlength="100" required autofocus></label>
+      <label class="field"><span class="label">Icon</span><select class="input" name="icon">{% for icon in section_icons %}<option value="{{ icon }}">{{ icon }}</option>{% endfor %}</select></label>
+    </div>
+    <label class="field"><span class="label">Description</span><input class="input" name="description" maxlength="500" placeholder="What this section is for"></label>
+
+    <div><div class="label mb-2">Template</div>
+      <div class="template-choice-grid">
+        <label class="template-choice"><input type="radio" name="section_type" value="blank" checked><div class="template-choice-icon">📄</div><strong>Flexible section</strong><small>Notes plus a shared checklist. Good for plans, ideas, projects, or any general page.</small></label>
+        <label class="template-choice"><input type="radio" name="section_type" value="grocery"><div class="template-choice-icon">🛒</div><strong>Grocery & Meals</strong><small>Shared shopping list, recipes, recipe-to-item relationships, purchase history, and price comparison.</small></label>
+      </div>
+    </div>
+    <div class="hstack"><button class="btn btn-primary" type="submit">Create section</button><a class="btn" href="/sections">Cancel</a></div>
+  </div>
+</form>
+{% endblock %}
