@@ -8,9 +8,11 @@ from zoneinfo import ZoneInfo
 from fastapi.staticfiles import StaticFiles
 import calendar
 import os
+import secrets
 import urllib.parse
 from starlette.middleware.sessions import SessionMiddleware
 from app.finance.routes import router as finance_router
+from app.finance.db import init_finance_schema
 
 
 from app.config import settings
@@ -27,6 +29,7 @@ templates.env.globals["APP_VERSION"] = APP_VERSION
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    init_finance_schema()
     sched = start_scheduler(settings.timezone)
     yield
     sched.shutdown(wait=False)
@@ -99,7 +102,7 @@ def _clean_choice(value: str | None, allowed: set[str], default: str) -> str:
 def _clamp_int(value, default: int, min_value: int, max_value: int) -> int:
     try:
         n = int(value)
-    except Exception:
+    except (TypeError, ValueError):
         n = default
     return max(min_value, min(n, max_value))
 
@@ -134,18 +137,11 @@ def _get_setting(conn, key: str, default: str) -> str:
 
 
 def _set_setting(conn, key: str, value: str) -> None:
-    try:
-        conn.execute(
-            "INSERT INTO app_settings(key, value) VALUES(?, ?) "
-            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-            (key, value),
-        )
-    except Exception:
-        row = conn.execute("SELECT key FROM app_settings WHERE key=?", (key,)).fetchone()
-        if row:
-            conn.execute("UPDATE app_settings SET value=? WHERE key=?", (value, key))
-        else:
-            conn.execute("INSERT INTO app_settings(key, value) VALUES(?, ?)", (key, value))
+    conn.execute(
+        "INSERT INTO app_settings(key, value) VALUES(?, ?) "
+        "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        (key, value),
+    )
 
 
 def _add_months(dt: datetime, months: int) -> datetime:
@@ -1309,6 +1305,24 @@ def update_job(
 
         old_company = (job["company"] or "").strip()
         old_role = (job["role"] or "").strip()
+        old_followup_utc = job["followup_at_utc"]
+        old_auto_message = f"Follow up: {old_company} — {old_role}"
+        auto_reminder = None
+        if old_followup_utc:
+            auto_reminder = conn.execute(
+                """
+                SELECT id
+                FROM reminders
+                WHERE entity_type='job'
+                  AND entity_id=?
+                  AND sent_at_utc IS NULL
+                  AND remind_at_utc=?
+                  AND message=?
+                ORDER BY id ASC
+                LIMIT 1
+                """,
+                (job_id, old_followup_utc, old_auto_message),
+            ).fetchone()
 
         conn.execute(
             """
@@ -1360,6 +1374,24 @@ def update_job(
                   AND message IS NOT NULL
                 """,
                 (old_role, role_clean, job_id),
+            )
+
+        new_auto_message = f"Follow up: {company_clean} — {role_clean}"
+        if auto_reminder:
+            if followup_utc:
+                conn.execute(
+                    "UPDATE reminders SET remind_at_utc=?, message=? WHERE id=?",
+                    (followup_utc, new_auto_message, auto_reminder["id"]),
+                )
+            else:
+                conn.execute("DELETE FROM reminders WHERE id=?", (auto_reminder["id"],))
+        elif followup_utc and followup_utc != old_followup_utc:
+            conn.execute(
+                """
+                INSERT INTO reminders(entity_type, entity_id, remind_at_utc, message, created_at_utc)
+                VALUES('job', ?, ?, ?, ?)
+                """,
+                (job_id, followup_utc, new_auto_message, now_iso),
             )
 
         conn.commit()
@@ -1464,10 +1496,14 @@ def create_expense(
     recurrence_interval: int = Form(1),
     auto_template: str = Form("on"),
 ):
+    amount_clean = amount.replace("$", "").replace(",", "").strip()
     try:
-        amt = float(amount)
-    except ValueError:
-        amt = 0.0
+        amt = float(amount_clean)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Expense amount must be a valid number.") from exc
+
+    if amt < 0:
+        raise HTTPException(status_code=400, detail="Expense amount cannot be negative.")
 
     due_utc = parse_local_datetime_localinput(due_at_local, settings.timezone)
     now = now_utc().isoformat()
@@ -1524,7 +1560,12 @@ def set_expense_status(expense_id: int, status: str = Form(...)):
 
         conn.execute("UPDATE expenses SET status=?, updated_at_utc=? WHERE id=?", (status, now, expense_id))
 
-        if status == "paid" and exp["recurrence"] and exp["recurrence"] != "none":
+        if (
+            status == "paid"
+            and exp["status"] != "paid"
+            and exp["recurrence"]
+            and exp["recurrence"] != "none"
+        ):
             due_dt = datetime.fromisoformat(exp["due_at_utc"])
             if due_dt.tzinfo is None:
                 due_dt = due_dt.replace(tzinfo=timezone.utc)
@@ -1542,26 +1583,50 @@ def set_expense_status(expense_id: int, status: str = Form(...)):
                 next_due = None
 
             if next_due:
-                cur = conn.execute(
+                next_due_iso = next_due.isoformat()
+                existing_next = conn.execute(
                     """
-                    INSERT INTO expenses(title, category, amount, due_at_utc, status, notes, created_at_utc, updated_at_utc, recurrence, recurrence_interval)
-                    VALUES(?,?,?,?,?,?,?,?,?,?)
+                    SELECT id
+                    FROM expenses
+                    WHERE id != ?
+                      AND title = ?
+                      AND amount = ?
+                      AND due_at_utc = ?
+                      AND recurrence = ?
+                      AND recurrence_interval = ?
+                    LIMIT 1
                     """,
                     (
+                        expense_id,
                         exp["title"],
-                        exp["category"] or "",
                         float(exp["amount"]),
-                        next_due.isoformat(),
-                        "unpaid",
-                        exp["notes"] or "",
-                        now,
-                        now,
+                        next_due_iso,
                         exp["recurrence"],
                         interval,
                     ),
-                )
-                new_id = cur.lastrowid
-                _create_default_expense_reminders(conn, new_id, exp["title"], next_due.isoformat())
+                ).fetchone()
+
+                if not existing_next:
+                    cur = conn.execute(
+                        """
+                        INSERT INTO expenses(title, category, amount, due_at_utc, status, notes, created_at_utc, updated_at_utc, recurrence, recurrence_interval)
+                        VALUES(?,?,?,?,?,?,?,?,?,?)
+                        """,
+                        (
+                            exp["title"],
+                            exp["category"] or "",
+                            float(exp["amount"]),
+                            next_due_iso,
+                            "unpaid",
+                            exp["notes"] or "",
+                            now,
+                            now,
+                            exp["recurrence"],
+                            interval,
+                        ),
+                    )
+                    new_id = cur.lastrowid
+                    _create_default_expense_reminders(conn, new_id, exp["title"], next_due_iso)
 
         conn.commit()
 
@@ -1960,7 +2025,10 @@ def login_submit(
             },
         )
 
-    if username == APP_USERNAME and password == APP_PASSWORD:
+    if (
+        secrets.compare_digest(username, APP_USERNAME)
+        and secrets.compare_digest(password, APP_PASSWORD)
+    ):
         request.session["user"] = username
         return RedirectResponse(next or "/", status_code=303)
     

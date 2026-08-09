@@ -122,10 +122,13 @@ CREATE TABLE IF NOT EXISTS events (
 
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
+    # Be resilient when the scheduler and a web request write at the same time.
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(DB_PATH, timeout=10.0)
     conn.row_factory = sqlite3.Row
     # Make sure FK constraints actually enforce
     conn.execute("PRAGMA foreign_keys=ON;")
+    conn.execute("PRAGMA busy_timeout=10000;")
     return conn
 
 
@@ -137,18 +140,11 @@ def _ensure_column(conn, table: str, col_name: str, col_def_sql: str) -> None:
 
 
 def _upsert_setting(conn, key: str, value: str) -> None:
-    try:
-        conn.execute(
-            "INSERT INTO app_settings(key, value) VALUES(?, ?) "
-            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-            (key, value),
-        )
-    except Exception:
-        row = conn.execute("SELECT key FROM app_settings WHERE key=?", (key,)).fetchone()
-        if row:
-            conn.execute("UPDATE app_settings SET value=? WHERE key=?", (value, key))
-        else:
-            conn.execute("INSERT INTO app_settings(key, value) VALUES(?, ?)", (key, value))
+    conn.execute(
+        "INSERT INTO app_settings(key, value) VALUES(?, ?) "
+        "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        (key, value),
+    )
 
 
 def _migrate_items_allow_lab(conn) -> None:

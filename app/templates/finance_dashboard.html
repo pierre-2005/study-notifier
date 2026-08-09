@@ -1,85 +1,111 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="card p-5">
-  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <div>
-      <div class="h1">Finance</div>
-      <div class="muted mt-1">Bank statements, budgets, monthly comparison, and transaction rules.</div>
-    </div>
-    <div class="hstack">
-      <a class="btn btn-primary" href="/finance/import">Import PDFs</a>
-      <a class="btn" href="/finance/transactions">Transactions</a>
-      <a class="btn" href="/finance/budget">Budget</a>
-      <a class="btn" href="/finance/monthly">Monthly</a>
-      <a class="btn" href="/finance/rules">Rules</a>
-    </div>
+<div class="page-heading">
+  <div>
+    <div class="eyebrow">Money</div>
+    <h1>Finance</h1>
+    <p>Import statements, review spending, compare months, manage budgets, and refine transaction rules.</p>
+  </div>
+  <div class="hstack page-actions">
+    <a class="btn" href="/finance/transactions">Transactions</a>
+    <a class="btn btn-primary" href="/finance/import">Import PDFs</a>
   </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mt-5">
-  <div class="card"><div class="card-b">
-    <div class="muted text-xs uppercase tracking-wide">Included spending</div>
-    <div style="margin-top:6px; font-size:28px; font-weight:900;">{{ money(summary.included_total) }}</div>
-  </div></div>
-  <div class="card"><div class="card-b">
-    <div class="muted text-xs uppercase tracking-wide">Monthly average</div>
-    <div style="margin-top:6px; font-size:28px; font-weight:900;">{{ money(summary.monthly_average) }}</div>
-  </div></div>
-  <div class="card"><div class="card-b">
-    <div class="muted text-xs uppercase tracking-wide">Cash left</div>
-    <div style="margin-top:6px; font-size:28px; font-weight:900;">{{ money(summary.cash_left) }}</div>
-  </div></div>
-  <div class="card"><div class="card-b">
-    <div class="muted text-xs uppercase tracking-wide">Months loaded</div>
-    <div style="margin-top:6px; font-size:28px; font-weight:900;">{{ summary.months_count }}</div>
-  </div></div>
+<nav class="subnav" aria-label="Finance sections">
+  <a class="active" href="/finance">Overview</a>
+  <a href="/finance/transactions">Transactions</a>
+  <a href="/finance/budget">Budget</a>
+  <a href="/finance/monthly">Monthly</a>
+  <a href="/finance/rules">Rules</a>
+</nav>
+
+<div class="metric-grid finance-metric-grid">
+  <a class="metric-card" href="/finance/transactions">
+    <span class="metric-label">Included spending</span>
+    <strong class="metric-value metric-money">{{ money(summary.included_total) }}</strong>
+    <span class="metric-note">Included transactions →</span>
+  </a>
+  <a class="metric-card" href="/finance/monthly">
+    <span class="metric-label">Monthly average</span>
+    <strong class="metric-value metric-money">{{ money(summary.monthly_average) }}</strong>
+    <span class="metric-note">Compare months →</span>
+  </a>
+  <a class="metric-card" href="/finance/budget">
+    <span class="metric-label">Cash left</span>
+    <strong class="metric-value metric-money">{{ money(summary.cash_left) }}</strong>
+    <span class="metric-note">Review budget →</span>
+  </a>
+  <a class="metric-card" href="/finance/monthly">
+    <span class="metric-label">Months loaded</span>
+    <strong class="metric-value">{{ summary.months_count }}</strong>
+    <span class="metric-note">Monthly history →</span>
+  </a>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5">
-  <div class="card lg:col-span-2">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+  <section class="card lg:col-span-2">
     <div class="card-h">
       <div>
         <div class="h2">Recent transactions</div>
-        <div class="muted mt-1">Latest included transactions.</div>
+        <div class="muted mt-1">Latest included activity from imported statements.</div>
       </div>
       <a class="btn" href="/finance/transactions">View all</a>
     </div>
-    <div class="card-b overflow-x-auto">
-      <table class="table">
-        <thead><tr><th>Date</th><th>Bank</th><th>Description</th><th>Amount</th><th>Category</th></tr></thead>
-        <tbody>
-          {% for t in recent %}
-          <tr>
-            <td>{{ t["date"] }}</td>
-            <td>{{ t["bank"] }}</td>
-            <td><a href="/finance/transactions/{{ t['id'] }}" style="color:inherit; text-decoration:none; font-weight:900;">{{ t["description"] }}</a></td>
-            <td>{{ money(t["amount"]) }}</td>
-            <td><span class="badge">{{ t["category"] }}</span></td>
-          </tr>
-          {% endfor %}
-          {% if recent|length == 0 %}
-          <tr><td colspan="5" class="muted">No transactions yet. Import a statement to start.</td></tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+    <div class="card-b">
+      <div class="sm:hidden space-y-2">
+        {% for t in recent %}
+          <a href="/finance/transactions/{{ t['id'] }}" class="compact-list-card">
+            <div class="compact-list-card-main">
+              <div class="compact-list-card-title">{{ t["description"] }}</div>
+              <div class="small mt-1">{{ t["date"] }} · {{ t["bank"] }}</div>
+              <div class="muted mt-2">{{ t["category"] }}</div>
+            </div>
+            <strong class="finance-mobile-amount">{{ money(t["amount"]) }}</strong>
+          </a>
+        {% endfor %}
+        {% if recent|length == 0 %}<div class="empty-state">No transactions yet. Import a statement to start.</div>{% endif %}
+      </div>
 
-  <div class="card">
-    <div class="card-h"><div class="h2">Recent imports</div></div>
+      <div class="hidden sm:block overflow-x-auto">
+        <table class="table">
+          <thead><tr><th>Date</th><th>Bank</th><th>Description</th><th>Amount</th><th>Category</th></tr></thead>
+          <tbody>
+            {% for t in recent %}
+            <tr>
+              <td>{{ t["date"] }}</td>
+              <td>{{ t["bank"] }}</td>
+              <td><a href="/finance/transactions/{{ t['id'] }}" class="table-primary-link">{{ t["description"] }}</a></td>
+              <td>{{ money(t["amount"]) }}</td>
+              <td><span class="badge">{{ t["category"] }}</span></td>
+            </tr>
+            {% endfor %}
+            {% if recent|length == 0 %}<tr><td colspan="5" class="muted">No transactions yet. Import a statement to start.</td></tr>{% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-h">
+      <div>
+        <div class="h2">Recent imports</div>
+        <div class="muted mt-1">Most recently processed statement files.</div>
+      </div>
+      <a class="btn" href="/finance/import">Import</a>
+    </div>
     <div class="card-b">
       {% for i in imports %}
-        <div class="row py-3" {% if loop.first %}style="border-top:0;"{% endif %}>
-          <div style="font-weight:900; overflow-wrap:anywhere;">{{ i["filename"] }}</div>
-          <div class="small mt-1">{{ i["bank"] }} • {{ i["transaction_count"] }} parsed</div>
+        <div class="timeline-row">
+          <div class="timeline-title">{{ i["filename"] }}</div>
+          <div class="small mt-1">{{ i["bank"] }} · {{ i["transaction_count"] }} parsed</div>
         </div>
       {% endfor %}
-      {% if imports|length == 0 %}
-        <div class="muted">No PDFs imported yet.</div>
-      {% endif %}
+      {% if imports|length == 0 %}<div class="empty-state">No PDFs imported yet.</div>{% endif %}
     </div>
-  </div>
+  </section>
 </div>
 
 {% endblock %}

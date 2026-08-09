@@ -1,16 +1,18 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from app.finance import budget, monthly, service
-from app.finance.db import init_finance_schema
 from app.finance.parser import TRANSACTION_TYPES
+from app.meta import APP_VERSION
 
-init_finance_schema()
-
-templates = Jinja2Templates(directory="app/templates")
+TEMPLATES_DIR = Path(__file__).resolve().parents[1] / "templates"
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+templates.env.globals["APP_VERSION"] = APP_VERSION
 router = APIRouter(prefix="/finance", tags=["finance"])
 
 

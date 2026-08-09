@@ -2,170 +2,275 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#fbfbfa">
   <title>{{ title if title else "My Life Organized" }}</title>
 
   <link rel="icon" href="/static/favicon.ico">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 
-  <!-- Set theme ASAP to avoid flash -->
+  <!-- Apply the saved theme before paint to prevent a flash. -->
   <script>
     (function () {
       try {
-        const mode = localStorage.getItem("theme") || "system";
-        const prefersDark =
-          window.matchMedia &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-        const useDark = mode === "dark" || (mode === "system" && prefersDark);
-
-        document.documentElement.classList.toggle("dark", useDark);
+        var mode = localStorage.getItem("theme") || "system";
+        if (["system", "light", "dark"].indexOf(mode) === -1) mode = "system";
+        var dark = mode === "dark" || (mode === "system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.classList.toggle("dark", dark);
         document.documentElement.dataset.theme = mode;
-      } catch (e) {}
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", dark ? "#191919" : "#fbfbfa");
+      } catch (_) {}
     })();
   </script>
 
-  <!-- Theme tokens + components -->
-  <link rel="stylesheet" href="/static/theme.css?v=5">
-  <script src="/static/theme.js?v=5" defer></script>
-
-
-  <style>
-    .nav a.active {
-      background: var(--panel2);
-      border: 1px solid var(--border);
-    }
-  </style>
+  <link rel="stylesheet" href="/static/theme.css?v={{ APP_VERSION }}">
+  <script src="/static/theme.js?v={{ APP_VERSION }}" defer></script>
 </head>
 
 <body>
-  <div class="topbar">
-    <div class="topbar-inner">
-      <div>
-        <div class="brand">
-          <span style="font-size:16px;">📌</span>
-          <span>My Life Organized</span>
-        </div>
-        <div class="small" style="margin-top:2px;">
-          Assignments, Exams, Job applications, Expenses and Schedule
-        </div>
-      </div>
+  <a class="skip-link" href="#main-content">Skip to content</a>
 
-      <div class="hstack" style="align-items:center; gap:10px;">
-        <div class="themeModeBar" role="group" aria-label="Theme mode">
+  {% set logged_in = request.session.get("user") %}
+  {% set p = request.url.path %}
+
+  {% if logged_in %}
+    <div class="app-layout" data-app-layout>
+      <aside class="app-sidebar" id="app-sidebar" aria-label="Primary navigation">
+        <div class="sidebar-head">
+          <a class="workspace-mark" href="/" aria-label="My Life Organized dashboard">
+            <span class="workspace-icon" aria-hidden="true">M</span>
+            <span class="workspace-copy">
+              <strong>My Life Organized</strong>
+              <span>Personal workspace</span>
+            </span>
+          </a>
+
+          <button class="icon-btn sidebar-collapse-btn" type="button" data-sidebar-collapse aria-label="Collapse sidebar" title="Collapse sidebar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+        </div>
+
+        <div class="sidebar-tools">
+          <button class="sidebar-tool" type="button" data-command-open>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <span>Quick switcher</span>
+            <kbd>Ctrl K</kbd>
+          </button>
+
+          <div class="quick-add-wrap">
+            <button class="sidebar-tool" type="button" data-quick-add-toggle aria-expanded="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              <span>New</span>
+              <svg class="tool-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+            <div class="quick-add-menu" data-quick-add-menu hidden>
+              <a href="/todos/new"><span>✓</span> To-do</a>
+              <a href="/items/new"><span>□</span> Assignment / exam / lab</a>
+              <a href="/events/new"><span>◷</span> Event</a>
+              <a href="/classes/new"><span>▦</span> Class</a>
+              <a href="/expenses/new"><span>$</span> Expense</a>
+              <a href="/jobs/new"><span>⌁</span> Job application</a>
+              <a href="/courses/new"><span>▤</span> Course</a>
+            </div>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <div class="nav-section-label">Workspace</div>
+
+          <a class="nav-item {{ 'active' if p=='/' else '' }}" href="/" data-nav-key="dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>
+            <span>Dashboard</span>
+          </a>
+
+          <a class="nav-item {{ 'active' if p.startswith('/todos') else '' }}" href="/todos" data-nav-key="todos">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>
+            <span>To-Do</span>
+          </a>
+
+          <a class="nav-item {{ 'active' if p.startswith('/courses') else '' }}" href="/courses" data-nav-key="courses">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5z"/><path d="M4 6.5v13"/></svg>
+            <span>Courses</span>
+          </a>
+
+          <a class="nav-item {{ 'active' if p.startswith('/items') else '' }}" href="/items" data-nav-key="items">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span>Assignments & Exams</span>
+          </a>
+
+          <a class="nav-item {{ 'active' if (p.startswith('/schedule') or p.startswith('/classes') or p.startswith('/events')) else '' }}" href="/schedule" data-nav-key="schedule">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+            <span>Schedule</span>
+          </a>
+
+          <div class="nav-section-label">Life</div>
+
+          <a class="nav-item {{ 'active' if p.startswith('/finance') else '' }}" href="/finance" data-nav-key="finance">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 16 4-4 3 3 5-7"/></svg>
+            <span>Finance</span>
+          </a>
+
+          <a class="nav-item {{ 'active' if p.startswith('/expenses') else '' }}" href="/expenses" data-nav-key="expenses">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M16 15h2"/></svg>
+            <span>Expenses</span>
+          </a>
+
+          <a class="nav-item {{ 'active' if p.startswith('/jobs') else '' }}" href="/jobs" data-nav-key="jobs">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/></svg>
+            <span>Jobs</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-foot">
+          <a class="nav-item {{ 'active' if p.startswith('/settings') else '' }}" href="/settings" data-nav-key="settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8.5 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3V9.6h.1A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.4.3.8.7 1 1 .2.4.4.8.4 1.1v.1H21v4h-.1c-.4 0-.8.2-1.1.4-.2.1-.3.2-.4.4z"/></svg>
+            <span>Settings</span>
+          </a>
+
+          <button class="nav-item nav-item-button" type="button" data-customize-open>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+            <span>Customize</span>
+          </button>
+
+          <div class="sidebar-account">
+            <div class="account-avatar" aria-hidden="true">{{ request.session.get("user", "U")[:1] | upper }}</div>
+            <div class="account-copy">
+              <strong>{{ request.session.get("user") }}</strong>
+              <span>v{{ APP_VERSION }}</span>
+            </div>
+            <form method="post" action="/logout" class="account-logout">
+              <button class="icon-btn" type="submit" aria-label="Log out" title="Log out">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/></svg>
+              </button>
+            </form>
+          </div>
+        </div>
+      </aside>
+
+      <div class="sidebar-overlay" data-sidebar-overlay hidden></div>
+
+      <main class="app-main" id="main-content">
+        <header class="mobile-header">
+          <button class="icon-btn" type="button" data-mobile-menu aria-label="Open navigation">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+          </button>
+          <a class="mobile-brand" href="/">
+            <span class="workspace-icon">M</span>
+            <strong>My Life Organized</strong>
+          </a>
+          <button class="icon-btn" type="button" data-command-open aria-label="Open quick switcher">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          </button>
+        </header>
+
+        <div class="shell app-content">
+          
+  {% else %}
+    <main class="guest-main" id="main-content">
+      <div class="shell guest-shell">
+          {% endif %}
+
+          {% block content %}{% endblock %}
+
+  {% if logged_in %}
+          <footer class="app-footer">My Life Organized · v{{ APP_VERSION }}</footer>
+        </div>
+      </main>
+
+      <nav class="mobile-dock" aria-label="Mobile navigation">
+        <a class="mobile-dock-item {{ 'active' if p=='/' else '' }}" href="/" data-nav-key="dashboard">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg><span>Home</span>
+        </a>
+        <a class="mobile-dock-item {{ 'active' if p.startswith('/todos') else '' }}" href="/todos" data-nav-key="todos">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg><span>To-Do</span>
+        </a>
+        <a class="mobile-dock-item {{ 'active' if p.startswith('/items') else '' }}" href="/items" data-nav-key="items">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>School</span>
+        </a>
+        <a class="mobile-dock-item {{ 'active' if (p.startswith('/schedule') or p.startswith('/classes') or p.startswith('/events')) else '' }}" href="/schedule" data-nav-key="schedule">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg><span>Schedule</span>
+        </a>
+        <button class="mobile-dock-item" type="button" data-mobile-more aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg><span>More</span>
+        </button>
+      </nav>
+
+      <section class="mobile-more-sheet" data-mobile-more-sheet aria-label="More navigation" hidden>
+        <div class="sheet-handle"></div>
+        <div class="mobile-more-grid">
+          <a href="/courses" data-nav-key="courses">Courses</a>
+          <a href="/finance" data-nav-key="finance">Finance</a>
+          <a href="/expenses" data-nav-key="expenses">Expenses</a>
+          <a href="/jobs" data-nav-key="jobs">Jobs</a>
+          <a href="/settings" data-nav-key="settings">Settings</a>
+          <button type="button" data-customize-open>Customize</button>
+        </div>
+        <div class="themeModeBar mobile-theme-bar" role="group" aria-label="Theme mode">
           <button class="themeModeBtn" type="button" data-theme-choice="system">System</button>
           <button class="themeModeBtn" type="button" data-theme-choice="light">Light</button>
           <button class="themeModeBtn" type="button" data-theme-choice="dark">Dark</button>
         </div>
-
-        {% if request.session.get("user") %}
-          <form method="post" action="/logout" style="display:inline; margin:0;">
-            <button class="btn" type="submit">Logout</button>
-          </form>
-        {% endif %}
-      </div>
+      </section>
     </div>
 
-    {% if request.session.get("user") %}
-      {% set p = request.url.path %}
-      <div class="topbar-inner" style="padding-top:0; padding-bottom:12px;">
-        <div class="nav">
-          <a class="{{ 'active' if p=='/' else '' }}" href="/">Dashboard</a>
-          <a class="{{ 'active' if p.startswith('/courses') else '' }}" href="/courses">Courses</a>
-          <a class="{{ 'active' if p.startswith('/items') else '' }}" href="/items">Assignments/Exams/Labs</a>
-          <a class="{{ 'active' if p.startswith('/jobs') else '' }}" href="/jobs">Jobs</a>
-          <a class="{{ 'active' if p.startswith('/expenses') else '' }}" href="/expenses">Expenses</a>
-          <a class="{{ 'active' if (p.startswith('/schedule') or p.startswith('/classes') or p.startswith('/events')) else '' }}" href="/schedule">Schedule</a>
-          <a class="{{ 'active' if p.startswith('/settings') else '' }}" href="/settings">Settings</a>
-          <a class="{{ 'active' if p.startswith('/todos') else '' }}" href="/todos">To-Do</a>
-          <a href="/finance">Finance</a>
+    <div class="dialog-backdrop" data-customize-dialog hidden>
+      <section class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="customize-title">
+        <div class="dialog-head">
+          <div>
+            <h2 id="customize-title">Customize navigation</h2>
+            <p>Hide sections you do not use. Nothing is deleted and you can turn them back on anytime.</p>
+          </div>
+          <button class="icon-btn" type="button" data-customize-close aria-label="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
         </div>
-      </div>
-    {% endif %}
-  </div>
-
-  <div class="shell">
-    {% block content %}{% endblock %}
-
-    <div style="margin-top:28px; text-align:center;" class="small">
-      My Life Organized <span style="font-weight:800;">v{{ APP_VERSION }}</span>
+        <div class="nav-toggle-list">
+          <label class="switch-row"><span><strong>To-Do</strong><small>Tasks and digest reminders</small></span><input type="checkbox" data-nav-setting="todos" checked><i></i></label>
+          <label class="switch-row"><span><strong>Courses</strong><small>Your course workspace</small></span><input type="checkbox" data-nav-setting="courses" checked><i></i></label>
+          <label class="switch-row"><span><strong>Assignments & Exams</strong><small>Assignments, exams and labs</small></span><input type="checkbox" data-nav-setting="items" checked><i></i></label>
+          <label class="switch-row"><span><strong>Schedule</strong><small>Classes and events</small></span><input type="checkbox" data-nav-setting="schedule" checked><i></i></label>
+          <label class="switch-row"><span><strong>Finance</strong><small>Statements, budgets and analysis</small></span><input type="checkbox" data-nav-setting="finance" checked><i></i></label>
+          <label class="switch-row"><span><strong>Expenses</strong><small>Upcoming payments</small></span><input type="checkbox" data-nav-setting="expenses" checked><i></i></label>
+          <label class="switch-row"><span><strong>Jobs</strong><small>Applications and follow-ups</small></span><input type="checkbox" data-nav-setting="jobs" checked><i></i></label>
+        </div>
+        <div class="dialog-actions">
+          <button class="btn" type="button" data-nav-reset>Show all tabs</button>
+          <button class="btn btn-primary" type="button" data-customize-close>Done</button>
+        </div>
+      </section>
     </div>
-  </div>
 
-  <script>
-    (function () {
-      const validThemes = ["system", "light", "dark"];
-
-      function systemPrefersDark() {
-        return window.matchMedia &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches;
-      }
-
-      function normalizeTheme(mode) {
-        return validThemes.includes(mode) ? mode : "system";
-      }
-
-      function applyThemeFallback(mode) {
-        mode = normalizeTheme(mode);
-
-        const useDark = mode === "dark" || (mode === "system" && systemPrefersDark());
-
-        document.documentElement.classList.toggle("dark", useDark);
-        document.documentElement.dataset.theme = mode;
-        localStorage.setItem("theme", mode);
-      }
-
-      function getThemeMode() {
-        if (window.__getTheme) {
-          return normalizeTheme(window.__getTheme());
-        }
-
-        return normalizeTheme(localStorage.getItem("theme") || "system");
-      }
-
-      function setThemeMode(mode) {
-        mode = normalizeTheme(mode);
-
-        if (window.__setTheme) {
-          window.__setTheme(mode);
-        } else {
-          applyThemeFallback(mode);
-        }
-
-        renderThemeBar();
-      }
-
-      function renderThemeBar() {
-        const current = getThemeMode();
-
-        document.querySelectorAll("[data-theme-choice]").forEach(function (btn) {
-          const active = btn.dataset.themeChoice === current;
-          btn.classList.toggle("is-active", active);
-          btn.setAttribute("aria-pressed", active ? "true" : "false");
-        });
-      }
-
-      document.addEventListener("DOMContentLoaded", function () {
-        renderThemeBar();
-
-        document.querySelectorAll("[data-theme-choice]").forEach(function (btn) {
-          btn.addEventListener("click", function () {
-            setThemeMode(btn.dataset.themeChoice);
-          });
-        });
-      });
-
-      document.addEventListener("mlo:themechange", renderThemeBar);
-
-      if (window.matchMedia) {
-        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
-          if (getThemeMode() === "system" && !window.__setTheme) {
-            applyThemeFallback("system");
-          }
-          renderThemeBar();
-        });
-      }
-    })();
-  </script>
+    <div class="dialog-backdrop" data-command-dialog hidden>
+      <section class="command-dialog" role="dialog" aria-modal="true" aria-label="Quick switcher">
+        <div class="command-search-wrap">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input type="search" placeholder="Go to a page or create something…" autocomplete="off" data-command-input>
+          <kbd>Esc</kbd>
+        </div>
+        <div class="command-results" data-command-results>
+          <div class="command-group-label">Go to</div>
+          <a href="/" data-command-item data-search="dashboard home overview"><span>Dashboard</span><small>Overview</small></a>
+          <a href="/todos" data-command-item data-search="todo tasks list"><span>To-Do</span><small>Tasks</small></a>
+          <a href="/courses" data-command-item data-search="courses school classes"><span>Courses</span><small>School</small></a>
+          <a href="/items" data-command-item data-search="assignments exams labs school"><span>Assignments & Exams</span><small>School</small></a>
+          <a href="/schedule" data-command-item data-search="schedule calendar classes events"><span>Schedule</span><small>Calendar</small></a>
+          <a href="/finance" data-command-item data-search="finance money budget statements transactions"><span>Finance</span><small>Money</small></a>
+          <a href="/expenses" data-command-item data-search="expenses bills payments"><span>Expenses</span><small>Payments</small></a>
+          <a href="/jobs" data-command-item data-search="jobs applications careers"><span>Jobs</span><small>Career</small></a>
+          <a href="/settings" data-command-item data-search="settings preferences reminders theme"><span>Settings</span><small>Preferences</small></a>
+          <div class="command-group-label">Create</div>
+          <a href="/todos/new" data-command-item data-search="new create todo task"><span>New to-do</span><small>Create</small></a>
+          <a href="/items/new" data-command-item data-search="new create assignment exam lab"><span>New school item</span><small>Create</small></a>
+          <a href="/events/new" data-command-item data-search="new create event calendar"><span>New event</span><small>Create</small></a>
+          <a href="/expenses/new" data-command-item data-search="new create expense bill"><span>New expense</span><small>Create</small></a>
+        </div>
+      </section>
+    </div>
+    {% else %}
+      </div>
+    </main>
+    {% endif %}
 </body>
 </html>

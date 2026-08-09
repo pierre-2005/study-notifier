@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import sqlite3
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -155,7 +156,7 @@ def insert_transaction(conn, tx: Transaction) -> bool:
             ),
         )
         return True
-    except Exception:
+    except sqlite3.IntegrityError:
         return False
 
 
