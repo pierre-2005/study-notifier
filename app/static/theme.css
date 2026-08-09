@@ -2205,3 +2205,141 @@ html.dark[data-palette="lavender"]{ --accent:#a58ad3; --accent-soft:rgba(165,138
 .recipe-ingredients li>form{flex:0 0 auto;margin:0}
 .ingredient-remove{border:0;background:transparent;color:var(--muted);font:inherit;font-size:18px;line-height:1;cursor:pointer;border-radius:6px;padding:3px 6px}
 .ingredient-remove:hover,.ingredient-remove:focus-visible{background:var(--hover);color:var(--text)}
+
+/* =========================================================
+   MLO 1.4.1 — appearance separation, history navigation,
+   and mobile More visibility
+   ========================================================= */
+
+/* Palette behavior:
+   - independent: Light/Dark own the workspace surfaces; palette owns accents.
+   - full: the palette may softly tint surfaces while still respecting Light/Dark. */
+html[data-palette-style="independent"]{
+  --bg:#fbfbfa;
+  --panel:#ffffff;
+  --panel2:#f7f6f3;
+  --panel3:#efefed;
+  --sidebar:#f7f7f5;
+  --sidebar-hover:#efefed;
+  --sidebar-active:#e8e8e5;
+}
+html.dark[data-palette-style="independent"]{
+  --bg:#191919;
+  --panel:#202020;
+  --panel2:#252525;
+  --panel3:#2f2f2f;
+  --sidebar:#202020;
+  --sidebar-hover:#292929;
+  --sidebar-active:#30302f;
+}
+
+html[data-palette="neutral"]{
+  --accent:#787774;
+  --accent-soft:rgba(120,119,116,.13);
+  --ring:rgba(120,119,116,.22);
+}
+html.dark[data-palette="neutral"]{
+  --accent:#b5b4b0;
+  --accent-soft:rgba(181,180,176,.14);
+  --ring:rgba(181,180,176,.22);
+}
+
+/* Full themes deliberately use subtle surface tints rather than recoloring the
+   whole interface. This keeps dark mode calm and light mode visibly distinct. */
+html:not(.dark)[data-palette-style="full"][data-palette="neutral"]{
+  --bg:#fbfbfa; --panel:#ffffff; --panel2:#f7f6f3; --panel3:#efefed;
+  --sidebar:#f5f4f1; --sidebar-hover:#eceae6; --sidebar-active:#e5e2dc;
+}
+html:not(.dark)[data-palette-style="full"][data-palette="ocean"]{
+  --bg:#f9fbfd; --panel:#ffffff; --panel2:#f3f7fb; --panel3:#e9f1f8;
+  --sidebar:#f2f7fb; --sidebar-hover:#e7f0f8; --sidebar-active:#dceaf5;
+}
+html:not(.dark)[data-palette-style="full"][data-palette="sage"]{
+  --bg:#fafcf9; --panel:#ffffff; --panel2:#f4f8f3; --panel3:#eaf2e8;
+  --sidebar:#f3f7f1; --sidebar-hover:#e9f0e6; --sidebar-active:#dfe9dc;
+}
+html:not(.dark)[data-palette-style="full"][data-palette="rose"]{
+  --bg:#fdfafb; --panel:#ffffff; --panel2:#faf3f5; --panel3:#f3e8ec;
+  --sidebar:#f9f2f4; --sidebar-hover:#f1e7ea; --sidebar-active:#eadde1;
+}
+html:not(.dark)[data-palette-style="full"][data-palette="amber"]{
+  --bg:#fdfbf7; --panel:#ffffff; --panel2:#faf6ec; --panel3:#f3ead8;
+  --sidebar:#faf6ed; --sidebar-hover:#f3ecdd; --sidebar-active:#eadfc7;
+}
+html:not(.dark)[data-palette-style="full"][data-palette="lavender"]{
+  --bg:#fcfafd; --panel:#ffffff; --panel2:#f7f3fa; --panel3:#eee8f4;
+  --sidebar:#f6f2fa; --sidebar-hover:#ede7f4; --sidebar-active:#e4ddec;
+}
+
+html.dark[data-palette-style="full"][data-palette="neutral"]{
+  --bg:#191919; --panel:#202020; --panel2:#252525; --panel3:#2f2f2f;
+  --sidebar:#202020; --sidebar-hover:#292929; --sidebar-active:#30302f;
+}
+html.dark[data-palette-style="full"][data-palette="ocean"]{
+  --bg:#181a1d; --panel:#1f2226; --panel2:#252a2f; --panel3:#2d343a;
+  --sidebar:#1c2024; --sidebar-hover:#252b31; --sidebar-active:#2b343d;
+}
+html.dark[data-palette-style="full"][data-palette="sage"]{
+  --bg:#181a18; --panel:#1f221f; --panel2:#252a26; --panel3:#2d342f;
+  --sidebar:#1c201d; --sidebar-hover:#252b27; --sidebar-active:#2c342e;
+}
+html.dark[data-palette-style="full"][data-palette="rose"]{
+  --bg:#1a1819; --panel:#221f20; --panel2:#2a2527; --panel3:#342d30;
+  --sidebar:#201c1e; --sidebar-hover:#292326; --sidebar-active:#332a2e;
+}
+html.dark[data-palette-style="full"][data-palette="amber"]{
+  --bg:#1a1916; --panel:#22211d; --panel2:#2a2822; --panel3:#343128;
+  --sidebar:#201f1a; --sidebar-hover:#29271f; --sidebar-active:#332f24;
+}
+html.dark[data-palette-style="full"][data-palette="lavender"]{
+  --bg:#19181b; --panel:#211f24; --panel2:#28252d; --panel3:#312d38;
+  --sidebar:#1f1d22; --sidebar-hover:#28242d; --sidebar-active:#312b39;
+}
+
+/* Make the selected palette legible even in independent/accent-only mode. */
+.nav-item.active{
+  background:var(--accent-soft);
+  color:var(--text);
+}
+.nav-item.active svg{ color:var(--accent); }
+.mobile-dock-item.active{
+  background:var(--accent-soft);
+  color:var(--text);
+}
+.mobile-dock-item.active svg{ color:var(--accent); }
+.switch-row input:checked+i{ box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 14%,transparent); }
+
+.palette-style-bar{ max-width:360px; }
+.palette-style-help{ display:block; max-width:620px; margin-top:7px; line-height:1.45; }
+
+/* Global history control, modeled after a browser/workspace back action. */
+.desktop-history-bar{
+  position:sticky;
+  top:0;
+  z-index:48;
+  height:42px;
+  display:flex;
+  align-items:center;
+  padding:5px clamp(16px,2.5vw,32px);
+  background:color-mix(in srgb,var(--bg) 90%,transparent);
+  border-bottom:1px solid transparent;
+  backdrop-filter:blur(12px);
+}
+.desktop-history-bar .global-back-btn{
+  width:30px;
+  height:30px;
+}
+.mobile-header-actions{ display:flex; align-items:center; gap:2px; }
+
+@media (min-width:821px){
+  .shell.app-content{ padding-top:20px; }
+}
+
+@media (max-width:820px){
+  .desktop-history-bar{ display:none; }
+
+  /* This explicitly overrides the desktop `.mobile-more-sheet{display:none}`
+     rule. Removing `hidden` now makes the sheet visible on phone/tablet. */
+  .mobile-more-sheet{ display:block; }
+  .mobile-more-sheet[hidden]{ display:none!important; }
+}

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-palette="neutral">
+<html lang="en" data-palette="neutral" data-palette-style="independent">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
@@ -18,10 +18,13 @@
         if (["system", "light", "dark"].indexOf(mode) === -1) mode = "system";
         var palette = localStorage.getItem("mlo.palette") || "neutral";
         if (["neutral","ocean","sage","rose","amber","lavender"].indexOf(palette) === -1) palette = "neutral";
+        var paletteStyle = localStorage.getItem("mlo.palette.style") || "independent";
+        if (["independent","full"].indexOf(paletteStyle) === -1) paletteStyle = "independent";
         var dark = mode === "dark" || (mode === "system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
         document.documentElement.classList.toggle("dark", dark);
         document.documentElement.dataset.theme = mode;
         document.documentElement.dataset.palette = palette;
+        document.documentElement.dataset.paletteStyle = paletteStyle;
         var meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute("content", dark ? "#191919" : "#fbfbfa");
       } catch (_) {}
@@ -160,8 +163,16 @@
       <div class="sidebar-overlay" data-sidebar-overlay hidden></div>
 
       <main class="app-main" id="main-content">
+        <div class="desktop-history-bar" aria-label="Page history">
+          <button class="icon-btn global-back-btn" type="button" data-global-back data-back-fallback="{{ '/' if is_admin else '/sections' }}" aria-label="Go back" title="Back">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+        </div>
         <header class="mobile-header">
-          <button class="icon-btn" type="button" data-mobile-menu aria-label="Open navigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+          <div class="mobile-header-actions">
+            <button class="icon-btn global-back-btn" type="button" data-global-back data-back-fallback="{{ '/' if is_admin else '/sections' }}" aria-label="Go back" title="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+            <button class="icon-btn" type="button" data-mobile-menu aria-label="Open navigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+          </div>
           <a class="mobile-brand" href="{{ '/' if is_admin else '/sections' }}"><span class="workspace-icon">M</span><strong>My Life Organized</strong></a>
           <button class="icon-btn" type="button" data-command-open aria-label="Open quick switcher"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
         </header>

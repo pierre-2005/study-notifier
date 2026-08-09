@@ -4,10 +4,12 @@
   const root = document.documentElement;
   const THEME_KEY = "theme";
   const PALETTE_KEY = "mlo.palette";
+  const PALETTE_STYLE_KEY = "mlo.palette.style";
   const SIDEBAR_KEY = "mlo.sidebar.collapsed";
   const NAV_KEY = "mlo.navigation.v2";
   const validThemes = ["system", "light", "dark"];
   const validPalettes = ["neutral", "ocean", "sage", "rose", "amber", "lavender"];
+  const validPaletteStyles = ["independent", "full"];
   const optionalNavKeys = ["todos", "courses", "items", "schedule", "finance", "expenses", "jobs", "timers"];
 
   function safeGet(key, fallback) {
@@ -27,6 +29,7 @@
 
   function normalizeTheme(mode) { return validThemes.includes(mode) ? mode : "system"; }
   function normalizePalette(palette) { return validPalettes.includes(palette) ? palette : "neutral"; }
+  function normalizePaletteStyle(style) { return validPaletteStyles.includes(style) ? style : "independent"; }
 
   function applyTheme(mode) {
     mode = normalizeTheme(mode);
@@ -44,8 +47,15 @@
     return palette;
   }
 
+  function applyPaletteStyle(style) {
+    style = normalizePaletteStyle(style);
+    root.dataset.paletteStyle = style;
+    return style;
+  }
+
   function getTheme() { return normalizeTheme(safeGet(THEME_KEY, "system")); }
   function getPalette() { return normalizePalette(safeGet(PALETTE_KEY, "neutral")); }
+  function getPaletteStyle() { return normalizePaletteStyle(safeGet(PALETTE_STYLE_KEY, "independent")); }
 
   function setTheme(mode) {
     mode = applyTheme(mode);
@@ -59,13 +69,22 @@
     palette = applyPalette(palette);
     safeSet(PALETTE_KEY, palette);
     renderAppearanceControls();
-    document.dispatchEvent(new CustomEvent("mlo:palettechange", { detail: { mode: getTheme(), palette } }));
+    document.dispatchEvent(new CustomEvent("mlo:palettechange", { detail: { mode: getTheme(), palette, style: getPaletteStyle() } }));
     return palette;
+  }
+
+  function setPaletteStyle(style) {
+    style = applyPaletteStyle(style);
+    safeSet(PALETTE_STYLE_KEY, style);
+    renderAppearanceControls();
+    document.dispatchEvent(new CustomEvent("mlo:palettestylechange", { detail: { mode: getTheme(), palette: getPalette(), style } }));
+    return style;
   }
 
   function renderAppearanceControls() {
     const theme = getTheme();
     const palette = getPalette();
+    const paletteStyle = getPaletteStyle();
     document.querySelectorAll("[data-theme-choice]").forEach((button) => {
       const active = button.dataset.themeChoice === theme;
       button.classList.toggle("is-active", active);
@@ -76,15 +95,23 @@
       button.classList.toggle("is-active", active);
       button.setAttribute("aria-pressed", active ? "true" : "false");
     });
+    document.querySelectorAll("[data-palette-style-choice]").forEach((button) => {
+      const active = button.dataset.paletteStyleChoice === paletteStyle;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
   }
 
   window.__setTheme = setTheme;
   window.__getTheme = getTheme;
   window.__setPalette = setPalette;
   window.__getPalette = getPalette;
+  window.__setPaletteStyle = setPaletteStyle;
+  window.__getPaletteStyle = getPaletteStyle;
 
   applyTheme(getTheme());
   applyPalette(getPalette());
+  applyPaletteStyle(getPaletteStyle());
 
   if (window.matchMedia) {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -165,6 +192,20 @@
     if (opening) closeMobileSidebar();
     sheet.hidden = !opening;
     button.setAttribute("aria-expanded", opening ? "true" : "false");
+  }
+
+  function goBack(button) {
+    const fallback = (button && button.dataset.backFallback) || "/";
+    let canGoBackInsideApp = false;
+    try {
+      if (document.referrer) {
+        const previous = new URL(document.referrer, window.location.href);
+        canGoBackInsideApp = previous.origin === window.location.origin && window.history.length > 1;
+      }
+    } catch (_) {}
+
+    if (canGoBackInsideApp) window.history.back();
+    else window.location.assign(fallback);
   }
 
   function updateDialogOpenState() {
@@ -326,6 +367,7 @@
 
     document.querySelectorAll("[data-theme-choice]").forEach((button) => button.addEventListener("click", () => setTheme(button.dataset.themeChoice)));
     document.querySelectorAll("[data-palette-choice]").forEach((button) => button.addEventListener("click", () => setPalette(button.dataset.paletteChoice)));
+    document.querySelectorAll("[data-palette-style-choice]").forEach((button) => button.addEventListener("click", () => setPaletteStyle(button.dataset.paletteStyleChoice)));
     document.querySelectorAll("[data-nav-setting]").forEach((input) => input.addEventListener("change", () => setNavVisible(input.dataset.navSetting, input.checked)));
     document.querySelectorAll("[data-nav-reset]").forEach((button) => button.addEventListener("click", resetNav));
     document.querySelectorAll("[data-sidebar-collapse]").forEach((button) => button.addEventListener("click", () => setSidebarCollapsed(!root.classList.contains("sidebar-collapsed"))));
@@ -333,6 +375,7 @@
     document.querySelectorAll("[data-sidebar-overlay]").forEach((overlay) => overlay.addEventListener("click", closeMobileSidebar));
     document.querySelectorAll(".app-sidebar a").forEach((link) => link.addEventListener("click", closeMobileSidebar));
     document.querySelectorAll("[data-mobile-more]").forEach((button) => button.addEventListener("click", toggleMobileMore));
+    document.querySelectorAll("[data-global-back]").forEach((button) => button.addEventListener("click", () => goBack(button)));
     document.querySelectorAll("[data-customize-open]").forEach((button) => button.addEventListener("click", openCustomize));
     document.querySelectorAll("[data-customize-close]").forEach((button) => button.addEventListener("click", closeCustomize));
     document.querySelectorAll("[data-command-open]").forEach((button) => button.addEventListener("click", openCommand));
