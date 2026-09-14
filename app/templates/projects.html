@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading hero-heading">
+  <div>
+    <div class="eyebrow">Plan · Build · Finish</div>
+    <h1>Projects</h1>
+    <p>One place for personal goals, school deliverables, work initiatives, clubs, and side projects.</p>
+  </div>
+  <div class="page-actions"><a class="btn btn-primary" href="/projects/new">New project</a></div>
+</div>
+
+<section class="card filter-card">
+  <form class="project-filter-grid" method="get" action="/projects">
+    <label class="field"><span class="label">Search</span><input class="input" name="q" value="{{ filters.q }}" placeholder="Project name, notes, outcome…"></label>
+    <label class="field"><span class="label">Category</span><select class="input" name="category"><option>All</option>{% for c in categories %}<option value="{{ c }}" {% if filters.category==c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+    <label class="field"><span class="label">Status</span><select class="input" name="status"><option value="open" {% if filters.status=='open' %}selected{% endif %}>Open projects</option>{% for s in ['idea','planned','active','paused','done','archived'] %}<option value="{{ s }}" {% if filters.status==s %}selected{% endif %}>{{ s|title }}</option>{% endfor %}</select></label>
+    <div class="filter-actions"><button class="btn" type="submit">Filter</button><a class="btn btn-ghost" href="/projects">Reset</a></div>
+  </form>
+</section>
+
+{% if projects %}
+<div class="project-grid">
+  {% for project in projects %}
+  <a class="project-card" href="/projects/{{ project['id'] }}" style="--project-accent:{{ project['color'] }}">
+    <div class="project-card-top">
+      <span class="project-category">{{ project['category'] }}</span>
+      <span class="project-priority priority-{{ project['priority'] }}">{{ project['priority'] }}</span>
+    </div>
+    <div class="project-title-row"><span class="project-accent-dot"></span><h2>{{ project['name'] }}</h2>{% if project['favorite'] %}<span title="Pinned">★</span>{% endif %}</div>
+    {% if project['description'] %}<p>{{ project['description'] }}</p>{% else %}<p class="muted">No description yet.</p>{% endif %}
+    <div class="project-meta"><span>{{ project['status']|title }}</span>{% if project['due_date'] %}<span>Due {{ project['due_date'] }}</span>{% endif %}</div>
+    <div class="progress-track" aria-label="{{ project['progress'] or 0 }}% complete"><i style="width:{{ project['progress'] or 0 }}%"></i></div>
+    <div class="project-progress-row"><span>{{ project['done_count'] or 0 }}/{{ project['task_count'] or 0 }} tasks complete</span><strong>{{ project['progress'] or 0 }}%</strong></div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<section class="card"><div class="card-b"><div class="empty-state large"><div class="empty-orb">✦</div><strong>No projects match this view.</strong><div class="muted mt-1">Create a project for school, work, personal goals, clubs, or anything with a finish line.</div><a class="btn btn-primary mt-4" href="/projects/new">Create your first project</a></div></div></section>
+{% endif %}
+{% endblock %}

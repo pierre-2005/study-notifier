@@ -8,7 +8,7 @@
 <div class="section-two-col">
   <div class="space-y-4">
     <section class="card"><div class="card-h"><div><div class="h2">Notes</div><div class="muted mt-1">A simple flexible writing area for this section.</div></div></div><form method="post" action="/sections/{{ section['id'] }}/update" class="card-b">
-      <input type="hidden" name="name" value="{{ section['name'] }}"><input type="hidden" name="icon" value="{{ section['icon'] }}"><input type="hidden" name="description" value="{{ section['description'] }}"><input type="hidden" name="show_in_sidebar" value="{{ 'on' if section['show_in_sidebar'] else 'off' }}">
+      <input type="hidden" name="name" value="{{ section['name'] }}"><input type="hidden" name="icon" value="{{ section['icon'] }}"><input type="hidden" name="description" value="{{ section['description'] }}"><input type="hidden" name="show_in_sidebar" value="{{ 'on' if section['show_in_sidebar'] else 'off' }}"><input type="hidden" name="category" value="{{ section['category'] }}"><input type="hidden" name="color" value="{{ section['color'] }}"><input type="hidden" name="favorite" value="{{ 'on' if section['favorite'] else 'off' }}">
       <textarea class="section-editor" name="content" placeholder="Start writing…" {% if not section['can_edit'] %}readonly{% endif %}>{{ section['content'] }}</textarea>
       {% if section['can_edit'] %}<div class="hstack"><button class="btn btn-primary" type="submit">Save notes</button></div>{% endif %}
     </form></section>
@@ -28,7 +28,9 @@
       <label class="field"><span class="label">Name</span><input class="input" name="name" value="{{ section['name'] }}" required></label>
       <label class="field"><span class="label">Icon</span><input class="input" name="icon" value="{{ section['icon'] }}" maxlength="8"></label>
       <label class="field"><span class="label">Description</span><textarea class="textarea" name="description">{{ section['description'] }}</textarea></label>
+      <div class="grid grid-cols-2 gap-2"><label class="field"><span class="label">Category</span><select class="input" name="category">{% for category in section_categories %}<option {% if section['category']==category %}selected{% endif %}>{{ category }}</option>{% endfor %}</select></label><label class="field"><span class="label">Accent</span><input class="input color-input" type="color" name="color" value="{{ section['color'] }}"></label></div>
       <input type="hidden" name="content" value="{{ section['content']|e }}">
+      <label class="switch-row"><span><strong>Pin section</strong><small>Keep it near the top of its category.</small></span><input type="checkbox" name="favorite" {% if section['favorite'] %}checked{% endif %}><i></i></label>
       <label class="switch-row"><span><strong>Show in sidebar</strong><small>You can still open hidden sections from All sections.</small></span><input type="checkbox" name="show_in_sidebar" {% if section['show_in_sidebar'] %}checked{% endif %}><i></i></label>
       <button class="btn btn-primary" type="submit">Save section</button>
     </form></section>{% endif %}

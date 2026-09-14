@@ -152,3 +152,22 @@ def set_user_active(user_id: int, active: bool) -> None:
     with get_conn() as conn:
         conn.execute("UPDATE users SET active=? WHERE id=? AND role!='admin'", (1 if active else 0, user_id))
         conn.commit()
+
+
+def update_user_password(user_id: int, current_password: str, new_password: str) -> tuple[bool, str]:
+    if len(new_password or "") < 10:
+        return False, "New password must be at least 10 characters."
+    with get_conn() as conn:
+        row = conn.execute("SELECT password_hash FROM users WHERE id=?", (user_id,)).fetchone()
+        if not row or not verify_password(current_password, row["password_hash"]):
+            return False, "Current password is incorrect."
+        conn.execute("UPDATE users SET password_hash=? WHERE id=?", (hash_password(new_password), user_id))
+        conn.commit()
+    return True, "Password updated."
+
+
+def update_user_profile(user_id: int, display_name: str) -> None:
+    display_name = " ".join((display_name or "").split()).strip()[:80]
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET display_name=? WHERE id=?", (display_name, user_id))
+        conn.commit()

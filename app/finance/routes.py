@@ -16,6 +16,13 @@ templates.env.globals["APP_VERSION"] = APP_VERSION
 router = APIRouter(prefix="/finance", tags=["finance"])
 
 
+def _uid(request: Request) -> int:
+    user = getattr(request.state, "current_user", None)
+    if not user:
+        raise HTTPException(status_code=401, detail="Sign in required")
+    return int(user["id"])
+
+
 def template_context(request: Request, **extra):
     base = {
         "request": request,
@@ -30,9 +37,10 @@ def template_context(request: Request, **extra):
 
 @router.get("", response_class=HTMLResponse)
 def finance_home(request: Request):
-    summary = service.finance_summary()
-    recent = service.list_transaction_rows(include_excluded=False)[:8]
-    imports = service.imports()[:5]
+    uid = _uid(request)
+    summary = service.finance_summary(uid)
+    recent = service.list_transaction_rows(uid, include_excluded=False)[:8]
+    imports = service.imports(uid)[:5]
     return templates.TemplateResponse(
         request,
         "finance_dashboard.html",
@@ -45,7 +53,7 @@ def import_page(request: Request):
     return templates.TemplateResponse(
         request,
         "finance_import.html",
-        template_context(request, imports=service.imports(), results=None, error=None),
+        template_context(request, imports=service.imports(_uid(request)), results=None, error=None),
     )
 
 
@@ -62,19 +70,19 @@ async def import_pdfs(request: Request, files: list[UploadFile] = File(...)):
             if not data:
                 errors.append(f"{f.filename}: empty file")
                 continue
-            results.append(service.import_pdf_bytes(f.filename, data))
+            results.append(service.import_pdf_bytes(_uid(request), f.filename, data))
         except Exception as exc:
             errors.append(f"{f.filename}: {exc}")
     return templates.TemplateResponse(
         request,
         "finance_import.html",
-        template_context(request, imports=service.imports(), results=results, error="\n".join(errors) if errors else None),
+        template_context(request, imports=service.imports(_uid(request)), results=results, error="\n".join(errors) if errors else None),
     )
 
 
 @router.post("/clear")
-def clear_finance_history():
-    service.clear_statement_history()
+def clear_finance_history(request: Request):
+    service.clear_statement_history(_uid(request))
     return RedirectResponse("/finance/import", status_code=303)
 
 
@@ -85,11 +93,12 @@ def transactions_page(
     month: str = Query(""),
     show_excluded: bool = Query(False),
 ):
-    categories = service.list_categories()
-    rows = service.list_transaction_rows(include_excluded=show_excluded, category=category, month=month)
-    txs = service.load_transactions(include_excluded=show_excluded, category=category, month=month)
+    uid = _uid(request)
+    categories = service.list_categories(uid)
+    rows = service.list_transaction_rows(uid, include_excluded=show_excluded, category=category, month=month)
+    txs = service.load_transactions(uid, include_excluded=show_excluded, category=category, month=month)
     total = sum(tx.amount for tx in txs if tx.included and tx.transaction_type in ("Purchase", "Refund/Credit"))
-    months = monthly.all_months(service.load_transactions(include_excluded=True))
+    months = monthly.all_months(service.load_transactions(uid, include_excluded=True))
     return templates.TemplateResponse(
         request,
         "finance_transactions.html",
@@ -108,23 +117,24 @@ def transactions_page(
 
 @router.get("/transactions/{tx_id}", response_class=HTMLResponse)
 def transaction_detail(request: Request, tx_id: int):
-    tx = service.get_transaction(tx_id)
+    tx = service.get_transaction(_uid(request), tx_id)
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
     return templates.TemplateResponse(
         request,
         "finance_transaction_detail.html",
-        template_context(request, tx=tx, categories=service.list_categories()),
+        template_context(request, tx=tx, categories=service.list_categories(_uid(request))),
     )
 
 
 @router.post("/transactions/{tx_id}/update")
 async def update_transaction(request: Request, tx_id: int):
-    tx = service.get_transaction(tx_id)
+    tx = service.get_transaction(_uid(request), tx_id)
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
     form = await request.form()
     service.update_transaction(
+        _uid(request),
         tx_id,
         {
             "date": form.get("date", ""),
@@ -140,16 +150,17 @@ async def update_transaction(request: Request, tx_id: int):
 
 
 @router.post("/transactions/{tx_id}/delete")
-def delete_transaction(tx_id: int):
-    service.delete_transaction(tx_id)
+def delete_transaction(request: Request, tx_id: int):
+    service.delete_transaction(_uid(request), tx_id)
     return RedirectResponse("/finance/transactions", status_code=303)
 
 
 @router.get("/budget", response_class=HTMLResponse)
 def budget_page(request: Request):
-    data = service.budget_data()
-    txs = service.load_transactions(include_excluded=False)
-    analysis = budget.analyze_budget(data, txs, service.list_categories())
+    uid = _uid(request)
+    data = service.budget_data(uid)
+    txs = service.load_transactions(uid, include_excluded=False)
+    analysis = budget.analyze_budget(data, txs, service.list_categories(uid))
     rows = service.budget_rows_for_template(data)
     grouped: dict[str, list[dict]] = {}
     for r in rows:
@@ -172,20 +183,21 @@ async def save_budget(request: Request):
             "amount": form.get(f"amount__{key}", "0"),
             "frequency": form.get(f"frequency__{key}", "Monthly"),
         })
-    service.save_budget_rows(str(form.get("name", "")), rows)
+    service.save_budget_rows(_uid(request), str(form.get("name", "")), rows)
     return RedirectResponse("/finance/budget", status_code=303)
 
 
 @router.post("/budget/custom")
-def add_budget_custom(section: str = Form(...), name: str = Form(...)):
-    service.add_budget_row(section, name)
+def add_budget_custom(request: Request, section: str = Form(...), name: str = Form(...)):
+    service.add_budget_row(_uid(request), section, name)
     return RedirectResponse("/finance/budget", status_code=303)
 
 
 @router.get("/monthly", response_class=HTMLResponse)
 def monthly_page(request: Request, a: str = Query(""), b: str = Query("")):
-    txs = service.load_transactions(include_excluded=False)
-    data = service.budget_data()
+    uid = _uid(request)
+    txs = service.load_transactions(uid, include_excluded=False)
+    data = service.budget_data(uid)
     ov = monthly.overview(txs, data)
     months = ov["months"]
     if months:
@@ -193,7 +205,7 @@ def monthly_page(request: Request, a: str = Query(""), b: str = Query("")):
             a = months[-2] if len(months) >= 2 else months[-1]
         if b not in months:
             b = months[-1]
-    cmp = monthly.comparison(txs, data, a, b, service.list_categories()) if a and b else None
+    cmp = monthly.comparison(txs, data, a, b, service.list_categories(uid)) if a and b else None
     return templates.TemplateResponse(
         request,
         "finance_monthly.html",
@@ -202,15 +214,16 @@ def monthly_page(request: Request, a: str = Query(""), b: str = Query("")):
 
 
 @router.post("/monthly/remove")
-def remove_month(month_key: str = Form(...)):
-    service.remove_month(month_key)
+def remove_month(request: Request, month_key: str = Form(...)):
+    service.remove_month(_uid(request), month_key)
     return RedirectResponse("/finance/monthly", status_code=303)
 
 
 @router.get("/rules", response_class=HTMLResponse)
 def rules_page(request: Request):
-    categories = service.list_categories()
-    rules = service.load_rules()
+    uid = _uid(request)
+    categories = service.list_categories(uid)
+    rules = service.load_rules(uid)
     return templates.TemplateResponse(
         request,
         "finance_rules.html",
@@ -219,45 +232,45 @@ def rules_page(request: Request):
 
 
 @router.post("/rules/category")
-def add_category(name: str = Form(...)):
-    service.add_category(name)
+def add_category(request: Request, name: str = Form(...)):
+    service.add_category(_uid(request), name)
     return RedirectResponse("/finance/rules", status_code=303)
 
 
 @router.post("/rules/add")
-def add_rule(category: str = Form(...), keyword: str = Form(...)):
-    service.add_rule(category, keyword)
+def add_rule(request: Request, category: str = Form(...), keyword: str = Form(...)):
+    service.add_rule(_uid(request), category, keyword)
     return RedirectResponse("/finance/rules", status_code=303)
 
 
 @router.post("/rules/delete")
-def remove_rule(category: str = Form(...), keyword: str = Form(...)):
-    service.delete_rule(category, keyword)
+def remove_rule(request: Request, category: str = Form(...), keyword: str = Form(...)):
+    service.delete_rule(_uid(request), category, keyword)
     return RedirectResponse("/finance/rules", status_code=303)
 
 
 @router.get("/export/transactions.csv")
-def export_transactions():
+def export_transactions(request: Request):
     return StreamingResponse(
-        iter([service.export_transactions_csv()]),
+        iter([service.export_transactions_csv(_uid(request))]),
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=finance_transactions.csv"},
     )
 
 
 @router.get("/export/summary.csv")
-def export_summary():
+def export_summary(request: Request):
     return StreamingResponse(
-        iter([service.export_summary_csv()]),
+        iter([service.export_summary_csv(_uid(request))]),
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=finance_summary.csv"},
     )
 
 
 @router.get("/export/monthly.csv")
-def export_monthly():
+def export_monthly(request: Request):
     return StreamingResponse(
-        iter([service.export_monthly_csv()]),
+        iter([service.export_monthly_csv(_uid(request))]),
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=finance_monthly.csv"},
     )

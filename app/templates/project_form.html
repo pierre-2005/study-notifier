@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="finance-back-row"><a class="back-link" href="/projects">← Projects</a></div>
+<div class="page-heading"><div><div class="eyebrow">Project setup</div><h1>New project</h1><p>Define the outcome now; break it into tasks after creation.</p></div></div>
+<form method="post" action="/projects/new" class="card project-form-card">
+  <div class="card-b form-stack">
+    <label class="field"><span class="label">Project name</span><input class="input input-lg" name="name" maxlength="160" placeholder="e.g. Panel Scheduler V8, ENME 479 Midterm, Portfolio refresh" required autofocus></label>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <label class="field"><span class="label">Category</span><select class="input" name="category">{% for c in categories %}<option>{{ c }}</option>{% endfor %}</select></label>
+      <label class="field"><span class="label">Status</span><select class="input" name="status"><option value="idea">Idea</option><option value="planned">Planned</option><option value="active" selected>Active</option><option value="paused">Paused</option></select></label>
+      <label class="field"><span class="label">Priority</span><select class="input" name="priority"><option value="low">Low</option><option value="normal" selected>Normal</option><option value="high">High</option><option value="critical">Critical</option></select></label>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <label class="field"><span class="label">Start date</span><input class="input" type="date" name="start_date"></label>
+      <label class="field"><span class="label">Target date</span><input class="input" type="date" name="due_date"></label>
+      <label class="field"><span class="label">Accent</span><input class="input color-input" type="color" name="color" value="#5b7cfa"></label>
+    </div>
+    <label class="field"><span class="label">Outcome / description</span><textarea class="textarea" name="description" rows="3" placeholder="What does finished look like?"></textarea></label>
+    <label class="field"><span class="label">Working notes</span><textarea class="textarea" name="notes" rows="7" placeholder="Context, scope, constraints, ideas, links to remember…"></textarea></label>
+    <div class="form-actions"><a class="btn" href="/projects">Cancel</a><button class="btn btn-primary" type="submit">Create project</button></div>
+  </div>
+</form>
+{% endblock %}

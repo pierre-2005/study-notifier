@@ -1,74 +1,96 @@
 {% extends "base.html" %}
 {% block content %}
-{% set is_admin = request.session.get('role') == 'admin' %}
-<div class="page-heading">
-  <div><div class="eyebrow">Preferences</div><h1>Settings</h1><p>Personalize the workspace appearance and navigation{% if is_admin %}, plus reminder templates and notifier behavior{% endif %}.</p></div>
-  {% if is_admin %}<form method="post" action="/settings/test"><button class="btn" type="submit">Send test notification</button></form>{% endif %}
+<div class="page-heading settings-heading">
+  <div><div class="eyebrow">Your workspace</div><h1>Settings</h1><p>Appearance, navigation, reminder behavior, and phones are personal to your account.</p></div>
+  <div class="page-actions"><form method="post" action="/settings/test"><button class="btn" type="submit">Test all phones</button></form></div>
 </div>
 
-<div class="settings-layout">
-  {% if is_admin %}
+<div class="settings-layout settings-layout-v2">
   <section class="card settings-card">
-    <div class="card-h"><div><h2 class="h2">Navigation</h2><p class="muted mt-1">Choose which optional built-in areas appear in your sidebar and mobile navigation.</p></div></div>
-    <div class="card-b nav-toggle-list settings-nav-list">
-      <label class="switch-row"><span><strong>To-Do</strong><small>Tasks and digest reminders</small></span><input type="checkbox" data-nav-setting="todos" checked><i></i></label>
-      <label class="switch-row"><span><strong>Courses</strong><small>Your course workspace</small></span><input type="checkbox" data-nav-setting="courses" checked><i></i></label>
-      <label class="switch-row"><span><strong>Assignments & Exams</strong><small>Assignments, exams and labs</small></span><input type="checkbox" data-nav-setting="items" checked><i></i></label>
-      <label class="switch-row"><span><strong>Schedule</strong><small>Classes and events</small></span><input type="checkbox" data-nav-setting="schedule" checked><i></i></label>
-      <label class="switch-row"><span><strong>Finance</strong><small>Statements, budgets and analysis</small></span><input type="checkbox" data-nav-setting="finance" checked><i></i></label>
-      <label class="switch-row"><span><strong>Expenses</strong><small>Upcoming payments</small></span><input type="checkbox" data-nav-setting="expenses" checked><i></i></label>
-      <label class="switch-row"><span><strong>Jobs</strong><small>Applications and follow-ups</small></span><input type="checkbox" data-nav-setting="jobs" checked><i></i></label>
-      <label class="switch-row"><span><strong>Timers</strong><small>Focus and countdown timers</small></span><input type="checkbox" data-nav-setting="timers" checked><i></i></label>
-      <div class="settings-inline-actions"><button class="btn" type="button" data-nav-reset>Show all tabs</button></div>
-    </div>
-  </section>
-  {% endif %}
-
-  <section class="card settings-card {% if not is_admin %}settings-card-wide{% endif %}">
-    <div class="card-h"><div><h2 class="h2">Appearance</h2><p class="muted mt-1">Choose light behavior and a workspace color palette. These preferences are instant and do not require a page reload.</p></div></div>
+    <div class="card-h"><div><h2 class="h2">Appearance</h2><p class="muted mt-1">Instant, local preferences on this device.</p></div></div>
     <div class="card-b space-y-4">
-      <div>
-        <div class="label mb-2">Mode</div>
-        <div class="themeModeBar settings-theme-bar" role="group" aria-label="Theme mode">
-          <button class="themeModeBtn" type="button" data-theme-choice="system">System</button><button class="themeModeBtn" type="button" data-theme-choice="light">Light</button><button class="themeModeBtn" type="button" data-theme-choice="dark">Dark</button>
-        </div>
-      </div>
-      <div>
-        <div class="label mb-2">Palette behavior</div>
-        <div class="themeModeBar settings-theme-bar palette-style-bar" role="group" aria-label="Palette behavior">
-          <button class="themeModeBtn" type="button" data-palette-style-choice="independent">Independent</button><button class="themeModeBtn" type="button" data-palette-style-choice="full">Full theme</button>
-        </div>
-        <small class="field-help palette-style-help">Independent keeps Light/Dark surfaces neutral and uses the palette for accents. Full theme lets the palette tint the workspace surfaces too.</small>
-      </div>
-      <div>
-        <div class="label mb-2">Palette</div>
-        <div class="palette-grid" role="group" aria-label="Color palette">
-          <button class="palette-choice" type="button" data-palette-choice="neutral"><span class="palette-swatch" style="--swatch:#787774"></span><span><strong>Neutral</strong><small>Classic warm gray</small></span></button>
-          <button class="palette-choice" type="button" data-palette-choice="ocean"><span class="palette-swatch" style="--swatch:#2878c8"></span><span><strong>Ocean</strong><small>Cool blue</small></span></button>
-          <button class="palette-choice" type="button" data-palette-choice="sage"><span class="palette-swatch" style="--swatch:#4f7a64"></span><span><strong>Sage</strong><small>Calm green</small></span></button>
-          <button class="palette-choice" type="button" data-palette-choice="rose"><span class="palette-swatch" style="--swatch:#a85c6b"></span><span><strong>Rose</strong><small>Soft berry</small></span></button>
-          <button class="palette-choice" type="button" data-palette-choice="amber"><span class="palette-swatch" style="--swatch:#a76f18"></span><span><strong>Amber</strong><small>Warm gold</small></span></button>
-          <button class="palette-choice" type="button" data-palette-choice="lavender"><span class="palette-swatch" style="--swatch:#7659a9"></span><span><strong>Lavender</strong><small>Muted purple</small></span></button>
-        </div>
-      </div>
+      <div><div class="label mb-2">Mode</div><div class="themeModeBar settings-theme-bar"><button class="themeModeBtn" type="button" data-theme-choice="system">System</button><button class="themeModeBtn" type="button" data-theme-choice="light">Light</button><button class="themeModeBtn" type="button" data-theme-choice="dark">Dark</button></div></div>
+      <div><div class="label mb-2">Palette behavior</div><div class="themeModeBar settings-theme-bar"><button class="themeModeBtn" type="button" data-palette-style-choice="independent">Accent only</button><button class="themeModeBtn" type="button" data-palette-style-choice="full">Full theme</button></div></div>
+      <div><div class="label mb-2">Palette</div><div class="palette-grid">
+        {% for key,label,color in [('neutral','Neutral','#787774'),('ocean','Ocean','#2878c8'),('sage','Sage','#4f7a64'),('rose','Rose','#a85c6b'),('amber','Amber','#a76f18'),('lavender','Lavender','#7659a9')] %}<button class="palette-choice" type="button" data-palette-choice="{{ key }}"><span class="palette-swatch" style="--swatch:{{ color }}"></span><span><strong>{{ label }}</strong><small>{{ 'Classic' if key=='neutral' else 'Workspace accent' }}</small></span></button>{% endfor %}
+      </div></div>
     </div>
   </section>
 
-  {% if is_admin %}
+  <section class="card settings-card">
+    <div class="card-h"><div><h2 class="h2">Navigation</h2><p class="muted mt-1">Hide areas you do not use. Nothing is deleted.</p></div></div>
+    <div class="card-b nav-toggle-list settings-nav-list">
+      {% for key,label,desc in [('projects','Projects','Projects and outcomes'),('todos','To-Do','Tasks and digest reminders'),('courses','Courses','Course workspace'),('items','Assignments & Exams','Academic deadlines'),('schedule','Schedule','Classes and events'),('jobs','Jobs','Applications and follow-ups'),('finance','Finance','Statements and budgets'),('expenses','Expenses','Bills and recurring costs'),('timers','Timers','Focus sessions')] %}<label class="switch-row"><span><strong>{{ label }}</strong><small>{{ desc }}</small></span><input type="checkbox" data-nav-setting="{{ key }}" checked><i></i></label>{% endfor %}
+      <div class="settings-inline-actions"><button class="btn" type="button" data-nav-reset>Show all</button></div>
+    </div>
+  </section>
+
+  <section class="card settings-card settings-card-wide" id="devices">
+    <div class="card-h"><div><h2 class="h2">Phones & notifications</h2><p class="muted mt-1">Each account can connect multiple phones. Every phone receives only that account's reminders.</p></div><span class="status-pill">{{ devices|length }} connected</span></div>
+    <div class="card-b device-layout">
+      <div class="device-list">
+        {% for device in devices %}
+        <article class="device-card {% if not device['enabled'] %}is-disabled{% endif %}">
+          <div class="device-icon">▯</div><div class="device-copy"><strong>{{ device['label'] }}</strong><span>{{ ntfy_base_url }}/{{ device['topic'] }}</span><small>{{ 'Enabled' if device['enabled'] else 'Paused' }}</small></div>
+          <div class="device-actions"><form method="post" action="/settings/devices/{{ device['id'] }}/test"><button class="btn btn-sm" type="submit">Test</button></form><form method="post" action="/settings/devices/{{ device['id'] }}/toggle"><input type="hidden" name="enabled" value="{{ 0 if device['enabled'] else 1 }}"><button class="btn btn-sm" type="submit">{{ 'Pause' if device['enabled'] else 'Enable' }}</button></form><form method="post" action="/settings/devices/{{ device['id'] }}/delete" onsubmit="return confirm('Remove this phone?');"><button class="icon-btn danger-icon" type="submit" title="Remove">×</button></form></div>
+        </article>
+        {% else %}<div class="empty-inline">No personal notification phones connected yet.</div>{% endfor %}
+      </div>
+      <form method="post" action="/settings/devices/new" class="device-add-panel">
+        <div class="eyebrow">Connect another phone</div><h3>Use ntfy in under a minute</h3>
+        <ol class="setup-steps"><li>Install the <strong>ntfy</strong> app on the phone.</li><li>Give the phone a label below and leave Topic blank for a private generated topic.</li><li>After adding it here, subscribe in ntfy to the exact topic shown.</li><li>Tap <strong>Test</strong> to verify delivery.</li></ol>
+        <label class="field"><span class="label">Phone label</span><input class="input" name="label" placeholder="Pierre's iPhone" maxlength="80" required></label>
+        <label class="field"><span class="label">Topic <em>optional</em></span><input class="input" name="topic" placeholder="Leave blank to generate securely" autocomplete="off"><small class="field-help">Do not reuse a public or guessable topic for private reminders.</small></label>
+        <button class="btn btn-primary" type="submit">Add phone</button>
+      </form>
+    </div>
+  </section>
+
   <section class="card settings-card settings-card-wide">
-    <div class="card-h"><div><h2 class="h2">Reminder templates</h2><p class="muted mt-1">Comma-separated minutes before a due time. Existing reminders are not deleted.</p></div></div>
+    <div class="card-h"><div><h2 class="h2">Reminder templates & quiet hours</h2><p class="muted mt-1">These values apply only to your account. Minutes are counted backward from a due time.</p></div></div>
     <form method="post" action="/settings/save" class="card-b settings-form-grid">
-      <label class="field settings-wide"><span class="label">Assignment reminder template</span><input class="input" name="assignment_template_minutes" value="{{ s.assignment_template_minutes }}" inputmode="numeric" pattern="[0-9, ]+" required><small class="field-help">Example: <span class="kbd">10080,4320,1440,180</span> = 7d, 3d, 24h, 3h before.</small></label>
-      <label class="field settings-wide"><span class="label">Exam reminder template</span><input class="input" name="exam_template_minutes" value="{{ s.exam_template_minutes }}" inputmode="numeric" pattern="[0-9, ]+" required><small class="field-help">Example: <span class="kbd">10080,4320,1440,120,30</span> = 7d, 3d, 24h, 2h, 30m.</small></label>
-      <label class="field settings-wide"><span class="label">Lab reminder template</span><input class="input" name="lab_template_minutes" value="{{ s.lab_template_minutes }}" inputmode="numeric" pattern="[0-9, ]+" required><small class="field-help">Example: <span class="kbd">4320,1440,180,60</span> = 3d, 24h, 3h, 1h before.</small></label>
-      <label class="field settings-wide"><span class="label">Expense reminder template</span><input class="input" name="expense_template_minutes" value="{{ s.expense_template_minutes }}" inputmode="numeric" pattern="[0-9, ]+" required><small class="field-help">Example: <span class="kbd">4320,1440,180</span> = 3d, 24h, 3h before.</small></label>
+      <label class="field settings-wide"><span class="label">Assignment template</span><input class="input" name="assignment_template_minutes" value="{{ s.assignment_template_minutes }}" pattern="[0-9, ]+" required><small class="field-help">Example: 10080,4320,1440,180 = 7d, 3d, 24h, 3h before.</small></label>
+      <label class="field settings-wide"><span class="label">Exam template</span><input class="input" name="exam_template_minutes" value="{{ s.exam_template_minutes }}" pattern="[0-9, ]+" required></label>
+      <label class="field settings-wide"><span class="label">Lab template</span><input class="input" name="lab_template_minutes" value="{{ s.lab_template_minutes }}" pattern="[0-9, ]+" required></label>
+      <label class="field settings-wide"><span class="label">Expense template</span><input class="input" name="expense_template_minutes" value="{{ s.expense_template_minutes }}" pattern="[0-9, ]+" required></label>
       <label class="field"><span class="label">Expense day-of time</span><input class="input" type="time" name="expense_dayof_local_time" value="{{ s.expense_dayof_local_time }}" required></label>
-      <label class="field"><span class="label">Timezone</span><input class="input" value="{{ tz }}" disabled><small class="field-help">Configured through <span class="kbd">TIMEZONE</span>.</small></label>
+      <label class="field"><span class="label">Timezone</span><input class="input" value="{{ tz }}" disabled></label>
       <label class="field"><span class="label">Quiet hours start</span><input class="input" type="time" name="quiet_start" value="{{ s.quiet_start }}" required></label>
       <label class="field"><span class="label">Quiet hours end</span><input class="input" type="time" name="quiet_end" value="{{ s.quiet_end }}" required></label>
-      <div class="settings-wide settings-save-row"><div class="muted">Notifications that become due during quiet hours are delayed until quiet hours end.</div><button class="btn btn-primary" type="submit">Save reminder settings</button></div>
+      <div class="settings-wide settings-save-row"><span class="muted">Reminders wait until quiet hours end instead of waking you.</span><button class="btn btn-primary" type="submit">Save reminder settings</button></div>
     </form>
   </section>
-  {% endif %}
+
+
+  <section class="card settings-card settings-card-wide" id="account">
+    <div class="card-h"><div><h2 class="h2">Account & security</h2><p class="muted mt-1">Your login is separate from every other person's account.</p></div></div>
+    <div class="card-b account-settings-grid">
+      <form method="post" action="/settings/profile" class="form-stack">
+        <div class="eyebrow">Profile</div>
+        <label class="field"><span class="label">Username</span><input class="input" value="{{ request.state.current_user['username'] }}" disabled></label>
+        <label class="field"><span class="label">Display name</span><input class="input" name="display_name" value="{{ request.state.current_user['display_name'] }}" maxlength="80"></label>
+        <button class="btn" type="submit">Save profile</button>
+      </form>
+      <form method="post" action="/settings/password" class="form-stack">
+        <div class="eyebrow">Password</div>
+        {% if request.query_params.get('password_saved') %}<div class="login-success">Password updated.</div>{% endif %}
+        {% if request.query_params.get('password_error') %}<div class="login-error">{{ 'New passwords did not match.' if request.query_params.get('password_error')=='mismatch' else 'Current password was incorrect.' }}</div>{% endif %}
+        <label class="field"><span class="label">Current password</span><input class="input" type="password" name="current_password" autocomplete="current-password" required></label>
+        <label class="field"><span class="label">New password</span><input class="input" type="password" name="new_password" autocomplete="new-password" minlength="10" required></label>
+        <label class="field"><span class="label">Confirm new password</span><input class="input" type="password" name="new_password_confirm" autocomplete="new-password" minlength="10" required></label>
+        <button class="btn btn-primary" type="submit">Change password</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="card settings-card settings-card-wide" id="data-export">
+    <div class="card-h"><div><h2 class="h2">Your data</h2><p class="muted mt-1">Download a private JSON snapshot of the information owned by your account.</p></div></div>
+    <div class="card-b data-export-row"><div><strong>Portable account backup</strong><p class="muted mt-1">Includes your study, tasks, work, expenses, finance records, projects, owned spaces, timers, and preferences. Password hashes and phone notification topics are never included.</p></div><a class="btn" href="/settings/export">Download my data</a></div>
+  </section>
+
+  <section class="card settings-card settings-card-wide">
+    <div class="card-h"><div><h2 class="h2">Install as an app</h2><p class="muted mt-1">The site now includes a web-app manifest and responsive app shell.</p></div></div>
+    <div class="card-b install-grid"><div><strong>iPhone / iPad</strong><p>Open the site in Safari → Share → Add to Home Screen.</p></div><div><strong>Android / Chrome</strong><p>Open the browser menu → Install app or Add to Home screen.</p></div><div><strong>Desktop</strong><p>Chrome/Edge can install MLO from the address bar or browser menu.</p></div></div>
+  </section>
 </div>
 {% endblock %}

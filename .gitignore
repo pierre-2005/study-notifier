@@ -17,3 +17,5 @@ __pycache__/
 # editor junk
 .vscode/
 .DS_Store
+# automatic local SQLite safety backups
+backups/

@@ -1,254 +1,106 @@
 <!doctype html>
 <html lang="en" data-palette="neutral" data-palette-style="independent">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
-  <meta name="theme-color" content="#fbfbfa">
+  <meta name="theme-color" content="#f7f8fb">
+  <meta name="description" content="My Life Organized — a private workspace for study, work, projects, money, and life.">
   <title>{{ title if title else "My Life Organized" }}</title>
-
   <link rel="icon" href="/static/favicon.ico">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-
-  <!-- Apply appearance before first paint. -->
+  <link rel="manifest" href="/static/manifest.webmanifest">
   <script>
-    (function () {
-      try {
-        var mode = localStorage.getItem("theme") || "system";
-        if (["system", "light", "dark"].indexOf(mode) === -1) mode = "system";
-        var palette = localStorage.getItem("mlo.palette") || "neutral";
-        if (["neutral","ocean","sage","rose","amber","lavender"].indexOf(palette) === -1) palette = "neutral";
-        var paletteStyle = localStorage.getItem("mlo.palette.style") || "independent";
-        if (["independent","full"].indexOf(paletteStyle) === -1) paletteStyle = "independent";
-        var dark = mode === "dark" || (mode === "system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
-        document.documentElement.classList.toggle("dark", dark);
-        document.documentElement.dataset.theme = mode;
-        document.documentElement.dataset.palette = palette;
-        document.documentElement.dataset.paletteStyle = paletteStyle;
-        var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute("content", dark ? "#191919" : "#fbfbfa");
-      } catch (_) {}
-    })();
+    (function(){try{var m=localStorage.getItem('theme')||'system',p=localStorage.getItem('mlo.palette')||'neutral',ps=localStorage.getItem('mlo.palette.style')||'independent';var d=m==='dark'||(m==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);document.documentElement.dataset.theme=m;document.documentElement.dataset.palette=p;document.documentElement.dataset.paletteStyle=ps;}catch(e){}})();
   </script>
-
   <link rel="stylesheet" href="/static/theme.css?v={{ APP_VERSION }}">
   <script src="/static/theme.js?v={{ APP_VERSION }}" defer></script>
 </head>
-
 <body>
-  <a class="skip-link" href="#main-content">Skip to content</a>
-
-  {% set logged_in = request.session.get("user") if request.url.path not in ["/login", "/signup"] else none %}
-  {% set is_admin = request.session.get("role") == "admin" %}
-  {% set p = request.url.path %}
-
-  {% if logged_in %}
-    <div class="app-layout" data-app-layout>
-      <aside class="app-sidebar" id="app-sidebar" aria-label="Primary navigation">
-        <div class="sidebar-head">
-          <a class="workspace-mark" href="{{ '/' if is_admin else '/sections' }}" aria-label="My Life Organized home">
-            <span class="workspace-icon" aria-hidden="true">M</span>
-            <span class="workspace-copy">
-              <strong>My Life Organized</strong>
-              <span>{{ 'Personal workspace' if is_admin else 'Shared workspace' }}</span>
-            </span>
-          </a>
-          <button class="icon-btn sidebar-collapse-btn" type="button" data-sidebar-collapse aria-label="Collapse sidebar" title="Collapse sidebar">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-          </button>
-        </div>
-
-        <div class="sidebar-tools">
-          <button class="sidebar-tool" type="button" data-command-open>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <span>Quick switcher</span><kbd>Ctrl K</kbd>
-          </button>
-          <div class="quick-add-wrap">
-            <button class="sidebar-tool" type="button" data-quick-add-toggle aria-expanded="false">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-              <span>New</span>
-              <svg class="tool-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-            </button>
-            <div class="quick-add-menu" data-quick-add-menu hidden>
-              <a href="/sections/new"><span>＋</span> Section</a>
-              <a href="/timers"><span>◷</span> Timer</a>
-              {% if is_admin %}
-              <a href="/todos/new"><span>✓</span> To-do</a>
-              <a href="/items/new"><span>□</span> Assignment / exam / lab</a>
-              <a href="/events/new"><span>◷</span> Event</a>
-              <a href="/classes/new"><span>▦</span> Class</a>
-              <a href="/expenses/new"><span>$</span> Expense</a>
-              <a href="/jobs/new"><span>⌁</span> Job application</a>
-              <a href="/courses/new"><span>▤</span> Course</a>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-
-        <nav class="sidebar-nav">
-          {% if is_admin %}
-          <div class="nav-section-label">Workspace</div>
-          <a class="nav-item {{ 'active' if p=='/' else '' }}" href="/" data-nav-key="dashboard">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg><span>Dashboard</span>
-          </a>
-          <a class="nav-item {{ 'active' if p.startswith('/todos') else '' }}" href="/todos" data-nav-key="todos">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg><span>To-Do</span>
-          </a>
-          <a class="nav-item {{ 'active' if p.startswith('/courses') else '' }}" href="/courses" data-nav-key="courses">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5z"/><path d="M4 6.5v13"/></svg><span>Courses</span>
-          </a>
-          <a class="nav-item {{ 'active' if p.startswith('/items') else '' }}" href="/items" data-nav-key="items">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Assignments & Exams</span>
-          </a>
-          <a class="nav-item {{ 'active' if (p.startswith('/schedule') or p.startswith('/classes') or p.startswith('/events')) else '' }}" href="/schedule" data-nav-key="schedule">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg><span>Schedule</span>
-          </a>
-
-          <div class="nav-section-label">Life</div>
-          <a class="nav-item {{ 'active' if p.startswith('/finance') else '' }}" href="/finance" data-nav-key="finance">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 16 4-4 3 3 5-7"/></svg><span>Finance</span>
-          </a>
-          <a class="nav-item {{ 'active' if p.startswith('/expenses') else '' }}" href="/expenses" data-nav-key="expenses">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M16 15h2"/></svg><span>Expenses</span>
-          </a>
-          <a class="nav-item {{ 'active' if p.startswith('/jobs') else '' }}" href="/jobs" data-nav-key="jobs">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/></svg><span>Jobs</span>
-          </a>
-          {% endif %}
-
-          <div class="nav-section-label nav-section-label-with-action">
-            <span>Your sections</span><a href="/sections/new" aria-label="Create section" title="Create section">+</a>
-          </div>
-          <a class="nav-item {{ 'active' if p=='/sections' else '' }}" href="/sections" data-nav-key="sections">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h10"/></svg><span>All sections</span>
-          </a>
-          {% for section in request.state.custom_sections %}
-          <a class="nav-item custom-section-link {{ 'active' if p == '/sections/' ~ section['id'] else '' }}" href="/sections/{{ section['id'] }}">
-            <span class="section-nav-icon" aria-hidden="true">{{ section['icon'] }}</span><span>{{ section['name'] }}</span>
-          </a>
-          {% endfor %}
-          <a class="nav-item {{ 'active' if p.startswith('/timers') else '' }}" href="/timers" data-nav-key="timers">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg><span>Timers</span>
-          </a>
-        </nav>
-
-        <div class="sidebar-foot">
-          {% if request.state.active_timer %}
-          <a class="active-timer-chip" href="/timers" data-sidebar-timer data-timer-endpoint="/timers/{{ request.state.active_timer.id }}/complete" data-timer-status="{{ request.state.active_timer.status }}" data-timer-remaining="{{ request.state.active_timer.remaining }}" {% if request.state.active_timer.started_at_utc %}data-timer-started="{{ request.state.active_timer.started_at_utc }}"{% endif %}>
-            <span class="timer-pulse" aria-hidden="true"></span><span class="active-timer-label">{{ request.state.active_timer.label }}</span><strong data-timer-display>--:--</strong>
-          </a>
-          {% endif %}
-          {% if is_admin %}
-          <a class="nav-item {{ 'active' if p.startswith('/admin') else '' }}" href="/admin/users" data-nav-key="admin">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Users</span>
-          </a>
-          {% endif %}
-          <a class="nav-item {{ 'active' if p.startswith('/settings') else '' }}" href="/settings" data-nav-key="settings">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8.5 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3V9.6h.1A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.4.3.8.7 1 1 .2.4.4.8.4 1.1v.1H21v4h-.1c-.4 0-.8.2-1.1.4-.2.1-.3.2-.4.4z"/></svg><span>Settings</span>
-          </a>
-          {% if is_admin %}
-          <button class="nav-item nav-item-button" type="button" data-customize-open>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg><span>Customize</span>
-          </button>
-          {% endif %}
-
-          <div class="sidebar-account">
-            <div class="account-avatar" aria-hidden="true">{{ request.session.get("user", "U")[:1] | upper }}</div>
-            <div class="account-copy"><strong>{{ request.session.get("user") }}</strong><span>{{ request.session.get('role')|title }} · v{{ APP_VERSION }}</span></div>
-            <form method="post" action="/logout" class="account-logout"><button class="icon-btn" type="submit" aria-label="Log out" title="Log out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/></svg></button></form>
-          </div>
-        </div>
-      </aside>
-
-      <div class="sidebar-overlay" data-sidebar-overlay hidden></div>
-
-      <main class="app-main" id="main-content">
-        <div class="desktop-history-bar" aria-label="Page history">
-          <button class="icon-btn global-back-btn" type="button" data-global-back data-back-fallback="{{ '/' if is_admin else '/sections' }}" aria-label="Go back" title="Back">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-          </button>
-        </div>
-        <header class="mobile-header">
-          <div class="mobile-header-actions">
-            <button class="icon-btn global-back-btn" type="button" data-global-back data-back-fallback="{{ '/' if is_admin else '/sections' }}" aria-label="Go back" title="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
-            <button class="icon-btn" type="button" data-mobile-menu aria-label="Open navigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-          </div>
-          <a class="mobile-brand" href="{{ '/' if is_admin else '/sections' }}"><span class="workspace-icon">M</span><strong>My Life Organized</strong></a>
-          <button class="icon-btn" type="button" data-command-open aria-label="Open quick switcher"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
-        </header>
-        <div class="shell app-content">
-  {% else %}
-    <main class="guest-main" id="main-content"><div class="shell guest-shell">
-  {% endif %}
-
-          {% block content %}{% endblock %}
-
-  {% if logged_in %}
-          <footer class="app-footer">My Life Organized · v{{ APP_VERSION }}</footer>
-        </div>
-      </main>
-
-      <nav class="mobile-dock" aria-label="Mobile navigation">
-        {% if is_admin %}
-        <a class="mobile-dock-item {{ 'active' if p=='/' else '' }}" href="/" data-nav-key="dashboard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg><span>Home</span></a>
-        <a class="mobile-dock-item {{ 'active' if p.startswith('/todos') else '' }}" href="/todos" data-nav-key="todos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg><span>To-Do</span></a>
-        <a class="mobile-dock-item {{ 'active' if p.startswith('/items') else '' }}" href="/items" data-nav-key="items"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>School</span></a>
-        <a class="mobile-dock-item {{ 'active' if p.startswith('/sections') else '' }}" href="/sections" data-nav-key="sections"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h10"/></svg><span>Sections</span></a>
-        {% else %}
-        <a class="mobile-dock-item {{ 'active' if p.startswith('/sections') else '' }}" href="/sections"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h10"/></svg><span>Sections</span></a>
-        <a class="mobile-dock-item {{ 'active' if p.startswith('/timers') else '' }}" href="/timers"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg><span>Timers</span></a>
-        <a class="mobile-dock-item {{ 'active' if p.startswith('/settings') else '' }}" href="/settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M4 12h2m12 0h2M12 4v2m0 12v2"/></svg><span>Settings</span></a>
-        <a class="mobile-dock-item" href="/sections/new"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>New</span></a>
-        {% endif %}
-        <button class="mobile-dock-item" type="button" data-mobile-more aria-expanded="false" aria-controls="mobile-more-sheet"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg><span>More</span></button>
-      </nav>
-
-      <section class="mobile-more-sheet" id="mobile-more-sheet" data-mobile-more-sheet aria-label="More navigation" hidden>
-        <div class="sheet-handle"></div>
-        <div class="mobile-more-grid">
-          {% if is_admin %}
-          <a href="/courses" data-nav-key="courses">Courses</a><a href="/schedule" data-nav-key="schedule">Schedule</a><a href="/finance" data-nav-key="finance">Finance</a><a href="/expenses" data-nav-key="expenses">Expenses</a><a href="/jobs" data-nav-key="jobs">Jobs</a>
-          {% endif %}
-          <a href="/sections">All sections</a><a href="/timers" data-nav-key="timers">Timers</a><a href="/settings">Settings</a><a href="/sections/new">New section</a>
-          {% if is_admin %}<button type="button" data-customize-open>Customize</button>{% endif %}
-        </div>
-      </section>
+<a class="skip-link" href="#main-content">Skip to content</a>
+{% set logged_in = request.session.get('user') if request.url.path not in ['/login','/signup'] else none %}
+{% set is_admin = request.session.get('role') == 'admin' %}
+{% set p = request.url.path %}
+{% if logged_in %}
+<div class="app-layout" data-app-layout>
+  <aside class="app-sidebar" id="app-sidebar" aria-label="Primary navigation">
+    <div class="sidebar-head">
+      <a class="workspace-mark" href="/" aria-label="My Life Organized home">
+        <span class="workspace-icon" aria-hidden="true">M</span>
+        <span class="workspace-copy"><strong>My Life Organized</strong><span>Your private Life OS</span></span>
+      </a>
+      <button class="icon-btn sidebar-collapse-btn" type="button" data-sidebar-collapse aria-label="Collapse sidebar"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
     </div>
 
-    {% if is_admin %}
-    <div class="dialog-backdrop" data-customize-dialog hidden>
-      <section class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="customize-title">
-        <div class="dialog-head"><div><h2 id="customize-title">Customize navigation</h2><p>Hide optional areas from your sidebar and mobile navigation. Nothing is deleted.</p></div><button class="icon-btn" type="button" data-customize-close aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-        <div class="nav-toggle-list">
-          <label class="switch-row"><span><strong>To-Do</strong><small>Tasks and digest reminders</small></span><input type="checkbox" data-nav-setting="todos" checked><i></i></label>
-          <label class="switch-row"><span><strong>Courses</strong><small>Your course workspace</small></span><input type="checkbox" data-nav-setting="courses" checked><i></i></label>
-          <label class="switch-row"><span><strong>Assignments & Exams</strong><small>Assignments, exams and labs</small></span><input type="checkbox" data-nav-setting="items" checked><i></i></label>
-          <label class="switch-row"><span><strong>Schedule</strong><small>Classes and events</small></span><input type="checkbox" data-nav-setting="schedule" checked><i></i></label>
-          <label class="switch-row"><span><strong>Finance</strong><small>Statements, budgets and analysis</small></span><input type="checkbox" data-nav-setting="finance" checked><i></i></label>
-          <label class="switch-row"><span><strong>Expenses</strong><small>Upcoming payments</small></span><input type="checkbox" data-nav-setting="expenses" checked><i></i></label>
-          <label class="switch-row"><span><strong>Jobs</strong><small>Applications and follow-ups</small></span><input type="checkbox" data-nav-setting="jobs" checked><i></i></label>
-          <label class="switch-row"><span><strong>Timers</strong><small>Focus and countdown timers</small></span><input type="checkbox" data-nav-setting="timers" checked><i></i></label>
+    <div class="sidebar-tools">
+      <button class="sidebar-tool" type="button" data-command-open><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Quick switcher</span><kbd>Ctrl K</kbd></button>
+      <div class="quick-add-wrap">
+        <button class="sidebar-tool" type="button" data-quick-add-toggle aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>New</span><svg class="tool-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+        <div class="quick-add-menu" data-quick-add-menu hidden>
+          <a href="/projects/new"><span>◆</span> Project</a><a href="/todos/new"><span>✓</span> To-do</a><a href="/items/new"><span>□</span> Assignment / exam / lab</a>
+          <a href="/events/new"><span>◷</span> Event</a><a href="/classes/new"><span>▦</span> Class</a><a href="/expenses/new"><span>$</span> Expense</a>
+          <a href="/jobs/new"><span>⌁</span> Job application</a><a href="/courses/new"><span>▤</span> Course</a><a href="/sections/new"><span>＋</span> Section</a><a href="/timers"><span>◷</span> Timer</a>
         </div>
-        <div class="dialog-actions"><button class="btn" type="button" data-nav-reset>Show all tabs</button><button class="btn btn-primary" type="button" data-customize-close>Done</button></div>
-      </section>
+      </div>
     </div>
-    {% endif %}
 
-    <div class="dialog-backdrop" data-command-dialog hidden>
-      <section class="command-dialog" role="dialog" aria-modal="true" aria-label="Quick switcher">
-        <div class="command-search-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Go to a page or create something…" autocomplete="off" data-command-input><kbd>Esc</kbd></div>
-        <div class="command-results" data-command-results>
-          <div class="command-group-label">Go to</div>
-          {% if is_admin %}<a href="/" data-command-item data-search="dashboard home overview"><span>Dashboard</span><small>Overview</small></a><a href="/todos" data-command-item data-search="todo tasks list"><span>To-Do</span><small>Tasks</small></a><a href="/courses" data-command-item data-search="courses school"><span>Courses</span><small>School</small></a><a href="/items" data-command-item data-search="assignments exams labs"><span>Assignments & Exams</span><small>School</small></a><a href="/schedule" data-command-item data-search="schedule calendar"><span>Schedule</span><small>Calendar</small></a><a href="/finance" data-command-item data-search="finance money budget"><span>Finance</span><small>Money</small></a>{% endif %}
-          <a href="/sections" data-command-item data-search="sections pages workspace groceries recipes"><span>Sections</span><small>Custom workspace</small></a><a href="/timers" data-command-item data-search="timer focus pomodoro countdown"><span>Timers</span><small>Focus</small></a><a href="/settings" data-command-item data-search="settings preferences appearance palette"><span>Settings</span><small>Preferences</small></a>
-          {% for section in request.state.custom_sections %}<a href="/sections/{{ section['id'] }}" data-command-item data-search="section {{ section['name'] }} {{ section['description'] }}"><span>{{ section['icon'] }} {{ section['name'] }}</span><small>Section</small></a>{% endfor %}
-          <div class="command-group-label">Create</div><a href="/sections/new" data-command-item data-search="new section page"><span>New section</span><small>Create</small></a><a href="/timers" data-command-item data-search="new timer focus"><span>New timer</span><small>Create</small></a>
-          {% if is_admin %}<a href="/todos/new" data-command-item data-search="new todo task"><span>New to-do</span><small>Create</small></a><a href="/items/new" data-command-item data-search="new assignment exam lab"><span>New school item</span><small>Create</small></a>{% endif %}
-        </div>
-      </section>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Focus</div>
+      <a class="nav-item {{ 'active' if p=='/' else '' }}" href="/" data-nav-key="dashboard"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg><span>Dashboard</span></a>
+      <a class="nav-item {{ 'active' if p.startswith('/projects') else '' }}" href="/projects" data-nav-key="projects"><svg viewBox="0 0 24 24"><path d="M4 5h7l2 2h7v12H4z"/><path d="M8 11h8M8 15h5"/></svg><span>Projects</span></a>
+      <a class="nav-item {{ 'active' if p.startswith('/todos') else '' }}" href="/todos" data-nav-key="todos"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg><span>To-Do</span></a>
+      <a class="nav-item {{ 'active' if p.startswith('/timers') else '' }}" href="/timers" data-nav-key="timers"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg><span>Focus timers</span></a>
+
+      <div class="nav-section-label">Study</div>
+      <a class="nav-item {{ 'active' if p.startswith('/courses') else '' }}" href="/courses" data-nav-key="courses"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5z"/><path d="M4 6.5v13"/></svg><span>Courses</span></a>
+      <a class="nav-item {{ 'active' if p.startswith('/items') else '' }}" href="/items" data-nav-key="items"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Assignments & Exams</span></a>
+      <a class="nav-item {{ 'active' if p.startswith('/schedule') or p.startswith('/classes') or p.startswith('/events') else '' }}" href="/schedule" data-nav-key="schedule"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg><span>Schedule</span></a>
+
+      <div class="nav-section-label">Work & money</div>
+      <a class="nav-item {{ 'active' if p.startswith('/jobs') else '' }}" href="/jobs" data-nav-key="jobs"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/></svg><span>Jobs</span></a>
+      <a class="nav-item {{ 'active' if p.startswith('/finance') else '' }}" href="/finance" data-nav-key="finance"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 16 4-4 3 3 5-7"/></svg><span>Finance</span></a>
+      <a class="nav-item {{ 'active' if p.startswith('/expenses') else '' }}" href="/expenses" data-nav-key="expenses"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M16 15h2"/></svg><span>Expenses</span></a>
+
+      <div class="nav-section-label nav-section-label-with-action"><span>Spaces</span><a href="/sections/new" title="Create section">+</a></div>
+      <a class="nav-item {{ 'active' if p=='/sections' else '' }}" href="/sections" data-nav-key="sections"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg><span>All sections</span></a>
+      {% for section in request.state.custom_sections %}<a class="nav-item custom-section-link {{ 'active' if p == '/sections/' ~ section['id'] else '' }}" href="/sections/{{ section['id'] }}"><span class="section-nav-icon">{{ section['icon'] }}</span><span>{{ section['name'] }}</span></a>{% endfor %}
+    </nav>
+
+    <div class="sidebar-foot">
+      {% if request.state.active_timer %}<a class="active-timer-chip" href="/timers" data-sidebar-timer data-timer-endpoint="/timers/{{ request.state.active_timer.id }}/complete" data-timer-status="{{ request.state.active_timer.status }}" data-timer-remaining="{{ request.state.active_timer.remaining }}" {% if request.state.active_timer.started_at_utc %}data-timer-started="{{ request.state.active_timer.started_at_utc }}"{% endif %}><span class="timer-pulse"></span><span class="active-timer-label">{{ request.state.active_timer.label }}</span><strong data-timer-display>--:--</strong></a>{% endif %}
+      {% if is_admin %}<a class="nav-item {{ 'active' if p.startswith('/admin') else '' }}" href="/admin/users" data-nav-key="admin"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg><span>People & access</span></a>{% endif %}
+      <a class="nav-item {{ 'active' if p.startswith('/settings') else '' }}" href="/settings" data-nav-key="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M4 12h2m12 0h2M12 4v2m0 12v2"/></svg><span>Settings</span></a>
+      <button class="nav-item nav-item-button" type="button" data-customize-open><svg viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg><span>Customize</span></button>
+      <div class="sidebar-account"><div class="account-avatar">{{ request.session.get('user','U')[:1]|upper }}</div><div class="account-copy"><strong>{{ request.state.current_user['display_name'] or request.session.get('user') }}</strong><span>{{ request.session.get('role')|title }} · v{{ APP_VERSION }}</span></div><form method="post" action="/logout" class="account-logout"><button class="icon-btn" type="submit" title="Log out"><svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/></svg></button></form></div>
     </div>
-    {% else %}
-      </div></main>
-    {% endif %}
+  </aside>
+  <div class="sidebar-overlay" data-sidebar-overlay hidden></div>
+  <main class="app-main" id="main-content">
+    <div class="desktop-history-bar"><button class="icon-btn global-back-btn" type="button" data-global-back data-back-fallback="/" title="Back"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button><div class="history-spacer"></div><button class="desktop-command-pill" type="button" data-command-open><span>Search or jump</span><kbd>Ctrl K</kbd></button></div>
+    <header class="mobile-header"><div class="mobile-header-actions"><button class="icon-btn global-back-btn" type="button" data-global-back data-back-fallback="/" title="Back"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button><button class="icon-btn" type="button" data-mobile-menu title="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button></div><a class="mobile-brand" href="/"><span class="workspace-icon">M</span><strong>MLO</strong></a><button class="icon-btn" type="button" data-command-open title="Search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button></header>
+    <div class="shell app-content">{% block content %}{% endblock %}<footer class="app-footer">My Life Organized · private by account · v{{ APP_VERSION }}</footer></div>
+  </main>
+
+  <nav class="mobile-dock" aria-label="Mobile navigation">
+    <a class="mobile-dock-item {{ 'active' if p=='/' else '' }}" href="/" data-nav-key="dashboard"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg><span>Home</span></a>
+    <a class="mobile-dock-item {{ 'active' if p.startswith('/todos') else '' }}" href="/todos" data-nav-key="todos"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg><span>Tasks</span></a>
+    <a class="mobile-dock-item {{ 'active' if p.startswith('/projects') else '' }}" href="/projects" data-nav-key="projects"><svg viewBox="0 0 24 24"><path d="M4 5h7l2 2h7v12H4z"/></svg><span>Projects</span></a>
+    <a class="mobile-dock-item {{ 'active' if p.startswith('/sections') else '' }}" href="/sections" data-nav-key="sections"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg><span>Spaces</span></a>
+    <button class="mobile-dock-item" type="button" data-mobile-more aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg><span>More</span></button>
+  </nav>
+  <section class="mobile-more-sheet" data-mobile-more-sheet hidden><div class="sheet-handle"></div><div class="mobile-more-grid"><a href="/courses">Courses</a><a href="/items">Assignments</a><a href="/schedule">Schedule</a><a href="/jobs">Jobs</a><a href="/finance">Finance</a><a href="/expenses">Expenses</a><a href="/timers">Timers</a><a href="/settings">Settings</a>{% if is_admin %}<a href="/admin/users">People</a>{% endif %}<button type="button" data-customize-open>Customize</button></div></section>
+</div>
+
+<div class="dialog-backdrop" data-customize-dialog hidden><section class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="customize-title"><div class="dialog-head"><div><h2 id="customize-title">Customize navigation</h2><p>Hide areas you do not use. Your data stays intact.</p></div><button class="icon-btn" type="button" data-customize-close><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="nav-toggle-list">
+{% for key,label,desc in [('projects','Projects','Plan personal, work and study projects'),('todos','To-Do','Tasks and digest reminders'),('courses','Courses','Course workspace'),('items','Assignments & Exams','Academic work'),('schedule','Schedule','Classes and events'),('jobs','Jobs','Applications and follow-ups'),('finance','Finance','Statements and budgets'),('expenses','Expenses','Bills and recurring costs'),('timers','Timers','Focus sessions')] %}<label class="switch-row"><span><strong>{{ label }}</strong><small>{{ desc }}</small></span><input type="checkbox" data-nav-setting="{{ key }}" checked><i></i></label>{% endfor %}
+</div><div class="dialog-actions"><button class="btn" type="button" data-nav-reset>Show all</button><button class="btn btn-primary" type="button" data-customize-close>Done</button></div></section></div>
+
+<div class="dialog-backdrop" data-command-dialog hidden><section class="command-dialog" role="dialog" aria-modal="true" aria-label="Quick switcher"><div class="command-search-wrap"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Search pages and actions…" autocomplete="off" data-command-input><kbd>Esc</kbd></div><div class="command-results"><div class="command-group-label">Go to</div>
+{% for href,name,search in [('/','Dashboard','home overview'),('/projects','Projects','project work study personal'),('/todos','To-Do','tasks'),('/courses','Courses','school study'),('/items','Assignments & Exams','school assignment exam lab'),('/schedule','Schedule','calendar class events'),('/jobs','Jobs','career applications'),('/finance','Finance','money budget'),('/expenses','Expenses','bills'),('/sections','Sections','spaces notes grocery'),('/timers','Timers','focus pomodoro'),('/settings','Settings','preferences notifications devices')] %}<a href="{{ href }}" data-command-item data-search="{{ search }} {{ name }}"><span>{{ name }}</span><small>Open</small></a>{% endfor %}
+{% for section in request.state.custom_sections %}<a href="/sections/{{ section['id'] }}" data-command-item data-search="{{ section['name'] }} {{ section['description'] }}"><span>{{ section['icon'] }} {{ section['name'] }}</span><small>Section</small></a>{% endfor %}
+<div class="command-group-label">Create</div><a href="/projects/new" data-command-item data-search="new project"><span>New project</span><small>Create</small></a><a href="/todos/new" data-command-item data-search="new task todo"><span>New to-do</span><small>Create</small></a><a href="/items/new" data-command-item data-search="new assignment exam lab"><span>New school item</span><small>Create</small></a><a href="/sections/new" data-command-item data-search="new section"><span>New section</span><small>Create</small></a></div></section></div>
+{% else %}
+<main class="guest-main" id="main-content"><div class="shell guest-shell">{{ self.content() }}</div></main>
+{% endif %}
 </body>
 </html>

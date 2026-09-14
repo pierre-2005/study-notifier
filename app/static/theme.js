@@ -401,3 +401,15 @@
     });
   });
 })();
+
+// v2 progressive-app polish: cache only static assets and reveal content gently.
+if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("/static/service-worker.js").catch(() => {}));
+window.addEventListener("DOMContentLoaded", () => {
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const targets = document.querySelectorAll(".card, .project-card, .section-card, .stat-card");
+  if (!("IntersectionObserver" in window)) return;
+  const io = new IntersectionObserver(entries => entries.forEach(entry => {
+    if (entry.isIntersecting) { entry.target.classList.add("mlo-revealed"); io.unobserve(entry.target); }
+  }), { threshold: 0.06 });
+  targets.forEach(el => { el.classList.add("mlo-reveal"); io.observe(el); });
+});

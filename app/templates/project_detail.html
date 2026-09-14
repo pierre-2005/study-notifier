@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="finance-back-row"><a class="back-link" href="/projects">← Projects</a></div>
+<section class="project-hero" style="--project-accent:{{ project['color'] }}">
+  <div class="project-hero-copy">
+    <div class="eyebrow">{{ project['category'] }} · {{ project['status']|title }}</div>
+    <h1><span class="project-accent-dot"></span>{{ project['name'] }}</h1>
+    <p>{{ project['description'] or 'Add a clear outcome so this project stays focused.' }}</p>
+    <div class="project-meta"><span class="priority-{{ project['priority'] }}">{{ project['priority']|title }} priority</span>{% if project['start_date'] %}<span>Started {{ project['start_date'] }}</span>{% endif %}{% if project['due_date'] %}<span>Target {{ project['due_date'] }}</span>{% endif %}</div>
+  </div>
+  <div class="project-progress-dial" style="--progress:{{ progress }}"><strong>{{ progress }}%</strong><span>complete</span></div>
+</section>
+
+<div class="project-detail-grid">
+  <div class="space-y-4">
+    <section class="card">
+      <div class="card-h"><div><h2 class="h2">Tasks</h2><p class="muted mt-1">Keep each next action small enough to finish.</p></div></div>
+      <div class="card-b">
+        <form method="post" action="/projects/{{ project['id'] }}/tasks/new" class="task-quick-add">
+          <input class="input" name="title" placeholder="Add a next action…" required>
+          <select class="input" name="priority" aria-label="Priority"><option value="1">P1</option><option value="2" selected>P2</option><option value="3">P3</option><option value="4">P4</option><option value="5">P5</option></select>
+          <input class="input" type="date" name="due_date" aria-label="Due date">
+          <button class="btn btn-primary" type="submit">Add task</button>
+        </form>
+        <div class="project-task-list mt-4">
+          {% for task in tasks %}
+          <div class="project-task {% if task['status']=='done' %}is-done{% endif %}">
+            <form method="post" action="/projects/{{ project['id'] }}/tasks/{{ task['id'] }}/status" class="task-status-form">
+              <input type="hidden" name="status" value="{{ 'done' if task['status']!='done' else 'todo' }}">
+              <button class="task-check" type="submit" aria-label="Toggle task">{% if task['status']=='done' %}✓{% endif %}</button>
+            </form>
+            <div class="task-copy"><strong>{{ task['title'] }}</strong><span>{% if task['status']=='doing' %}In progress · {% endif %}Priority {{ task['priority'] }}{% if task['due_date'] %} · Due {{ task['due_date'] }}{% endif %}</span></div>
+            {% if task['status']!='done' %}<form method="post" action="/projects/{{ project['id'] }}/tasks/{{ task['id'] }}/status"><input type="hidden" name="status" value="{{ 'todo' if task['status']=='doing' else 'doing' }}"><button class="btn btn-ghost btn-sm" type="submit">{{ 'Pause' if task['status']=='doing' else 'Start' }}</button></form>{% endif %}
+            <form method="post" action="/projects/{{ project['id'] }}/tasks/{{ task['id'] }}/delete" onsubmit="return confirm('Delete this task?');"><button class="icon-btn task-delete" type="submit" aria-label="Delete task">×</button></form>
+          </div>
+          {% else %}<div class="empty-inline">No tasks yet. Add the first concrete next action above.</div>{% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><div><h2 class="h2">Notes</h2><p class="muted mt-1">Project brief, decisions, scope, and working context.</p></div></div>
+      <div class="card-b project-notes-display">{{ project['notes'] or 'No project notes yet.' }}</div>
+    </section>
+  </div>
+
+  <aside class="space-y-4">
+    <section class="card">
+      <div class="card-h"><h2 class="h2">Project settings</h2></div>
+      <form class="card-b form-stack" method="post" action="/projects/{{ project['id'] }}/update">
+        <label class="field"><span class="label">Name</span><input class="input" name="name" value="{{ project['name'] }}" required></label>
+        <div class="grid grid-cols-2 gap-2"><label class="field"><span class="label">Category</span><select class="input" name="category">{% for c in categories %}<option {% if c==project['category'] %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label><label class="field"><span class="label">Status</span><select class="input" name="status">{% for s in ['idea','planned','active','paused','done','archived'] %}<option value="{{ s }}" {% if s==project['status'] %}selected{% endif %}>{{ s|title }}</option>{% endfor %}</select></label></div>
+        <div class="grid grid-cols-2 gap-2"><label class="field"><span class="label">Priority</span><select class="input" name="priority">{% for pri in ['low','normal','high','critical'] %}<option value="{{ pri }}" {% if pri==project['priority'] %}selected{% endif %}>{{ pri|title }}</option>{% endfor %}</select></label><label class="field"><span class="label">Accent</span><input class="input color-input" type="color" name="color" value="{{ project['color'] }}"></label></div>
+        <div class="grid grid-cols-2 gap-2"><label class="field"><span class="label">Start</span><input class="input" type="date" name="start_date" value="{{ project['start_date'] or '' }}"></label><label class="field"><span class="label">Target</span><input class="input" type="date" name="due_date" value="{{ project['due_date'] or '' }}"></label></div>
+        <label class="field"><span class="label">Description</span><textarea class="textarea" name="description" rows="3">{{ project['description'] }}</textarea></label>
+        <label class="field"><span class="label">Notes</span><textarea class="textarea" name="notes" rows="6">{{ project['notes'] }}</textarea></label>
+        <label class="switch-row"><span><strong>Pin project</strong><small>Keep it at the top of project views.</small></span><input type="checkbox" name="favorite" {% if project['favorite'] %}checked{% endif %}><i></i></label>
+        <button class="btn btn-primary" type="submit">Save project</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><div><h2 class="h2">Links</h2><p class="muted mt-1">Docs, repositories, references, tickets.</p></div></div>
+      <div class="card-b">
+        <form method="post" action="/projects/{{ project['id'] }}/links/new" class="form-stack"><input class="input" name="label" placeholder="Label" required><input class="input" name="url" type="text" placeholder="https://…" required><button class="btn" type="submit">Add link</button></form>
+        <div class="project-links mt-3">{% for link in links %}<div><a href="{{ link['url'] }}" target="_blank" rel="noopener">{{ link['label'] }}</a><form method="post" action="/projects/{{ project['id'] }}/links/{{ link['id'] }}/delete"><button type="submit" aria-label="Delete link">×</button></form></div>{% else %}<span class="muted">No links yet.</span>{% endfor %}</div>
+      </div>
+    </section>
+
+    <section class="card danger-zone"><div class="card-b"><form method="post" action="/projects/{{ project['id'] }}/delete" onsubmit="return confirm('Delete this entire project and all tasks?');"><button class="btn btn-danger" type="submit">Delete project</button></form></div></section>
+  </aside>
+</div>
+{% endblock %}

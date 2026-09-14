@@ -1,0 +1,14 @@
+{
+  "name": "My Life Organized",
+  "short_name": "MLO",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f8fb",
+  "theme_color": "#5b6cf9",
+  "description": "A private workspace for study, work, projects, money, and life.",
+  "icons": [
+    {"src": "/static/pwa-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/static/pwa-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}

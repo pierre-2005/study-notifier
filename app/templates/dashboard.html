@@ -1,176 +1,63 @@
 {% extends "base.html" %}
 {% block content %}
-
-<div class="page-heading">
+<section class="dashboard-hero">
   <div>
-    <div class="eyebrow">Workspace</div>
-    <h1>Dashboard</h1>
-    <p>A focused view of what is due, what needs attention, and what is coming next.</p>
+    <div class="eyebrow">Today · {{ tz }}</div>
+    <h1>Everything that matters, in one place.</h1>
+    <p>Keep study, work, projects, money, reminders, and personal life moving without losing the big picture.</p>
   </div>
-  <div class="hstack page-actions">
-    <a class="btn" href="/schedule">Schedule</a>
-    <a class="btn btn-primary" href="/items/new">New school item</a>
-  </div>
+  <div class="hero-actions"><a class="btn btn-primary" href="/todos/new">Add task</a><a class="btn" href="/projects/new">New project</a></div>
+</section>
+
+<div class="stat-grid stat-grid-v2">
+  <a class="stat-card" href="/items?when=today&status=open"><span class="stat-icon">◎</span><div><strong>{{ stats.due_today }}</strong><span>Due today</span></div></a>
+  <a class="stat-card" href="/items?when=overdue&status=open"><span class="stat-icon">!</span><div><strong>{{ stats.overdue }}</strong><span>Overdue school items</span></div></a>
+  <a class="stat-card" href="/items?when=next7&status=open"><span class="stat-icon">7</span><div><strong>{{ stats.next7 }}</strong><span>Next 7 days</span></div></a>
+  <a class="stat-card" href="/expenses?status=unpaid"><span class="stat-icon">$</span><div><strong>{{ stats.unpaid_expenses }}</strong><span>Unpaid expenses</span></div></a>
 </div>
 
-<div class="metric-grid">
-  <a class="metric-card" href="/items?when=today&status=open">
-    <span class="metric-label">Due today</span>
-    <strong class="metric-value">{{ stats.due_today }}</strong>
-    <span class="metric-note">Open today’s items →</span>
-  </a>
-
-  <a class="metric-card" href="/items?when=overdue&status=open">
-    <span class="metric-label">Overdue</span>
-    <strong class="metric-value">{{ stats.overdue }}</strong>
-    <span class="metric-note">Review overdue work →</span>
-  </a>
-
-  <a class="metric-card" href="/items?when=next7&status=open">
-    <span class="metric-label">Next 7 days</span>
-    <strong class="metric-value">{{ stats.next7 }}</strong>
-    <span class="metric-note">Plan the week →</span>
-  </a>
-
-  <a class="metric-card" href="/expenses?status=unpaid">
-    <span class="metric-label">Unpaid expenses</span>
-    <strong class="metric-value">{{ stats.unpaid_expenses }}</strong>
-    <span class="metric-note">Review payments →</span>
-  </a>
-</div>
-
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 dashboard-main-grid">
-  <section class="card lg:col-span-2">
-    <div class="card-h">
-      <div>
-        <div class="h2">Upcoming</div>
-        <div class="muted mt-1">Your next incomplete assignments, exams, and labs.</div>
-      </div>
-      <div class="hstack">
-        <a class="btn" href="/items">View all</a>
-        <a class="btn btn-primary" href="/items/new">New</a>
-      </div>
-    </div>
-
+<div class="dashboard-grid-v2">
+  <section class="card dashboard-span-2">
+    <div class="card-h"><div><div class="eyebrow">Momentum</div><h2 class="h2">Active projects</h2></div><a class="text-link" href="/projects">View all</a></div>
     <div class="card-b">
-      <div class="sm:hidden">
-        {% if upcoming|length == 0 %}
-          <div class="empty-state">No upcoming items. Add one when you are ready.</div>
-        {% endif %}
-
-        <div class="space-y-2">
-          {% for it in upcoming %}
-            <a href="/items/{{ it['id'] }}" class="compact-list-card">
-              <div class="compact-list-card-main">
-                <div class="compact-list-card-title">{{ it["title"] }}</div>
-                <div class="small mt-1">{{ utc_to_local_str(it["due_at_utc"], tz) }} · {{ it["course_name"] }}</div>
-              </div>
-              <span class="badge badge-type">
-                {% if it["type"]=="exam" %}Exam{% elif it["type"]=="lab" %}Lab{% else %}Assignment{% endif %}
-              </span>
-            </a>
-          {% endfor %}
-        </div>
-      </div>
-
-      <div class="hidden sm:block dashboard-upcoming-wrap">
-        <table class="table dashboard-upcoming-table">
-          <colgroup>
-            <col class="dash-col-due">
-            <col class="dash-col-type">
-            <col class="dash-col-title">
-            <col class="dash-col-course">
-            <col class="dash-col-status">
-          </colgroup>
-          <thead>
-            <tr>
-              <th>Due</th>
-              <th>Type</th>
-              <th>Title</th>
-              <th>Course</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for it in upcoming %}
-            <tr>
-              <td class="dash-due-cell">{{ utc_to_local_str(it["due_at_utc"], tz) }}</td>
-              <td class="dash-type-cell">
-                <span class="badge badge-type">
-                  {% if it["type"]=="exam" %}Exam{% elif it["type"]=="lab" %}Lab{% else %}Assignment{% endif %}
-                </span>
-              </td>
-              <td class="dashboard-title-cell">
-                <a class="table-primary-link" href="/items/{{ it['id'] }}">{{ it["title"] }}</a>
-              </td>
-              <td class="dash-course-cell">
-                <span class="dash-course-wrap">
-                  <span class="dash-course-dot" style="background: {{ it['course_color'] or '#e2e8f0' }};"></span>
-                  <span class="dash-course-name">{{ it["course_name"] }}</span>
-                </span>
-              </td>
-              <td class="dash-status-cell"><span class="badge badge-status">{{ it["status"] }}</span></td>
-            </tr>
-            {% endfor %}
-            {% if upcoming|length == 0 %}
-            <tr><td class="muted" colspan="5">No upcoming items.</td></tr>
-            {% endif %}
-          </tbody>
-        </table>
-      </div>
+      {% if projects %}<div class="dashboard-projects">
+      {% for project in projects %}
+        <a class="dashboard-project-row" href="/projects/{{ project['id'] }}" style="--project-accent:{{ project['color'] }}">
+          <span class="project-accent-bar"></span>
+          <div class="dashboard-project-copy"><strong>{{ project['name'] }}</strong><span>{{ project['category'] }} · {{ project['status']|title }}{% if project['due_date'] %} · target {{ project['due_date'] }}{% endif %}</span></div>
+          <div class="mini-progress"><i style="width:{{ project['progress'] or 0 }}%"></i></div><b>{{ project['progress'] or 0 }}%</b>
+        </a>
+      {% endfor %}
+      </div>{% else %}<div class="empty-inline">No active projects yet. <a href="/projects/new">Create one</a> when something has more than one step.</div>{% endif %}
     </div>
   </section>
 
-  <div class="space-y-5">
-    <section class="card">
-      <div class="card-h">
-        <div>
-          <div class="h2">Next reminders</div>
-          <div class="muted mt-1">The next notifications in your queue.</div>
-        </div>
-        <span class="badge">{{ next_reminders|length }}</span>
-      </div>
-      <div class="card-b">
-        {% if next_reminders|length == 0 %}
-          <div class="empty-state">No reminders scheduled.</div>
-        {% endif %}
-        {% for r in next_reminders %}
-          <div class="timeline-row">
-            <div class="timeline-time">{{ utc_to_local_str(r["remind_at_utc"], tz) }}</div>
-            <div class="timeline-title">{{ r["message"] }}</div>
-          </div>
-        {% endfor %}
-      </div>
-    </section>
+  <section class="card">
+    <div class="card-h"><div><div class="eyebrow">Next actions</div><h2 class="h2">To-do</h2></div><a class="text-link" href="/todos">Open list</a></div>
+    <div class="card-b compact-list">
+      {% for todo in open_todos %}<a class="compact-row" href="/todos/{{ todo['id'] }}"><span class="compact-check"></span><span><strong>{{ todo['title'] }}</strong><small>{% if todo['due_at_utc'] %}Due {{ utc_to_local_str(todo['due_at_utc'], tz) }}{% else %}No due date{% endif %}</small></span></a>{% else %}<div class="empty-inline">No open to-dos. Nice.</div>{% endfor %}
+    </div>
+  </section>
 
-    <section class="card">
-      <div class="card-h">
-        <div>
-          <div class="h2">Unpaid expenses</div>
-          <div class="muted mt-1">Upcoming bills and payments.</div>
-        </div>
-        <a class="btn" href="/expenses/new">New</a>
-      </div>
-      <div class="card-b">
-        {% if expenses_due|length == 0 %}
-          <div class="empty-state">No unpaid expenses.</div>
-        {% endif %}
+  <section class="card dashboard-span-2">
+    <div class="card-h"><div><div class="eyebrow">Study</div><h2 class="h2">Upcoming academic work</h2></div><a class="text-link" href="/items">View all</a></div>
+    <div class="card-b compact-list">
+      {% for item in upcoming %}<a class="compact-row academic-row" href="/items/{{ item['id'] }}"><span class="course-dot" style="--course-color:{{ item['course_color'] or '#6b7280' }}"></span><span><strong>{{ item['title'] }}</strong><small>{{ item['course_name'] }} · {{ item['type']|title }}</small></span><time>{{ utc_to_local_str(item['due_at_utc'], tz) }}</time></a>{% else %}<div class="empty-inline">Nothing upcoming. Add an assignment, exam, or lab when you have one.</div>{% endfor %}
+    </div>
+  </section>
 
-        {% for e in expenses_due %}
-          <a href="/expenses/{{ e['id'] }}" class="expense-summary-row">
-            <div class="expense-summary-main">
-              <strong>{{ e["title"] }}</strong>
-              <span>{{ utc_to_local_str(e["due_at_utc"], tz) }}</span>
-            </div>
-            <div class="expense-summary-side">
-              <strong>${{ "%.2f"|format(e["amount"]) }}</strong>
-              {% if e["is_overdue"] %}<span class="badge badge-red">overdue</span>{% else %}<span class="badge">upcoming</span>{% endif %}
-            </div>
-          </a>
-        {% endfor %}
-      </div>
-    </section>
-  </div>
+  <section class="card">
+    <div class="card-h"><div><div class="eyebrow">Money</div><h2 class="h2">Bills & expenses</h2></div><a class="text-link" href="/expenses">View all</a></div>
+    <div class="card-b compact-list">
+      {% for expense in expenses_due %}<a class="compact-row" href="/expenses/{{ expense['id'] }}"><span class="money-badge">$</span><span><strong>{{ expense['title'] }}</strong><small>{{ expense['category'] or 'Expense' }}{% if expense['is_overdue'] %} · overdue{% endif %}</small></span><b>${{ '%.2f'|format(expense['amount']) }}</b></a>{% else %}<div class="empty-inline">No unpaid expenses.</div>{% endfor %}
+    </div>
+  </section>
+
+  <section class="card dashboard-span-3">
+    <div class="card-h"><div><div class="eyebrow">Automations</div><h2 class="h2">Next reminders</h2></div><a class="text-link" href="/settings#devices">Notification setup</a></div>
+    <div class="card-b reminder-strip">
+      {% for reminder in next_reminders %}<div class="reminder-chip"><span>◷</span><div><strong>{{ reminder['message'] }}</strong><small>{{ utc_to_local_str(reminder['remind_at_utc'], tz) }}</small></div></div>{% else %}<div class="empty-inline">No pending reminders.</div>{% endfor %}
+    </div>
+  </section>
 </div>
-
 {% endblock %}

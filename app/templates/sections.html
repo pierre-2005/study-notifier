@@ -1,22 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="page-heading">
-  <div><div class="eyebrow">Workspace</div><h1>Sections</h1><p>Create flexible spaces for shared plans, lists, notes, groceries, recipes, and anything else you want to organize.</p></div>
-  <div class="page-actions"><a class="btn btn-primary" href="/sections/new">New section</a></div>
-</div>
-
+<div class="page-heading hero-heading"><div><div class="eyebrow">Flexible spaces</div><h1>Sections</h1><p>Personal hubs, study notes, work references, home planning, shared lists, groceries, and anything that does not need a full project workflow.</p></div><div class="page-actions"><a class="btn btn-primary" href="/sections/new">New section</a></div></div>
 {% if sections %}
-<div class="section-grid">
-  {% for section in sections %}
-  <a class="section-card" href="/sections/{{ section['id'] }}">
-    <div class="section-card-icon">{{ section['icon'] }}</div>
-    <div class="section-card-title">{{ section['name'] }}</div>
-    <div class="section-card-desc">{{ section['description'] or ('Grocery and meal planning' if section['section_type']=='grocery' else 'Flexible notes and checklist') }}</div>
-    <div class="section-card-meta">{{ 'Grocery & meals' if section['section_type']=='grocery' else 'Flexible section' }} · {{ 'Owner' if section['is_owner'] else 'Shared with you' }}</div>
-  </a>
+  {% for category in section_categories %}
+    {% set group = sections|selectattr('category','equalto',category)|list %}
+    {% if group %}<section class="section-group"><div class="section-group-head"><h2>{{ category }}</h2><span>{{ group|length }} space{{ '' if group|length==1 else 's' }}</span></div><div class="section-grid">
+      {% for section in group %}<a class="section-card section-card-v2" href="/sections/{{ section['id'] }}" style="--section-accent:{{ section['color'] }}"><div class="section-card-top"><div class="section-card-icon">{{ section['icon'] }}</div>{% if section['favorite'] %}<span class="section-star">★</span>{% endif %}</div><div class="section-card-title">{{ section['name'] }}</div><div class="section-card-desc">{{ section['description'] or ('Grocery and meal planning' if section['section_type']=='grocery' else 'Flexible notes and checklist') }}</div><div class="section-card-meta"><span>{{ 'Grocery & meals' if section['section_type']=='grocery' else 'Flexible section' }}</span><span>{{ 'Yours' if section['is_owner'] else 'Shared with you' }}</span></div></a>{% endfor %}
+    </div></section>{% endif %}
   {% endfor %}
-</div>
-{% else %}
-<section class="card"><div class="card-b"><div class="empty-state"><strong>No sections yet.</strong><div class="muted mt-1">Create a blank section, or start with the Grocery & Meals template for a shared shopping list, recipes, and price history.</div><a class="btn btn-primary mt-4" href="/sections/new">Create your first section</a></div></div></section>
-{% endif %}
+{% else %}<section class="card"><div class="card-b"><div class="empty-state large"><div class="empty-orb">✦</div><strong>No sections yet.</strong><div class="muted mt-1">Create a personal, work, study, home, or shared space.</div><a class="btn btn-primary mt-4" href="/sections/new">Create your first section</a></div></div></section>{% endif %}
 {% endblock %}
