@@ -1,0 +1,36 @@
+{% macro task_row(t,next_page='/life/tasks') %}
+<div class="mlo-task" data-task-id="{{ t.id }}">
+ <form method="post" action="/life/tasks/{{ t.id }}/status" data-inline-task>
+  <input type="hidden" name="status" value="{{ 'todo' if t.status=='done' else 'done' }}">
+  <input type="hidden" name="next_page" value="{{ next_page }}">
+  <button class="mlo-check {{ 'is-done' if t.status=='done' else '' }}" type="submit" title="{{ 'Mark incomplete' if t.status=='done' else 'Complete task' }}" aria-label="Toggle completion for {{ t.title }}">{{ '✓' if t.status=='done' else '' }}</button>
+ </form>
+ <div class="mlo-task-main">
+  <a class="mlo-task-name {{ 'is-done' if t.status=='done' else '' }}" href="/life/tasks/{{ t.id }}">{{ t.title }}</a>
+  <div class="mlo-task-meta">
+    {% if t.project_name is defined and t.project_name %}<span>▦ {{ t.project_name }}</span>{% endif %}
+    {% if t.due_on %}<span class="{{ 'mlo-overdue' if t.due_on < current_day() and t.status!='done' else '' }}">◷ {{ t.due_on }}</span>{% endif %}
+    {% if t.priority in ['urgent','high'] %}<span class="mlo-priority">◆ {{ t.priority|title }}</span>{% endif %}
+    {% if t.recurrence!='none' %}<span>↻ {{ t.recurrence|title }}</span>{% endif %}
+  </div>
+ </div>
+ <a href="/life/tasks/{{ t.id }}" class="mlo-task-arrow" aria-label="Open task">↗</a>
+</div>
+{% endmacro %}
+
+{% macro quick_task(next_page='/life/tasks', project_id='',placeholder='Add a task, anything on your mind…') %}
+<form action="/life/tasks" method="post" class="mlo-capture" data-quick-form>
+  <span class="mlo-capture-icon" aria-hidden="true">＋</span>
+  <input type="text" required name="title" maxlength="240" placeholder="{{ placeholder }}" aria-label="New task title" autocomplete="off">
+  {% if project_id %}<input type="hidden" name="project_id" value="{{ project_id }}">{% endif %}
+  <input type="hidden" name="next_page" value="{{ next_page }}">
+  <button type="submit" class="mlo-btn mlo-primary">Add task <span aria-hidden="true">↗</span></button>
+</form>
+{% endmacro %}
+
+{% macro top(title,eyebrow,description,action='',action_href='') %}
+<div class="mlo-page-head">
+ <div><div class="mlo-kicker">{{ eyebrow }}</div><h1>{{ title }}</h1><p>{{ description }}</p></div>
+ {% if action %}<a class="mlo-btn mlo-secondary" href="{{ action_href }}">{{ action }}</a>{% endif %}
+</div>
+{% endmacro %}

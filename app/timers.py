@@ -7,7 +7,7 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from app.db import get_conn
+from app.db import get_conn, _ensure_column
 from app.meta import APP_VERSION
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
@@ -44,6 +44,8 @@ def init_timer_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_timers_user_status ON timers(user_id,status,updated_at_utc DESC);
             """
         )
+        _ensure_column(conn, "timers", "task_id", "task_id INTEGER REFERENCES life_tasks(id) ON DELETE SET NULL")
+        _ensure_column(conn, "timers", "kind", "kind TEXT NOT NULL DEFAULT 'general'")
         conn.commit()
 
 
@@ -89,17 +91,21 @@ def timers_page(request: Request):
 
 
 @router.post("/new")
-def create_timer(request: Request, label: str = Form("Focus timer"), minutes: int = Form(25), seconds: int = Form(0)):
+def create_timer(request: Request, label: str = Form("Focus timer"), minutes: int = Form(25), seconds: int = Form(0), task_id: str = Form(""), next_page: str = Form("/timers"), kind: str = Form("general")):
     user = _user(request)
     duration = max(1, min(24 * 3600, int(minutes or 0) * 60 + int(seconds or 0)))
     ts = now_iso()
     with get_conn() as conn:
+        tid = int(task_id) if task_id.isdigit() else None
+        if tid:
+            from app.lifeos import task_access
+            task_access(conn, int(user["id"]), tid, edit=False)
         conn.execute(
-            "INSERT INTO timers(user_id,label,duration_seconds,status,started_at_utc,remaining_seconds,created_at_utc,updated_at_utc) VALUES(?,?,?,'running',?,?,?,?)",
-            (user["id"], (label or "Timer").strip()[:120], duration, ts, duration, ts, ts),
+            "INSERT INTO timers(user_id,label,task_id,kind,duration_seconds,status,started_at_utc,remaining_seconds,created_at_utc,updated_at_utc) VALUES(?,?,?,?,?,'running',?,?,?,?)",
+            (user["id"], (label or "Timer").strip()[:120], tid, kind if kind in ('general','focus','break') else 'general', duration, ts, duration, ts, ts),
         )
         conn.commit()
-    return RedirectResponse("/timers", status_code=303)
+    return RedirectResponse(next_page if next_page.startswith('/life') or next_page == '/timers' else '/timers', status_code=303)
 
 
 @router.post("/{timer_id}/pause")
@@ -144,11 +150,23 @@ def complete_timer(request: Request, timer_id: int):
     user = _user(request)
     ts = now_iso()
     with get_conn() as conn:
-        conn.execute(
-            "UPDATE timers SET status='done',remaining_seconds=0,started_at_utc=NULL,completed_at_utc=?,updated_at_utc=? WHERE id=? AND user_id=?",
-            (ts, ts, timer_id, user["id"]),
-        )
-        conn.commit()
+        timer = conn.execute("SELECT * FROM timers WHERE id=? AND user_id=?", (timer_id, user['id'])).fetchone()
+        if timer and timer['status'] != 'done':
+            elapsed = max(0, timer['duration_seconds'] - _remaining(timer))
+            conn.execute(
+                "UPDATE timers SET status='done',remaining_seconds=0,started_at_utc=NULL,completed_at_utc=?,updated_at_utc=? WHERE id=? AND user_id=?",
+                (ts, ts, timer_id, user["id"]),
+            )
+            if elapsed >= 60 and (timer['kind']=='focus' or timer['task_id'] is not None):
+                from app.lifeos import today, task_access
+                pid = None
+                tid = timer['task_id']
+                if tid:
+                    task = task_access(conn, int(user['id']), tid)
+                    pid = task['project_id']
+                conn.execute("INSERT INTO life_time_entries(owner_id,task_id,project_id,minutes,note,occurred_on,created_at) VALUES(?,?,?,?,?,?,?)",
+                             (user['id'],tid,pid,min(1440,round(elapsed/60)),timer['label'],today(),ts))
+            conn.commit()
     if request.headers.get("x-requested-with") == "fetch":
         return JSONResponse({"ok": True})
     return RedirectResponse("/timers", status_code=303)

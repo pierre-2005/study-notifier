@@ -1,18 +1,22 @@
+# Fresh local Docker Compose deployment. For existing Portainer data use
+# docker-compose.portainer.yml, with its explicit EXTERNAL volume name.
 services:
-  study_notifier:
+  mlo:
     build: .
+    image: mlo-next:v3-preview
     ports:
       - "127.0.0.1:8001:8000"
     environment:
       NOTIFIER: ntfy
-      TIMEZONE: America/Edmonton
-      NTFY_BASE_URL: https://ntfy.sh
+      TIMEZONE: ${TIMEZONE:-America/Edmonton}
+      NTFY_BASE_URL: ${NTFY_BASE_URL:-https://ntfy.sh}
       NTFY_TOPIC: ${NTFY_TOPIC:-}
       STUDY_NOTIFIER_DB: /data/study_notifier.db
-      SESSION_SECRET: ${SESSION_SECRET}
-      APP_USERNAME: ${APP_USERNAME}
-      APP_PASSWORD: ${APP_PASSWORD}
-      COOKIE_SECURE: "true"
+      MLO_ATTACHMENT_DIR: /data/mlo_uploads
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET}
+      APP_USERNAME: ${APP_USERNAME:?Set APP_USERNAME}
+      APP_PASSWORD: ${APP_PASSWORD:?Set APP_PASSWORD}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
     volumes:
       - study_notifier_data:/data
     restart: unless-stopped
@@ -21,7 +25,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
-
+      start_period: 40s
 volumes:
   study_notifier_data:

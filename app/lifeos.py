@@ -1,0 +1,780 @@
+"""MLO 3 core: private-by-default projects, tasks, notes, planning, habits and reports.
+
+Every database query for mutable user content is scoped by the authenticated user,
+including project memberships, and uses bound SQL parameters.
+"""
+from __future__ import annotations
+
+import csv
+import io
+import json
+import calendar
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
+
+from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.templating import Jinja2Templates
+from app.db import get_conn
+from app.meta import APP_VERSION
+
+router = APIRouter(prefix="/life", tags=["life-os"])
+templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
+templates.env.globals["APP_VERSION"] = APP_VERSION
+templates.env.globals["current_day"] = lambda: date.today().isoformat()
+
+AREAS = ("Personal", "Work", "Study", "Home", "Health", "Other")
+PRIORITIES = ("low", "normal", "high", "urgent")
+STATUSES = ("todo", "doing", "blocked", "done")
+CAREERS = {
+    "blank": ("Start from scratch", [], ""),
+    "personal": ("Personal goals", ["Define the outcome", "Choose the next step", "Review your progress"], "Personal"),
+    "student": ("Study plan", ["Gather course requirements", "Plan study blocks", "Complete assignments", "Review before exams"], "Study"),
+    "electrical": ("Electrical engineering", ["Review requirements", "Prepare schematics", "Build BOM", "Submit design review", "Complete verification"], "Work"),
+    "software": ("Software development", ["Define requirements", "Plan implementation", "Build first release", "Test key workflows", "Deploy and monitor"], "Work"),
+    "mechanical": ("Mechanical engineering", ["Design brief", "CAD concept", "Prototype plan", "Design verification", "Release documentation"], "Work"),
+    "biomedical": ("Biomedical engineering", ["User needs", "Design inputs", "Risk analysis", "Verification plan", "Design review"], "Work"),
+    "project_manager": ("Project management", ["Project charter", "Scope and WBS", "Schedule milestones", "Risk register", "Status review"], "Work"),
+    "freelancer": ("Client project", ["Confirm client brief", "Agree deliverables", "Produce first draft", "Client review", "Final handover"], "Work"),
+    "content": ("Content creator", ["Collect ideas", "Draft content", "Edit content", "Schedule publishing", "Review analytics"], "Work"),
+    "construction": ("Construction", ["Review drawings", "Plan resources", "Procure materials", "Complete inspections", "Close deficiencies"], "Work"),
+    "research": ("Research", ["Define question", "Review literature", "Plan experiments", "Analyze results", "Draft report"], "Study"),
+    "business": ("Small business", ["Define customer need", "Build sales pipeline", "Set operations checklist", "Review financial plan", "Quarterly review"], "Work"),
+    "family": ("Family organization", ["Family calendar", "Household tasks", "Budget check-in", "Meal plan", "Monthly review"], "Home"),
+    "civil": ("Civil / structural engineer", ["Define scope and permits", "Review plans and drawings", "Coordinate submittals", "Schedule field inspections", "Close outstanding issues"], "Work"),
+    "chemical": ("Chemical / process engineer", ["Document process requirements", "Review P&IDs", "Collect HAZOP actions", "Prepare trial plan", "Close safety review"], "Work"),
+    "manufacturing": ("Manufacturing / industrial engineer", ["Analyze production flow", "Plan capacity", "Write SOPs", "Track quality actions", "Review maintenance"], "Work"),
+    "aerospace": ("Aerospace / automotive engineer", ["Capture configuration baseline", "Review requirements", "Plan validation tests", "Track supplier deliverables", "Close verification gates"], "Work"),
+    "data_ml": ("Data scientist / ML engineer", ["Define evaluation metric", "Catalog datasets", "Run baseline experiment", "Track model evaluations", "Prepare deployment checks"], "Work"),
+    "architect": ("Architect / urban planner", ["Confirm design brief", "Prepare concept drawings", "Collect approvals", "Review permits", "Record client feedback"], "Work"),
+    "skilled_trades": ("Skilled trades", ["Confirm work order", "Plan tools and materials", "Perform site checklist", "Document inspection", "Close service report"], "Work"),
+    "it": ("IT / sysadmin", ["Triage issues", "Review asset inventory", "Schedule change window", "Prepare rollback plan", "Update knowledge base"], "Work"),
+    "health_admin": ("Healthcare administration", ["Review shift schedule", "Track credentials", "Prepare training", "Complete administrative checklists", "Review continuing education"], "Work"),
+    "pharmacy": ("Pharmacy / laboratory admin", ["Review supply expiry", "Update SOPs", "Track staff training", "Schedule quality review", "Check inventory"], "Work"),
+    "legal": ("Legal practice admin", ["Capture matter deadlines", "Collect documents", "Review evidence requests", "Draft next actions", "Record billable time"], "Work"),
+    "accounting": ("Accounting / audit", ["Collect source documents", "Reconcile accounts", "Perform review checks", "Track outstanding client requests", "Prepare close report"], "Work"),
+    "finance": ("Financial analyst", ["Define research question", "Review model inputs", "Record assumptions", "Prepare draft report", "Complete review"], "Work"),
+    "teacher": ("Teacher / educator", ["Outline learning objectives", "Prepare lesson resources", "Plan assignments", "Schedule grading", "Review class outcomes"], "Work"),
+    "hr": ("Human resources", ["Confirm hiring need", "Review applicants", "Schedule interviews", "Prepare onboarding", "Track training"], "Work"),
+    "sales": ("Sales / account manager", ["Qualify leads", "Prepare proposals", "Schedule follow-ups", "Review pipeline", "Track quarterly targets"], "Work"),
+    "marketing": ("Marketing / social media", ["Plan campaign brief", "Develop content calendar", "Draft creative assets", "Schedule approval", "Review analytics"], "Work"),
+    "writing": ("Writer / editor / journalist", ["Collect story ideas", "Review sources", "Write draft", "Complete editorial review", "Publish and archive"], "Work"),
+    "designer": ("Designer / creative", ["Collect design brief", "Prepare concepts", "Gather references", "Review client feedback", "Deliver assets"], "Work"),
+    "executive": ("Executive / team lead", ["Define quarterly priorities", "Review delegated work", "Record key decisions", "Track blockers", "Prepare weekly review"], "Work"),
+    "property": ("Property / real estate", ["Review properties", "Schedule viewings", "Track documents", "Plan maintenance", "Follow up with contacts"], "Work"),
+    "hospitality": ("Hospitality / retail", ["Create opening checklist", "Plan staff schedule", "Review inventory", "Log incidents", "Prepare closing checklist"], "Work"),
+    "logistics": ("Logistics / supply chain", ["Review purchase orders", "Track shipments", "Monitor delivery exceptions", "Contact suppliers", "Review weekly operations"], "Work"),
+    "nonprofit": ("Nonprofit / public service", ["Define program outcomes", "Plan stakeholder meetings", "Track grant milestones", "Organize evidence", "Prepare outcomes report"], "Work"),
+    "coaching": ("Coach / trainer", ["Define program goals", "Plan sessions", "Organize equipment", "Schedule client follow-ups", "Review progress"], "Work"),
+}
+
+
+def now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def today() -> str:
+    return date.today().isoformat()
+
+
+def user_id(request: Request) -> int:
+    user = getattr(request.state, "current_user", None)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Sign in required")
+    return int(user["id"])
+
+
+def text_clean(value: str, limit: int = 200) -> str:
+    return (value or "").strip()[:limit]
+
+
+def pick(value, allowed, fallback):
+    return value if value in allowed else fallback
+
+
+def safe_day(value: str) -> str | None:
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value).isoformat()
+    except ValueError:
+        raise HTTPException(422, "Invalid date")
+
+
+def redirect(path="/life"):
+    if not path.startswith("/life") or path.startswith("//") or "\r" in path or "\n" in path:
+        path = "/life"
+    return RedirectResponse(path, status_code=303)
+
+
+def init_life_schema():
+    with get_conn() as conn:
+        conn.executescript("""
+        CREATE TABLE IF NOT EXISTS life_preferences (
+          user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+          experience TEXT NOT NULL DEFAULT 'simple' CHECK(experience IN ('simple','guided','professional')),
+          default_area TEXT NOT NULL DEFAULT 'Personal', created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS life_projects (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', area TEXT NOT NULL DEFAULT 'Personal',
+          color TEXT NOT NULL DEFAULT '#7285d5', template TEXT NOT NULL DEFAULT 'blank',
+          status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','on_hold','complete','archived')),
+          due_on TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS life_projects_owner ON life_projects(owner_id,status,updated_at DESC);
+        CREATE TABLE IF NOT EXISTS life_project_members (
+          project_id INTEGER NOT NULL REFERENCES life_projects(id) ON DELETE CASCADE,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          role TEXT NOT NULL DEFAULT 'editor' CHECK(role IN ('viewer','editor')),
+          PRIMARY KEY(project_id,user_id)
+        );
+        CREATE INDEX IF NOT EXISTS life_members_user ON life_project_members(user_id,project_id);
+        CREATE TABLE IF NOT EXISTS life_tasks (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          project_id INTEGER REFERENCES life_projects(id) ON DELETE CASCADE,
+          parent_id INTEGER REFERENCES life_tasks(id) ON DELETE CASCADE,
+          title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
+          status TEXT NOT NULL DEFAULT 'todo' CHECK(status IN ('todo','doing','blocked','done')),
+          priority TEXT NOT NULL DEFAULT 'normal' CHECK(priority IN ('low','normal','high','urgent')),
+          area TEXT NOT NULL DEFAULT 'Personal', due_on TEXT,
+          estimated_minutes INTEGER NOT NULL DEFAULT 0, recurrence TEXT NOT NULL DEFAULT 'none'
+            CHECK(recurrence IN ('none','daily','weekly','monthly')),
+          position INTEGER NOT NULL DEFAULT 0, completed_at TEXT,
+          created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS life_tasks_owner_due ON life_tasks(owner_id,status,due_on);
+        CREATE INDEX IF NOT EXISTS life_tasks_project_status ON life_tasks(project_id,status,position);
+        CREATE TABLE IF NOT EXISTS life_task_dependencies (
+          task_id INTEGER NOT NULL REFERENCES life_tasks(id) ON DELETE CASCADE,
+          depends_on_id INTEGER NOT NULL REFERENCES life_tasks(id) ON DELETE CASCADE,
+          PRIMARY KEY(task_id,depends_on_id), CHECK(task_id != depends_on_id)
+        );
+        CREATE TABLE IF NOT EXISTS life_project_records (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          project_id INTEGER NOT NULL REFERENCES life_projects(id) ON DELETE CASCADE,
+          created_by INTEGER NOT NULL REFERENCES users(id),
+          record_type TEXT NOT NULL CHECK(record_type IN ('milestone','risk','issue','decision','deliverable')),
+          title TEXT NOT NULL, details TEXT NOT NULL DEFAULT '',
+          severity TEXT NOT NULL DEFAULT 'medium' CHECK(severity IN ('low','medium','high')),
+          status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','monitor','resolved')),
+          due_on TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS life_project_records_project ON life_project_records(project_id,record_type,status);
+        CREATE TABLE IF NOT EXISTS life_notes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          project_id INTEGER REFERENCES life_projects(id) ON DELETE CASCADE,
+          title TEXT NOT NULL, body TEXT NOT NULL DEFAULT '', area TEXT NOT NULL DEFAULT 'Personal',
+          created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS life_notes_owner ON life_notes(owner_id,updated_at DESC);
+        CREATE TABLE IF NOT EXISTS life_goals (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          title TEXT NOT NULL, target_on TEXT, area TEXT NOT NULL DEFAULT 'Personal',
+          status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','complete')),
+          created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS life_habits (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          title TEXT NOT NULL, area TEXT NOT NULL DEFAULT 'Personal',
+          created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS life_habit_days (
+          habit_id INTEGER NOT NULL REFERENCES life_habits(id) ON DELETE CASCADE,
+          day TEXT NOT NULL, PRIMARY KEY(habit_id,day)
+        );
+        CREATE TABLE IF NOT EXISTS life_time_entries (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          task_id INTEGER REFERENCES life_tasks(id) ON DELETE SET NULL,
+          project_id INTEGER REFERENCES life_projects(id) ON DELETE SET NULL,
+          minutes INTEGER NOT NULL CHECK(minutes>0 AND minutes<=1440),
+          note TEXT NOT NULL DEFAULT '', occurred_on TEXT NOT NULL, created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS life_time_owner ON life_time_entries(owner_id,occurred_on DESC);
+        """)
+        conn.commit()
+
+
+def pref(conn, uid):
+    row = conn.execute("SELECT * FROM life_preferences WHERE user_id=?", (uid,)).fetchone()
+    if row:
+        return dict(row)
+    return {"experience":"simple","default_area":"Personal"}
+
+
+def access(conn, uid, project_id, edit=False):
+    row = conn.execute("""
+      SELECT p.*, CASE WHEN p.owner_id=? THEN 'owner' ELSE m.role END AS my_role
+      FROM life_projects p LEFT JOIN life_project_members m ON m.project_id=p.id AND m.user_id=?
+      WHERE p.id=? AND (p.owner_id=? OR m.user_id IS NOT NULL)
+    """, (uid, uid, project_id, uid)).fetchone()
+    if not row:
+        raise HTTPException(404, "Project not found")
+    if edit and row["my_role"] == "viewer":
+        raise HTTPException(403, "Read-only project")
+    return row
+
+
+def task_access(conn, uid, task_id, edit=False):
+    row = conn.execute("SELECT * FROM life_tasks WHERE id=?", (task_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, "Task not found")
+    if row["project_id"]:
+        access(conn, uid, row["project_id"], edit=edit)
+    elif row["owner_id"] != uid:
+        raise HTTPException(404, "Task not found")
+    return row
+
+
+def note_access(conn, uid, note_id, edit=False):
+    row = conn.execute("SELECT * FROM life_notes WHERE id=?", (note_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, "Note not found")
+    if row["project_id"]:
+        access(conn, uid, row["project_id"], edit=edit)
+    elif row["owner_id"] != uid:
+        raise HTTPException(404, "Note not found")
+    return row
+
+
+def tasks_sql(uid):
+    # Notes and tasks in shared projects are deliberately accessible only to explicit members.
+    return ("(t.owner_id=? AND t.project_id IS NULL OR EXISTS (SELECT 1 FROM life_projects p "
+            "LEFT JOIN life_project_members m ON m.project_id=p.id AND m.user_id=? "
+            "WHERE p.id=t.project_id AND (p.owner_id=? OR m.user_id IS NOT NULL)))", (uid,uid,uid))
+
+
+def data_for(conn, uid, view='all', project=None, limit=150):
+    cond, params = tasks_sql(uid)
+    where = [cond]
+    vals = list(params)
+    if project is not None:
+        access(conn, uid, project)
+        where.append("t.project_id=?")
+        vals.append(project)
+    if view in ("today", "upcoming", "overdue"):
+        where.append("t.status != 'done'")
+        if view == "today":
+            where.append("(t.due_on<=? OR t.due_on IS NULL)")
+            vals.append(today())
+        elif view == "overdue":
+            where.append("t.due_on<?")
+            vals.append(today())
+        else:
+            where.append("t.due_on>? AND t.due_on<=?")
+            vals.extend([today(), (date.today()+timedelta(days=14)).isoformat()])
+    elif view == "done":
+        where.append("t.status='done'")
+    elif view == "inbox":
+        where.append("t.project_id IS NULL AND t.status!='done'")
+    elif view == "open":
+        where.append("t.status!='done'")
+    vals.append(limit)
+    return conn.execute(f"""
+       SELECT t.*, p.name AS project_name FROM life_tasks t
+       LEFT JOIN life_projects p ON p.id=t.project_id
+       WHERE {' AND '.join(where)}
+       ORDER BY CASE WHEN t.status='done' THEN 1 ELSE 0 END,
+                CASE WHEN t.due_on IS NULL THEN 1 ELSE 0 END, t.due_on,
+                CASE t.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 ELSE 2 END,
+                t.id DESC LIMIT ?
+    """, vals).fetchall()
+
+
+def projects_for(conn, uid):
+    return conn.execute("""
+       SELECT p.*, (SELECT COUNT(*) FROM life_tasks t WHERE t.project_id=p.id) AS task_count,
+          (SELECT COUNT(*) FROM life_tasks t WHERE t.project_id=p.id AND t.status='done') AS done_count,
+          CASE WHEN p.owner_id=? THEN 'owner' ELSE m.role END AS my_role
+       FROM life_projects p LEFT JOIN life_project_members m ON m.project_id=p.id AND m.user_id=?
+       WHERE (p.owner_id=? OR m.user_id IS NOT NULL) AND p.status!='archived'
+       ORDER BY CASE WHEN p.status='active' THEN 0 ELSE 1 END,p.updated_at DESC
+    """,(uid,uid,uid)).fetchall()
+
+
+def render(request, name, **kwargs):
+    return templates.TemplateResponse(request, name, {"request":request, **kwargs})
+
+
+@router.get("", response_class=HTMLResponse)
+def home(request: Request):
+    uid = user_id(request)
+    with get_conn() as conn:
+        tasks = data_for(conn,uid,'today',limit=12)
+        projects = projects_for(conn,uid)[:5]
+        stats = conn.execute("SELECT COUNT(*) AS total, SUM(CASE WHEN status='done' THEN 1 ELSE 0 END) AS done FROM life_tasks WHERE owner_id=?",(uid,)).fetchone()
+        focus = conn.execute("SELECT COALESCE(SUM(minutes),0) AS total FROM life_time_entries WHERE owner_id=? AND occurred_on>=?",(uid,(date.today()-timedelta(days=6)).isoformat())).fetchone()['total']
+        preference = pref(conn,uid)
+    return render(request,'life_home.html',tasks=tasks,projects=projects,stats=stats,focus=focus,preference=preference,today=today())
+
+
+@router.post('/preferences')
+def set_preferences(request: Request, experience: str=Form('simple')):
+    uid=user_id(request)
+    experience=pick(experience,('simple','guided','professional'),'simple')
+    with get_conn() as conn:
+        conn.execute("INSERT INTO life_preferences(user_id,experience,created_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET experience=excluded.experience",(uid,experience,now()))
+        conn.commit()
+    return redirect('/life')
+
+
+@router.get('/tasks', response_class=HTMLResponse)
+def tasks_page(request: Request, view: str='open', project: int|None=None):
+    uid=user_id(request)
+    view=pick(view,('all','open','inbox','today','upcoming','overdue','done'),'open')
+    with get_conn() as conn:
+        tasks=data_for(conn,uid,view,project,limit=250)
+        projects=projects_for(conn,uid)
+        preference=pref(conn,uid)
+    return render(request,'life_tasks.html',tasks=tasks,projects=projects,view=view,selected_project=project,preference=preference,today=today())
+
+
+@router.post('/tasks')
+def create_task(request: Request, title: str=Form(...), project_id: str=Form(''),
+                due_on: str=Form(''),priority: str=Form('normal'),area: str=Form('Personal'),
+                description: str=Form(''), estimated_minutes: int=Form(0),recurrence: str=Form('none'),parent_id: str=Form(''),
+                next_page: str=Form('/life/tasks')):
+    uid=user_id(request)
+    title=text_clean(title,240)
+    if not title:
+        raise HTTPException(422,'A task title is required')
+    due=safe_day(due_on)
+    priority=pick(priority,PRIORITIES,'normal')
+    area=pick(area,AREAS,'Personal')
+    recurrence=pick(recurrence,('none','daily','weekly','monthly'),'none')
+    with get_conn() as conn:
+        pid=int(project_id) if project_id.strip().isdigit() else None
+        parent=int(parent_id) if parent_id.strip().isdigit() else None
+        if pid:
+            area=access(conn,uid,pid,edit=True)['area']
+        if parent:
+            ptask=task_access(conn,uid,parent,edit=True)
+            if ptask['project_id'] != pid:
+                raise HTTPException(422,'Subtask must belong to the parent project')
+        ts=now()
+        conn.execute("""INSERT INTO life_tasks(owner_id,project_id,parent_id,title,description,status,priority,area,due_on,estimated_minutes,recurrence,created_at,updated_at)
+                 VALUES(?,?,?,?,?,'todo',?,?,?,?,?,?,?)""",
+                 (uid,pid,parent,title,text_clean(description,10000),priority,area,due,max(0,min(100000,estimated_minutes)),recurrence,ts,ts))
+        if pid:
+            conn.execute('UPDATE life_projects SET updated_at=? WHERE id=?',(ts,pid))
+        new_id=conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+        conn.commit()
+    if request.headers.get('x-mlo-action')=='fetch':
+        return JSONResponse({'ok':True,'id':new_id,'title':title,'project_id':pid,'due_on':due,'priority':priority})
+    return redirect(next_page)
+
+
+def next_due(due, recurrence):
+    dt=date.fromisoformat(due) if due else date.today()
+    if recurrence=='daily': return (dt+timedelta(days=1)).isoformat()
+    if recurrence=='weekly': return (dt+timedelta(days=7)).isoformat()
+    if recurrence=='monthly':
+        y=dt.year+(dt.month//12); m=dt.month%12+1
+        return dt.replace(year=y,month=m,day=min(dt.day,calendar.monthrange(y,m)[1])).isoformat()
+    return None
+
+
+@router.post('/tasks/{task_id}/status')
+def change_task_status(request: Request,task_id:int,status:str=Form('done'), next_page:str=Form('/life/tasks')):
+    uid=user_id(request)
+    status=pick(status,STATUSES,'todo')
+    with get_conn() as conn:
+        task=task_access(conn,uid,task_id,edit=True)
+        if status=='done':
+            blockers=conn.execute("""SELECT COUNT(*) FROM life_task_dependencies d JOIN life_tasks t ON t.id=d.depends_on_id
+                                           WHERE d.task_id=? AND t.status!='done'""",(task_id,)).fetchone()[0]
+            if blockers:
+                raise HTTPException(409,'Complete dependencies before finishing this task')
+        ts=now()
+        conn.execute('UPDATE life_tasks SET status=?,completed_at=?,updated_at=? WHERE id=?',
+                     (status,ts if status=='done' else None,ts,task_id))
+        if status=='done' and task['status']!='done' and task['recurrence']!='none':
+            due=next_due(task['due_on'],task['recurrence'])
+            conn.execute("""INSERT INTO life_tasks(owner_id,project_id,parent_id,title,description,status,priority,area,due_on,estimated_minutes,recurrence,created_at,updated_at)
+                          VALUES(?,?,?,?,?,'todo',?,?,?,?,?,?,?)""",
+                         (task['owner_id'],task['project_id'],task['parent_id'],task['title'],task['description'],task['priority'],task['area'],due,task['estimated_minutes'],task['recurrence'],ts,ts))
+        conn.commit()
+    if request.headers.get('x-mlo-action')=='fetch':
+        return JSONResponse({'ok':True,'status':status})
+    return redirect(next_page)
+
+
+@router.get('/tasks/{task_id}',response_class=HTMLResponse)
+def task_detail(request: Request,task_id:int):
+    uid=user_id(request)
+    with get_conn() as conn:
+        task=task_access(conn,uid,task_id)
+        projects=projects_for(conn,uid)
+        subs=conn.execute('SELECT * FROM life_tasks WHERE parent_id=? ORDER BY status,id',(task_id,)).fetchall()
+        deps=conn.execute('SELECT t.id,t.title,t.status FROM life_task_dependencies d JOIN life_tasks t ON t.id=d.depends_on_id WHERE d.task_id=?',(task_id,)).fetchall()
+        possible_dependencies=[t for t in data_for(conn,uid,'all',limit=200) if t['id'] != task_id]
+        entries=conn.execute('SELECT * FROM life_time_entries WHERE task_id=? AND owner_id=? ORDER BY id DESC LIMIT 30',(task_id,uid)).fetchall()
+        attachments=conn.execute('SELECT * FROM life_files WHERE task_id=? ORDER BY id DESC',(task_id,)).fetchall()
+    return render(request,'life_task_detail.html',task=task,projects=projects,subs=subs,deps=deps,entries=entries,attachments=attachments,possible_dependencies=possible_dependencies)
+
+
+@router.post('/tasks/{task_id}/edit')
+def edit_task(request: Request,task_id:int,title:str=Form(...),description:str=Form(''),status:str=Form('todo'),priority:str=Form('normal'),due_on:str=Form(''),
+              recurrence:str=Form('none'),estimated_minutes:int=Form(0)):
+    uid=user_id(request)
+    title=text_clean(title,240)
+    if not title: raise HTTPException(422,'Task title is required')
+    with get_conn() as conn:
+        task_access(conn,uid,task_id,edit=True)
+        conn.execute('''UPDATE life_tasks SET title=?,description=?,status=?,priority=?,due_on=?,recurrence=?,estimated_minutes=?,updated_at=? WHERE id=?''',
+            (title,text_clean(description,10000),pick(status,STATUSES,'todo'),pick(priority,PRIORITIES,'normal'),safe_day(due_on),pick(recurrence,('none','daily','weekly','monthly'),'none'),max(0,min(100000,estimated_minutes)),now(),task_id))
+        conn.commit()
+    return redirect(f'/life/tasks/{task_id}')
+
+
+@router.post('/tasks/{task_id}/delete')
+def delete_task(request: Request,task_id:int):
+    uid=user_id(request)
+    with get_conn() as conn:
+        task_access(conn,uid,task_id,edit=True)
+        conn.execute('DELETE FROM life_tasks WHERE id=?',(task_id,))
+        conn.commit()
+    return redirect('/life/tasks')
+
+
+@router.post('/tasks/{task_id}/dependency')
+def add_dependency(request: Request,task_id:int, depends_on:int=Form(...)):
+    uid=user_id(request)
+    with get_conn() as conn:
+        task_access(conn,uid,task_id,edit=True)
+        task_access(conn,uid,depends_on)
+        if task_id==depends_on: raise HTTPException(422,'Self-dependency is not allowed')
+        # Detect cycles by following the transitive graph from the proposed prerequisite.
+        cycle=conn.execute('''WITH RECURSIVE ancestors(id) AS (
+             SELECT depends_on_id FROM life_task_dependencies WHERE task_id=?
+             UNION SELECT d.depends_on_id FROM life_task_dependencies d JOIN ancestors a ON a.id=d.task_id)
+             SELECT 1 FROM ancestors WHERE id=? LIMIT 1''',(depends_on,task_id)).fetchone()
+        if cycle: raise HTTPException(409,'This dependency would create a cycle')
+        conn.execute('INSERT OR IGNORE INTO life_task_dependencies(task_id,depends_on_id) VALUES(?,?)',(task_id,depends_on))
+        conn.commit()
+    return redirect(f'/life/tasks/{task_id}')
+
+
+@router.get('/projects',response_class=HTMLResponse)
+def project_list(request: Request):
+    uid=user_id(request)
+    with get_conn() as conn:
+        projects=projects_for(conn,uid)
+        preference=pref(conn,uid)
+    return render(request,'life_projects.html',projects=projects,careers=CAREERS,preference=preference)
+
+
+@router.post('/projects')
+def create_project(request:Request,name:str=Form(...),area:str=Form('Personal'),template:str=Form('blank'),description:str=Form('')):
+    uid=user_id(request)
+    name=text_clean(name,160)
+    if not name: raise HTTPException(422,'Project name is required')
+    template=pick(template,CAREERS,'blank')
+    area=pick(area,AREAS,CAREERS[template][2] or 'Personal')
+    if template!='blank' and area=='Personal' and CAREERS[template][2]:
+        area=CAREERS[template][2]
+    ts=now()
+    with get_conn() as conn:
+        cur=conn.execute('INSERT INTO life_projects(owner_id,name,description,area,template,created_at,updated_at) VALUES(?,?,?,?,?,?,?)',
+                         (uid,name,text_clean(description,5000),area,template,ts,ts))
+        pid=cur.lastrowid
+        for n,title in enumerate(CAREERS[template][1]):
+            conn.execute("""INSERT INTO life_tasks(owner_id,project_id,title,status,priority,area,position,created_at,updated_at)
+                          VALUES(?,?,?,'todo','normal',?,?,?,?)""",(uid,pid,title,area,n,ts,ts))
+        conn.commit()
+    return redirect(f'/life/projects/{pid}')
+
+
+@router.get('/projects/{project_id}',response_class=HTMLResponse)
+def project_detail(request:Request,project_id:int,view:str='board'):
+    uid=user_id(request)
+    view=pick(view,('board','list','calendar'),'board')
+    with get_conn() as conn:
+        project=access(conn,uid,project_id)
+        tasks=data_for(conn,uid,'all',project_id,limit=500)
+        notes=conn.execute('SELECT * FROM life_notes WHERE project_id=? ORDER BY updated_at DESC LIMIT 20',(project_id,)).fetchall()
+        members=conn.execute('SELECT m.*,u.username,u.display_name FROM life_project_members m JOIN users u ON u.id=m.user_id WHERE m.project_id=?',(project_id,)).fetchall()
+        minutes=conn.execute('SELECT COALESCE(SUM(minutes),0) FROM life_time_entries WHERE project_id=?',(project_id,)).fetchone()[0]
+        preference=pref(conn,uid)
+        records=conn.execute('SELECT * FROM life_project_records WHERE project_id=? ORDER BY status,record_type,due_on,id DESC LIMIT 150',(project_id,)).fetchall()
+        attachments=conn.execute('SELECT * FROM life_files WHERE project_id=? ORDER BY id DESC',(project_id,)).fetchall()
+    return render(request,'life_project_detail.html',project=project,tasks=tasks,notes=notes,members=members,minutes=minutes,view=view,preference=preference,attachments=attachments,records=records)
+
+
+@router.post('/projects/{project_id}/edit')
+def edit_project(request:Request,project_id:int,name:str=Form(...),description:str=Form(''),status:str=Form('active'),due_on:str=Form('')):
+    uid=user_id(request)
+    with get_conn() as conn:
+        access(conn,uid,project_id,edit=True)
+        conn.execute('UPDATE life_projects SET name=?,description=?,status=?,due_on=?,updated_at=? WHERE id=?',
+          (text_clean(name,160),text_clean(description,5000),pick(status,('active','on_hold','complete','archived'),'active'),safe_day(due_on),now(),project_id))
+        conn.commit()
+    return redirect(f'/life/projects/{project_id}')
+
+
+@router.post('/projects/{project_id}/records')
+def new_project_record(request:Request,project_id:int,record_type:str=Form('milestone'),title:str=Form(...),
+                       details:str=Form(''),severity:str=Form('medium'),due_on:str=Form('')):
+    uid=user_id(request)
+    title=text_clean(title,240)
+    if not title:raise HTTPException(422,'A title is required')
+    ts=now()
+    with get_conn() as conn:
+        access(conn,uid,project_id,edit=True)
+        conn.execute('INSERT INTO life_project_records(project_id,created_by,record_type,title,details,severity,due_on,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)',
+           (project_id,uid,pick(record_type,('milestone','risk','issue','decision','deliverable'),'milestone'),title,
+            text_clean(details,12000),pick(severity,('low','medium','high'),'medium'),safe_day(due_on),ts,ts))
+        conn.commit()
+    return redirect(f'/life/projects/{project_id}')
+
+
+@router.post('/projects/{project_id}/records/{record_id}/status')
+def project_record_status(request:Request,project_id:int,record_id:int,status:str=Form('resolved')):
+    uid=user_id(request)
+    with get_conn() as conn:
+        access(conn,uid,project_id,edit=True)
+        result=conn.execute('UPDATE life_project_records SET status=?,updated_at=? WHERE id=? AND project_id=?',
+              (pick(status,('open','monitor','resolved'),'resolved'),now(),record_id,project_id))
+        if result.rowcount==0:raise HTTPException(404,'Record not found')
+        conn.commit()
+    return redirect(f'/life/projects/{project_id}')
+
+
+@router.post('/projects/{project_id}/invite')
+def invite_user(request:Request,project_id:int,username:str=Form(...),role:str=Form('editor')):
+    uid=user_id(request)
+    with get_conn() as conn:
+        project=access(conn,uid,project_id)
+        if project['my_role']!='owner': raise HTTPException(403,'Only project owners can invite people')
+        other=conn.execute('SELECT id FROM users WHERE username=? COLLATE NOCASE AND approved=1 AND active=1',(text_clean(username,40),)).fetchone()
+        if not other: raise HTTPException(404,'No active user with that username')
+        if other['id']==uid: raise HTTPException(422,'You already own this project')
+        conn.execute('INSERT INTO life_project_members(project_id,user_id,role) VALUES(?,?,?) ON CONFLICT(project_id,user_id) DO UPDATE SET role=excluded.role',
+                     (project_id,other['id'],pick(role,('viewer','editor'),'editor')))
+        conn.commit()
+    return redirect(f'/life/projects/{project_id}')
+
+
+@router.post('/projects/{project_id}/remove/{member_id}')
+def remove_member(request:Request,project_id:int,member_id:int):
+    uid=user_id(request)
+    with get_conn() as conn:
+        project=access(conn,uid,project_id)
+        if project['my_role']!='owner' and uid!=member_id: raise HTTPException(403,'Not allowed')
+        conn.execute('DELETE FROM life_project_members WHERE project_id=? AND user_id=?',(project_id,member_id))
+        conn.commit()
+    return redirect(f'/life/projects/{project_id}' if uid!=member_id else '/life/projects')
+
+
+@router.get('/notes',response_class=HTMLResponse)
+def notes_page(request:Request):
+    uid=user_id(request)
+    with get_conn() as conn:
+        notes=conn.execute('''SELECT n.*,p.name AS project_name FROM life_notes n
+            LEFT JOIN life_projects p ON p.id=n.project_id
+            LEFT JOIN life_project_members m ON m.project_id=n.project_id AND m.user_id=?
+            WHERE (n.owner_id=? AND n.project_id IS NULL) OR (n.project_id IS NOT NULL AND (p.owner_id=? OR m.user_id IS NOT NULL))
+            ORDER BY n.updated_at DESC LIMIT 150''',(uid,uid,uid)).fetchall()
+        projects=projects_for(conn,uid)
+    return render(request,'life_notes.html',notes=notes,projects=projects)
+
+
+@router.post('/notes')
+def new_note(request:Request,title:str=Form(...),body:str=Form(''),project_id:str=Form(''),area:str=Form('Personal')):
+    uid=user_id(request)
+    title=text_clean(title,200)
+    if not title: raise HTTPException(422,'Note title is required')
+    pid=int(project_id) if project_id.isdigit() else None
+    with get_conn() as conn:
+        if pid: area=access(conn,uid,pid,edit=True)['area']
+        ts=now()
+        cur=conn.execute('INSERT INTO life_notes(owner_id,project_id,title,body,area,created_at,updated_at) VALUES(?,?,?,?,?,?,?)',
+                         (uid,pid,title,text_clean(body,100000),pick(area,AREAS,'Personal'),ts,ts))
+        conn.commit()
+        nid=cur.lastrowid
+    return redirect(f'/life/notes/{nid}')
+
+
+@router.get('/notes/{note_id}',response_class=HTMLResponse)
+def note_detail(request:Request,note_id:int):
+    uid=user_id(request)
+    with get_conn() as conn:
+        note=note_access(conn,uid,note_id)
+        attachments=conn.execute('SELECT * FROM life_files WHERE note_id=? ORDER BY id DESC',(note_id,)).fetchall()
+    return render(request,'life_note_detail.html',note=note,attachments=attachments)
+
+
+@router.post('/notes/{note_id}/edit')
+def save_note(request:Request,note_id:int,title:str=Form(...),body:str=Form('')):
+    uid=user_id(request)
+    with get_conn() as conn:
+        note_access(conn,uid,note_id,edit=True)
+        conn.execute('UPDATE life_notes SET title=?,body=?,updated_at=? WHERE id=?',
+                     (text_clean(title,200),text_clean(body,100000),now(),note_id))
+        conn.commit()
+    return redirect(f'/life/notes/{note_id}')
+
+
+@router.post('/notes/{note_id}/delete')
+def delete_note(request:Request,note_id:int):
+    uid=user_id(request)
+    with get_conn() as conn:
+        note_access(conn,uid,note_id,edit=True)
+        conn.execute('DELETE FROM life_notes WHERE id=?',(note_id,))
+        conn.commit()
+    return redirect('/life/notes')
+
+
+@router.get('/calendar',response_class=HTMLResponse)
+def calendar_page(request:Request, month:str=''):
+    uid=user_id(request)
+    try:
+        first=date.fromisoformat(month+'-01') if month else date.today().replace(day=1)
+    except ValueError: first=date.today().replace(day=1)
+    first=first.replace(day=1)
+    if first.year<2000 or first.year>2100: first=date.today().replace(day=1)
+    last=date(first.year+(first.month//12),first.month%12+1,1)
+    with get_conn() as conn:
+        cond,params=tasks_sql(uid)
+        rows=conn.execute(f'''SELECT t.id,t.title,t.status,t.due_on,p.name AS project_name
+            FROM life_tasks t LEFT JOIN life_projects p ON p.id=t.project_id
+            WHERE {cond} AND t.due_on>=? AND t.due_on<? ORDER BY t.due_on,t.id LIMIT 300''',
+            (*params,first.isoformat(),last.isoformat())).fetchall()
+    grouped={}
+    for row in rows: grouped.setdefault(int(row['due_on'][-2:]),[]).append(row)
+    weeks=calendar.Calendar(firstweekday=0).monthdatescalendar(first.year,first.month)
+    prev=(first-timedelta(days=1)).replace(day=1).strftime('%Y-%m')
+    nxt=last.strftime('%Y-%m')
+    return render(request,'life_calendar.html',month=first.strftime('%B %Y'),month_num=first.month,weeks=weeks,events=grouped,prev=prev,nxt=nxt,today=today())
+
+
+@router.get('/goals',response_class=HTMLResponse)
+def goals_page(request:Request):
+    uid=user_id(request)
+    with get_conn() as conn:
+        goals=conn.execute('SELECT * FROM life_goals WHERE owner_id=? ORDER BY status,target_on,id DESC',(uid,)).fetchall()
+        habits=conn.execute('''SELECT h.*,EXISTS(SELECT 1 FROM life_habit_days d WHERE d.habit_id=h.id AND d.day=?) AS checked,
+          (SELECT COUNT(*) FROM life_habit_days d WHERE d.habit_id=h.id AND d.day>=?) AS days_7
+          FROM life_habits h WHERE h.owner_id=? ORDER BY h.id DESC''',(today(),(date.today()-timedelta(days=6)).isoformat(),uid)).fetchall()
+    return render(request,'life_goals.html',goals=goals,habits=habits,today=today())
+
+
+@router.post('/goals')
+def new_goal(request:Request,title:str=Form(...),target_on:str=Form(''),area:str=Form('Personal')):
+    uid=user_id(request)
+    with get_conn() as conn:
+        conn.execute("INSERT INTO life_goals(owner_id,title,target_on,area,created_at) VALUES(?,?,?,?,?)",
+                     (uid,text_clean(title,240),safe_day(target_on),pick(area,AREAS,'Personal'),now()))
+        conn.commit()
+    return redirect('/life/goals')
+
+
+@router.post('/goals/{goal_id}/complete')
+def complete_goal(request:Request,goal_id:int):
+    uid=user_id(request)
+    with get_conn() as conn:
+        conn.execute("UPDATE life_goals SET status=CASE WHEN status='complete' THEN 'active' ELSE 'complete' END WHERE id=? AND owner_id=?",(goal_id,uid))
+        conn.commit()
+    return redirect('/life/goals')
+
+
+@router.post('/habits')
+def new_habit(request:Request,title:str=Form(...),area:str=Form('Personal')):
+    uid=user_id(request)
+    with get_conn() as conn:
+        conn.execute('INSERT INTO life_habits(owner_id,title,area,created_at) VALUES(?,?,?,?)',
+                     (uid,text_clean(title,240),pick(area,AREAS,'Personal'),now()))
+        conn.commit()
+    return redirect('/life/goals')
+
+
+@router.post('/habits/{habit_id}/check')
+def check_habit(request:Request,habit_id:int):
+    uid=user_id(request)
+    with get_conn() as conn:
+        if not conn.execute('SELECT 1 FROM life_habits WHERE id=? AND owner_id=?',(habit_id,uid)).fetchone():
+            raise HTTPException(404,'Habit not found')
+        if conn.execute('SELECT 1 FROM life_habit_days WHERE habit_id=? AND day=?',(habit_id,today())).fetchone():
+            conn.execute('DELETE FROM life_habit_days WHERE habit_id=? AND day=?',(habit_id,today()))
+        else:
+            conn.execute('INSERT INTO life_habit_days(habit_id,day) VALUES(?,?)',(habit_id,today()))
+        conn.commit()
+    return redirect('/life/goals')
+
+
+@router.get('/focus',response_class=HTMLResponse)
+def focus_page(request:Request):
+    uid=user_id(request)
+    from app.timers import active_timer_for_user
+    with get_conn() as conn:
+        tasks=data_for(conn,uid,'open',limit=100)
+        entries=conn.execute('''SELECT e.*,t.title AS task_title,p.name AS project_name FROM life_time_entries e
+            LEFT JOIN life_tasks t ON t.id=e.task_id LEFT JOIN life_projects p ON p.id=e.project_id
+            WHERE e.owner_id=? ORDER BY e.occurred_on DESC,e.id DESC LIMIT 50''',(uid,)).fetchall()
+        total=conn.execute('SELECT COALESCE(SUM(minutes),0) FROM life_time_entries WHERE owner_id=? AND occurred_on>=?',
+                (uid,(date.today()-timedelta(days=6)).isoformat())).fetchone()[0]
+    return render(request,'life_focus.html',tasks=tasks,entries=entries,total=total,active_timer=active_timer_for_user(uid))
+
+
+@router.post('/focus/log')
+def log_time(request:Request,task_id:str=Form(''),minutes:int=Form(...),note:str=Form('')):
+    uid=user_id(request)
+    if not 0<minutes<=1440: raise HTTPException(422,'Minutes must be between 1 and 1440')
+    tid=int(task_id) if task_id.isdigit() else None
+    with get_conn() as conn:
+        project=None
+        if tid: project=task_access(conn,uid,tid)['project_id']
+        conn.execute('INSERT INTO life_time_entries(owner_id,task_id,project_id,minutes,note,occurred_on,created_at) VALUES(?,?,?,?,?,?,?)',
+                     (uid,tid,project,minutes,text_clean(note,300),today(),now()))
+        conn.commit()
+    return redirect('/life/focus')
+
+
+@router.get('/search',response_class=HTMLResponse)
+def search_page(request:Request,q:str=''):
+    uid=user_id(request)
+    q=text_clean(q,100)
+    results={"tasks":[],"projects":[],"notes":[]}
+    if q:
+        with get_conn() as conn:
+            mask='%'+q.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
+            cond,params=tasks_sql(uid)
+            results['tasks']=conn.execute(f"SELECT t.* FROM life_tasks t WHERE {cond} AND (t.title LIKE ? ESCAPE '\\' OR t.description LIKE ? ESCAPE '\\') LIMIT 50",(*params,mask,mask)).fetchall()
+            results['projects']=conn.execute("""SELECT p.* FROM life_projects p LEFT JOIN life_project_members m ON m.project_id=p.id AND m.user_id=?
+                  WHERE (p.owner_id=? OR m.user_id IS NOT NULL) AND (p.name LIKE ? ESCAPE '\\' OR p.description LIKE ? ESCAPE '\\') LIMIT 50""",(uid,uid,mask,mask)).fetchall()
+            results['notes']=conn.execute("""SELECT n.* FROM life_notes n LEFT JOIN life_projects p ON p.id=n.project_id LEFT JOIN life_project_members m ON m.project_id=n.project_id AND m.user_id=?
+                   WHERE ((n.owner_id=? AND n.project_id IS NULL) OR (p.owner_id=? OR m.user_id IS NOT NULL))
+                   AND (n.title LIKE ? ESCAPE '\\' OR n.body LIKE ? ESCAPE '\\') LIMIT 50""",(uid,uid,uid,mask,mask)).fetchall()
+    return render(request,'life_search.html',q=q,results=results)
+
+
+@router.get('/export.json')
+def export_data(request:Request):
+    uid=user_id(request)
+    with get_conn() as conn:
+        payload={"format":"mlo-life-v3","generated_at":now()}
+        for table in ('life_projects','life_tasks','life_notes','life_goals','life_habits','life_time_entries','life_preferences'):
+            payload[table]=[dict(r) for r in conn.execute(f'SELECT * FROM {table} WHERE {"user_id" if table=="life_preferences" else "owner_id"}=?',(uid,)).fetchall()]
+        payload['project_records']=[dict(r) for r in conn.execute('SELECT r.* FROM life_project_records r JOIN life_projects p ON p.id=r.project_id WHERE p.owner_id=?',(uid,)).fetchall()]
+        payload['habit_days']=[dict(r) for r in conn.execute('SELECT d.* FROM life_habit_days d JOIN life_habits h ON h.id=d.habit_id WHERE h.owner_id=?',(uid,)).fetchall()]
+    return Response(json.dumps(payload,indent=2,ensure_ascii=False),media_type='application/json',
+         headers={'Content-Disposition':'attachment; filename="mlo-my-data.json"','Cache-Control':'no-store'})
+
+
+@router.get('/export-tasks.csv')
+def export_tasks_csv(request:Request):
+    uid=user_id(request)
+    with get_conn() as conn:
+        rows=data_for(conn,uid,'all',limit=100000)
+    output=io.StringIO()
+    fields=['title','description','status','priority','area','due_on','recurrence','estimated_minutes','project_name']
+    writer=csv.DictWriter(output,fieldnames=fields)
+    writer.writeheader()
+    for row in rows: writer.writerow({f:row[f] for f in fields})
+    return Response(output.getvalue(),media_type='text/csv',headers={'Content-Disposition':'attachment; filename="mlo-tasks.csv"'})

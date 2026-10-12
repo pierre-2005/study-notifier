@@ -1,0 +1,30 @@
+{% extends 'base.html' %}{% from 'life_components.html' import task_row,quick_task %}
+{% block content %}
+<div class="mlo-space" data-life-root>
+ <div class="mlo-topline"><span class="mlo-pill">✦ Your workspace</span><span class="mlo-day">{{ today }}</span></div>
+ <div class="mlo-hero">
+  <div><div class="mlo-kicker">MAKE ROOM FOR WHAT MATTERS</div><h1>Good to see you, {{ request.state.current_user['display_name'] or request.state.current_user['username'] }}<span class="mlo-sparkle">✳</span></h1>
+  <p>Everything on your mind, in one calm place. Start with just one thing.</p></div>
+  <div class="mlo-hero-art" aria-hidden="true"><span>✳</span><span>◌</span><span>✦</span></div>
+ </div>
+ {{ quick_task('/life',placeholder='What do you need to get done?') }}
+ <div class="mlo-hint">No setup. No complicated databases. Just type something and press Enter.</div>
+ <div class="mlo-stat-row">
+  <a href="/life/tasks?view=open" class="mlo-stat"><span>Open tasks</span><strong>{{ (stats.total or 0)-(stats.done or 0) }}</strong><small>Give yourself room to focus ↗</small></a>
+  <a href="/life/projects" class="mlo-stat"><span>Projects</span><strong>{{ projects|length }}{{ '+' if projects|length==5 else '' }}</strong><small>Everything connected ↗</small></a>
+  <a href="/life/focus" class="mlo-stat"><span>Focus this week</span><strong>{{ focus }}<em> min</em></strong><small>Small steps add up ↗</small></a>
+ </div>
+ <div class="mlo-two">
+  <section class="mlo-surface"><div class="mlo-section-top"><div><div class="mlo-kicker">A LITTLE AT A TIME</div><h2>Your day</h2></div><a href="/life/tasks?view=today">See tasks ↗</a></div>
+   {% for t in tasks %}{{ task_row(t,'/life') }}{% else %}<div class="mlo-empty"><span>☼</span><strong>You're all caught up.</strong><p>Add a task above whenever you're ready.</p></div>{% endfor %}
+  </section>
+  <div class="mlo-stack">
+   <section class="mlo-surface"><div class="mlo-section-top"><div><div class="mlo-kicker">YOUR BIGGER PICTURE</div><h2>Projects</h2></div><a href="/life/projects">View all ↗</a></div>
+   {% for p in projects %}<a href="/life/projects/{{ p.id }}" class="mlo-small-project"><span class="mlo-project-dot"></span><span>{{ p.name }}</span><small>{{ p.done_count }}/{{ p.task_count }}</small></a>{% else %}<div class="mlo-empty small"><strong>Nothing to organize yet.</strong><p>Start a project with just a name.</p><a class="mlo-btn mlo-secondary" href="/life/projects">Create project</a></div>{% endfor %}
+   </section>
+   <section class="mlo-surface mlo-start-card"><div class="mlo-kicker">PICK YOUR NEXT STEP</div><h2>Made for real life.</h2><div class="mlo-action-grid"><a href="/life/projects">▦ <span>Project</span></a><a href="/life/notes">✎ <span>Note</span></a><a href="/life/calendar">▤ <span>Calendar</span></a><a href="/life/focus">◷ <span>Focus</span></a></div></section>
+  </div>
+ </div>
+ <section class="mlo-experience" aria-label="Experience mode"><div><strong>Keep it simple, or go deeper.</strong><p>Every mode uses the same information. Nothing disappears when you switch.</p></div><form method="post" action="/life/preferences"><select name="experience" aria-label="Experience level" onchange="this.form.submit()"><option value="simple" {{ 'selected' if preference.experience=='simple' else '' }}>Simple</option><option value="guided" {{ 'selected' if preference.experience=='guided' else '' }}>Guided</option><option value="professional" {{ 'selected' if preference.experience=='professional' else '' }}>Professional</option></select></form></section>
+</div>
+{% endblock %}

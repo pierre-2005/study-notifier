@@ -52,41 +52,41 @@ def file_signature_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def list_categories(user_id: int) -> list[str]:
+def list_categories() -> list[str]:
     with get_conn() as conn:
-        rows = conn.execute("SELECT name FROM finance_categories WHERE owner_user_id=? ORDER BY CASE WHEN name='Other' THEN 1 ELSE 0 END, name", (user_id,)).fetchall()
+        rows = conn.execute("SELECT name FROM finance_categories ORDER BY CASE WHEN name='Other' THEN 1 ELSE 0 END, name").fetchall()
     names = [r["name"] for r in rows]
     if not names:
         return list(STANDARD_CATEGORIES)
     return names
 
 
-def add_category(user_id: int, name: str) -> bool:
+def add_category(name: str) -> bool:
     name = clean_text(name, 80)
     if not name:
         return False
     with get_conn() as conn:
-        exists = conn.execute("SELECT 1 FROM finance_categories WHERE owner_user_id=? AND name=?", (user_id, name)).fetchone()
+        exists = conn.execute("SELECT 1 FROM finance_categories WHERE name=?", (name,)).fetchone()
         if exists:
             return False
         ts = now_iso()
-        conn.execute("INSERT INTO finance_categories(owner_user_id, name, is_custom, created_at_utc) VALUES(?,?,?,?)", (user_id, name, 1, ts))
+        conn.execute("INSERT INTO finance_categories(name, is_custom, created_at_utc) VALUES(?,?,?)", (name, 1, ts))
         conn.execute(
             """
-            INSERT OR IGNORE INTO finance_budget_rows(owner_user_id, section, name, amount, frequency, created_at_utc, updated_at_utc)
-            VALUES(?, 'expenses', ?, 0, 'Monthly', ?, ?)
+            INSERT OR IGNORE INTO finance_budget_rows(section, name, amount, frequency, created_at_utc, updated_at_utc)
+            VALUES('expenses', ?, 0, 'Monthly', ?, ?)
             """,
-            (user_id, name, ts, ts),
+            (name, ts, ts),
         )
         conn.commit()
     return True
 
 
-def load_rules(user_id: int) -> dict[str, list[str]]:
-    categories = list_categories(user_id)
+def load_rules() -> dict[str, list[str]]:
+    categories = list_categories()
     rules = default_rules_for(categories)
     with get_conn() as conn:
-        rows = conn.execute("SELECT category, keyword FROM finance_merchant_rules WHERE owner_user_id=? ORDER BY category, keyword", (user_id,)).fetchall()
+        rows = conn.execute("SELECT category, keyword FROM finance_merchant_rules ORDER BY category, keyword").fetchall()
     for r in rows:
         rules.setdefault(r["category"], [])
         if r["keyword"] not in rules[r["category"]]:
@@ -94,55 +94,54 @@ def load_rules(user_id: int) -> dict[str, list[str]]:
     return {c: rules.get(c, []) for c in categories}
 
 
-def add_rule(user_id: int, category: str, keyword: str) -> bool:
+def add_rule(category: str, keyword: str) -> bool:
     category = clean_text(category, 120)
     keyword = clean_text(keyword, 120)
-    if not category or not keyword or category not in list_categories(user_id):
+    if not category or not keyword or category not in list_categories():
         return False
     with get_conn() as conn:
         conn.execute(
-            "INSERT OR IGNORE INTO finance_merchant_rules(owner_user_id, category, keyword, created_at_utc) VALUES(?,?,?,?)",
-            (user_id, category, keyword, now_iso()),
+            "INSERT OR IGNORE INTO finance_merchant_rules(category, keyword, created_at_utc) VALUES(?,?,?)",
+            (category, keyword, now_iso()),
         )
         conn.commit()
     return True
 
 
-def delete_rule(user_id: int, category: str, keyword: str) -> None:
+def delete_rule(category: str, keyword: str) -> None:
     with get_conn() as conn:
-        conn.execute("DELETE FROM finance_merchant_rules WHERE owner_user_id=? AND category=? AND keyword=?", (user_id, category, keyword))
+        conn.execute("DELETE FROM finance_merchant_rules WHERE category=? AND keyword=?", (category, keyword))
         conn.commit()
 
 
-def signature_exists(user_id: int, signature: str) -> bool:
+def signature_exists(signature: str) -> bool:
     with get_conn() as conn:
-        row = conn.execute("SELECT 1 FROM finance_imports WHERE owner_user_id=? AND signature=?", (user_id, signature)).fetchone()
+        row = conn.execute("SELECT 1 FROM finance_imports WHERE signature=?", (signature,)).fetchone()
     return bool(row)
 
 
-def tx_exists(user_id: int, tx: Transaction) -> bool:
+def tx_exists(tx: Transaction) -> bool:
     with get_conn() as conn:
         row = conn.execute(
             """
             SELECT 1 FROM finance_transactions
-            WHERE owner_user_id=? AND date=? AND description=? AND amount=? AND bank=? AND source_file=?
+            WHERE date=? AND description=? AND amount=? AND bank=? AND source_file=?
             """,
-            (user_id, tx.date, tx.description, float(tx.amount), tx.bank, tx.source_file),
+            (tx.date, tx.description, float(tx.amount), tx.bank, tx.source_file),
         ).fetchone()
     return bool(row)
 
 
-def insert_transaction(conn, user_id: int, tx: Transaction) -> bool:
+def insert_transaction(conn, tx: Transaction) -> bool:
     ts = now_iso()
     try:
         conn.execute(
             """
             INSERT INTO finance_transactions(
-              owner_user_id, date, description, amount, category, bank, source_file, transaction_type, included, note, created_at_utc, updated_at_utc
-            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+              date, description, amount, category, bank, source_file, transaction_type, included, note, created_at_utc, updated_at_utc
+            ) VALUES(?,?,?,?,?,?,?,?,?,?,?)
             """,
             (
-                user_id,
                 tx.date,
                 tx.description,
                 float(tx.amount),
@@ -161,10 +160,10 @@ def insert_transaction(conn, user_id: int, tx: Transaction) -> bool:
         return False
 
 
-def import_pdf_bytes(user_id: int, filename: str, data: bytes) -> dict:
+def import_pdf_bytes(filename: str, data: bytes) -> dict:
     signature = file_signature_bytes(data)
     clean_name = Path(filename).name
-    if signature_exists(user_id, signature):
+    if signature_exists(signature):
         return {"filename": clean_name, "status": "duplicate", "parsed": 0, "inserted": 0, "bank": ""}
 
     import tempfile
@@ -175,8 +174,8 @@ def import_pdf_bytes(user_id: int, filename: str, data: bytes) -> dict:
         tmp_path = tmp.name
 
     try:
-        rules = load_rules(user_id)
-        categories = list_categories(user_id)
+        rules = load_rules()
+        categories = list_categories()
         transactions = parse_statement(tmp_path, rules=rules, categories=categories)
     finally:
         try:
@@ -192,11 +191,11 @@ def import_pdf_bytes(user_id: int, filename: str, data: bytes) -> dict:
     with get_conn() as conn:
         for tx in transactions:
             tx.source_file = clean_name
-            if insert_transaction(conn, user_id, tx):
+            if insert_transaction(conn, tx):
                 inserted += 1
         conn.execute(
-            "INSERT OR IGNORE INTO finance_imports(owner_user_id, signature, filename, bank, transaction_count, imported_at_utc) VALUES(?,?,?,?,?,?)",
-            (user_id, signature, clean_name, bank, len(transactions), now_iso()),
+            "INSERT OR IGNORE INTO finance_imports(signature, filename, bank, transaction_count, imported_at_utc) VALUES(?,?,?,?,?)",
+            (signature, clean_name, bank, len(transactions), now_iso()),
         )
         conn.commit()
 
@@ -217,9 +216,9 @@ def transaction_from_row(r) -> Transaction:
     )
 
 
-def load_transactions(user_id: int, include_excluded: bool = True, category: str = "All", month: str = "") -> list[Transaction]:
-    sql = "SELECT * FROM finance_transactions WHERE owner_user_id=?"
-    params: list = [user_id]
+def load_transactions(include_excluded: bool = True, category: str = "All", month: str = "") -> list[Transaction]:
+    sql = "SELECT * FROM finance_transactions WHERE 1=1"
+    params: list = []
     if not include_excluded:
         sql += " AND included=1"
     if category and category != "All":
@@ -234,9 +233,9 @@ def load_transactions(user_id: int, include_excluded: bool = True, category: str
     return [transaction_from_row(r) for r in rows]
 
 
-def list_transaction_rows(user_id: int, include_excluded: bool = False, category: str = "All", month: str = "") -> list:
-    sql = "SELECT * FROM finance_transactions WHERE owner_user_id=?"
-    params: list = [user_id]
+def list_transaction_rows(include_excluded: bool = False, category: str = "All", month: str = "") -> list:
+    sql = "SELECT * FROM finance_transactions WHERE 1=1"
+    params: list = []
     if not include_excluded:
         sql += " AND included=1"
     if category and category != "All":
@@ -250,13 +249,13 @@ def list_transaction_rows(user_id: int, include_excluded: bool = False, category
         return conn.execute(sql, params).fetchall()
 
 
-def get_transaction(user_id: int, tx_id: int):
+def get_transaction(tx_id: int):
     with get_conn() as conn:
-        return conn.execute("SELECT * FROM finance_transactions WHERE id=? AND owner_user_id=?", (tx_id, user_id)).fetchone()
+        return conn.execute("SELECT * FROM finance_transactions WHERE id=?", (tx_id,)).fetchone()
 
 
-def update_transaction(user_id: int, tx_id: int, data: dict) -> None:
-    category = data.get("category") if data.get("category") in list_categories(user_id) else "Other"
+def update_transaction(tx_id: int, data: dict) -> None:
+    category = data.get("category") if data.get("category") in list_categories() else "Other"
     tx_type = data.get("transaction_type") if data.get("transaction_type") in TRANSACTION_TYPES else "Other"
     amount = parse_amount(data.get("amount", "0"))
     if tx_type == "Refund/Credit":
@@ -270,7 +269,7 @@ def update_transaction(user_id: int, tx_id: int, data: dict) -> None:
             """
             UPDATE finance_transactions
             SET date=?, description=?, amount=?, category=?, transaction_type=?, included=?, note=?, updated_at_utc=?
-            WHERE id=? AND owner_user_id=?
+            WHERE id=?
             """,
             (
                 clean_text(data.get("date", ""), 20),
@@ -282,45 +281,44 @@ def update_transaction(user_id: int, tx_id: int, data: dict) -> None:
                 clean_text(data.get("note", ""), 500),
                 now_iso(),
                 tx_id,
-                user_id,
             ),
         )
         conn.commit()
 
 
-def delete_transaction(user_id: int, tx_id: int) -> None:
+def delete_transaction(tx_id: int) -> None:
     with get_conn() as conn:
-        conn.execute("DELETE FROM finance_transactions WHERE id=? AND owner_user_id=?", (tx_id, user_id))
+        conn.execute("DELETE FROM finance_transactions WHERE id=?", (tx_id,))
         conn.commit()
 
 
-def imports(user_id: int) -> list:
+def imports() -> list:
     with get_conn() as conn:
-        return conn.execute("SELECT * FROM finance_imports WHERE owner_user_id=? ORDER BY imported_at_utc DESC", (user_id,)).fetchall()
+        return conn.execute("SELECT * FROM finance_imports ORDER BY imported_at_utc DESC").fetchall()
 
 
-def clear_statement_history(user_id: int) -> None:
+def clear_statement_history() -> None:
     with get_conn() as conn:
-        conn.execute("DELETE FROM finance_transactions WHERE owner_user_id=?", (user_id,))
-        conn.execute("DELETE FROM finance_imports WHERE owner_user_id=?", (user_id,))
+        conn.execute("DELETE FROM finance_transactions")
+        conn.execute("DELETE FROM finance_imports")
         conn.commit()
 
 
-def remove_month(user_id: int, month_key: str) -> int:
+def remove_month(month_key: str) -> int:
     with get_conn() as conn:
-        before = conn.execute("SELECT COUNT(*) AS c FROM finance_transactions WHERE owner_user_id=?", (user_id,)).fetchone()["c"]
-        conn.execute("DELETE FROM finance_transactions WHERE owner_user_id=? AND date LIKE ?", (user_id, month_key + "-%"))
-        after = conn.execute("SELECT COUNT(*) AS c FROM finance_transactions WHERE owner_user_id=?", (user_id,)).fetchone()["c"]
+        before = conn.execute("SELECT COUNT(*) AS c FROM finance_transactions").fetchone()["c"]
+        conn.execute("DELETE FROM finance_transactions WHERE date LIKE ?", (month_key + "-%",))
+        after = conn.execute("SELECT COUNT(*) AS c FROM finance_transactions").fetchone()["c"]
         conn.commit()
     return int(before - after)
 
 
-def budget_data(user_id: int) -> dict:
-    categories = list_categories(user_id)
+def budget_data() -> dict:
+    categories = list_categories()
     data = budget.default_budget(categories)
     with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM finance_budget_rows WHERE owner_user_id=? ORDER BY section, name", (user_id,)).fetchall()
-        name_setting = conn.execute("SELECT value FROM finance_settings WHERE owner_user_id=? AND key='budget_name'", (user_id,)).fetchone()
+        rows = conn.execute("SELECT * FROM finance_budget_rows ORDER BY section, name").fetchall()
+        name_setting = conn.execute("SELECT value FROM finance_settings WHERE key='budget_name'").fetchone()
     if name_setting:
         data["name"] = name_setting["value"]
     for r in rows:
@@ -332,12 +330,12 @@ def budget_data(user_id: int) -> dict:
     return data
 
 
-def save_budget_rows(user_id: int, name: str, rows: list[dict]) -> None:
+def save_budget_rows(name: str, rows: list[dict]) -> None:
     ts = now_iso()
     with get_conn() as conn:
         conn.execute(
-            "INSERT INTO finance_settings(owner_user_id,key,value) VALUES(?,'budget_name', ?) ON CONFLICT(owner_user_id,key) DO UPDATE SET value=excluded.value",
-            (user_id, clean_text(name, 120)),
+            "INSERT OR REPLACE INTO finance_settings(key, value) VALUES('budget_name', ?)",
+            (clean_text(name, 120),),
         )
         for r in rows:
             section = clean_text(r.get("section", ""), 40)
@@ -348,33 +346,33 @@ def save_budget_rows(user_id: int, name: str, rows: list[dict]) -> None:
             frequency = budget.normalize_frequency(r.get("frequency", "Monthly"))
             conn.execute(
                 """
-                INSERT INTO finance_budget_rows(owner_user_id, section, name, amount, frequency, created_at_utc, updated_at_utc)
-                VALUES(?,?,?,?,?,?,?)
-                ON CONFLICT(owner_user_id, section, name) DO UPDATE SET
+                INSERT INTO finance_budget_rows(section, name, amount, frequency, created_at_utc, updated_at_utc)
+                VALUES(?,?,?,?,?,?)
+                ON CONFLICT(section, name) DO UPDATE SET
                   amount=excluded.amount,
                   frequency=excluded.frequency,
                   updated_at_utc=excluded.updated_at_utc
                 """,
-                (user_id, section, row_name, amount, frequency, ts, ts),
+                (section, row_name, amount, frequency, ts, ts),
             )
         conn.commit()
 
 
-def add_budget_row(user_id: int, section: str, name: str) -> bool:
+def add_budget_row(section: str, name: str) -> bool:
     section = clean_text(section, 40)
     name = clean_text(name, 180)
     if section not in ("custom_income", "expenses", "custom_savings") or not name:
         return False
     if section == "expenses":
-        add_category(user_id, name)
+        add_category(name)
     ts = now_iso()
     with get_conn() as conn:
         conn.execute(
             """
-            INSERT OR IGNORE INTO finance_budget_rows(owner_user_id, section, name, amount, frequency, created_at_utc, updated_at_utc)
-            VALUES(?,?,?,?,?,?,?)
+            INSERT OR IGNORE INTO finance_budget_rows(section, name, amount, frequency, created_at_utc, updated_at_utc)
+            VALUES(?,?,?,?,?,?)
             """,
-            (user_id, section, name, 0, "Monthly", ts, ts),
+            (section, name, 0, "Monthly", ts, ts),
         )
         changed = conn.total_changes > 0
         conn.commit()
@@ -411,10 +409,10 @@ def budget_rows_for_template(data: dict) -> list[dict]:
     return rows
 
 
-def finance_summary(user_id: int) -> dict:
-    txs = load_transactions(user_id, include_excluded=False)
-    bd = budget_data(user_id)
-    analysis = budget.analyze_budget(bd, txs, list_categories(user_id))
+def finance_summary() -> dict:
+    txs = load_transactions(include_excluded=False)
+    bd = budget_data()
+    analysis = budget.analyze_budget(bd, txs, list_categories())
     ov = monthly.overview(txs, bd)
     total = sum(tx.amount for tx in txs if tx.included and tx.transaction_type in ("Purchase", "Refund/Credit"))
     return {
@@ -428,8 +426,8 @@ def finance_summary(user_id: int) -> dict:
     }
 
 
-def export_transactions_csv(user_id: int) -> str:
-    rows = list_transaction_rows(user_id, include_excluded=True)
+def export_transactions_csv() -> str:
+    rows = list_transaction_rows(include_excluded=True)
     out = io.StringIO()
     writer = csv.writer(out)
     writer.writerow(["Date", "Bank", "Description", "Amount", "Category", "Type", "Included in Spending", "Note", "Source File"])
@@ -438,26 +436,26 @@ def export_transactions_csv(user_id: int) -> str:
     return out.getvalue()
 
 
-def export_summary_csv(user_id: int) -> str:
-    txs = load_transactions(user_id, include_excluded=False)
-    totals = {c: 0.0 for c in list_categories(user_id)}
+def export_summary_csv() -> str:
+    txs = load_transactions(include_excluded=False)
+    totals = {c: 0.0 for c in list_categories()}
     for tx in txs:
         if tx.included:
             totals[tx.category] = totals.get(tx.category, 0.0) + tx.amount
     out = io.StringIO()
     writer = csv.writer(out)
     writer.writerow(["Category", "Total"])
-    for c in list_categories(user_id):
+    for c in list_categories():
         writer.writerow([c, f"{totals.get(c, 0.0):.2f}"])
     writer.writerow(["TOTAL SPENDING", f"{sum(totals.values()):.2f}"])
     return out.getvalue()
 
 
-def export_monthly_csv(user_id: int) -> str:
-    txs = load_transactions(user_id, include_excluded=False)
-    bd = budget_data(user_id)
+def export_monthly_csv() -> str:
+    txs = load_transactions(include_excluded=False)
+    bd = budget_data()
     ov = monthly.overview(txs, bd)
-    categories = list(dict.fromkeys(list_categories(user_id) + [c for m in ov["categories"].values() for c in m]))
+    categories = list(dict.fromkeys(list_categories() + [c for m in ov["categories"].values() for c in m]))
     out = io.StringIO()
     writer = csv.writer(out)
     writer.writerow(["Month", "Total Spending", "Monthly Budget", "Under/Over", "Scotiabank", "BMO"] + categories)

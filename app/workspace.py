@@ -16,8 +16,7 @@ templates.env.globals["APP_VERSION"] = APP_VERSION
 router = APIRouter(prefix="/sections", tags=["sections"])
 
 SECTION_TYPES = {"blank", "grocery"}
-SECTION_CATEGORIES = ("Personal", "Study", "Work", "Projects", "Home", "Shared", "Other")
-SECTION_ICONS = ["📄", "🛒", "🍽️", "🏠", "📚", "💡", "🎯", "🧾", "✈️", "🧰", "💼", "🧪", "🗂️", "🙏"]
+SECTION_ICONS = ["📄", "🛒", "🍽️", "🏠", "📚", "💡", "🎯", "🧾", "✈️", "🧰"]
 
 
 def now_iso() -> str:
@@ -137,38 +136,6 @@ def init_workspace_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_grocery_prices_item_date ON grocery_price_history(grocery_item_id, purchased_on DESC, id DESC);
             """
         )
-        # Add organization metadata to installations created before v2.0.
-        cols = {r["name"] for r in conn.execute("PRAGMA table_info(workspace_sections)").fetchall()}
-        if "category" not in cols:
-            conn.execute("ALTER TABLE workspace_sections ADD COLUMN category TEXT NOT NULL DEFAULT 'Personal'")
-        if "color" not in cols:
-            conn.execute("ALTER TABLE workspace_sections ADD COLUMN color TEXT NOT NULL DEFAULT '#5b7cfa'")
-        if "favorite" not in cols:
-            conn.execute("ALTER TABLE workspace_sections ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0")
-        conn.commit()
-
-
-def ensure_starter_sections(user_id: int) -> None:
-    """Create a useful starter workspace for a brand-new account."""
-    with get_conn() as conn:
-        count = conn.execute("SELECT COUNT(*) AS c FROM workspace_sections WHERE owner_user_id=?", (user_id,)).fetchone()["c"]
-        if count:
-            return
-        ts = now_iso()
-        starter = [
-            ("Personal HQ", "🏠", "Personal", "#5b7cfa", "Goals, errands, routines, and anything that keeps life moving."),
-            ("Study Hub", "📚", "Study", "#7c5ce7", "Courses, study plans, exam prep, and academic notes."),
-            ("Work Hub", "💼", "Work", "#0f8a6c", "Work priorities, meeting notes, follow-ups, and references."),
-            ("Ideas & Projects", "💡", "Projects", "#d47b22", "Scratchpad for ideas before they become full projects."),
-        ]
-        for name, icon, category, color, description in starter:
-            conn.execute(
-                """
-                INSERT INTO workspace_sections(owner_user_id,name,icon,description,section_type,content,show_in_sidebar,category,color,favorite,created_at_utc,updated_at_utc)
-                VALUES(?,?,?,?,'blank','',1,?,?,0,?,?)
-                """,
-                (user_id, name, icon, description, category, color, ts, ts),
-            )
         conn.commit()
 
 
@@ -209,14 +176,14 @@ def list_sections_for_user(user_id: int, sidebar_only: bool = False):
             FROM workspace_sections s
             LEFT JOIN workspace_section_members m ON m.section_id=s.id AND m.user_id=?
             WHERE (s.owner_user_id=? OR m.user_id IS NOT NULL) {where}
-            ORDER BY s.favorite DESC, s.category COLLATE NOCASE, s.updated_at_utc DESC, s.name COLLATE NOCASE
+            ORDER BY s.updated_at_utc DESC, s.name COLLATE NOCASE
             """,
             (user_id, user_id, user_id, user_id),
         ).fetchall()
 
 
 def _template_context(request: Request, **extra):
-    ctx = {"request": request, "section_icons": SECTION_ICONS, "section_categories": SECTION_CATEGORIES}
+    ctx = {"request": request, "section_icons": SECTION_ICONS}
     ctx.update(extra)
     return ctx
 
@@ -241,8 +208,6 @@ def create_section(
     section_type: str = Form("blank"),
     icon: str = Form("📄"),
     description: str = Form(""),
-    category: str = Form("Personal"),
-    color: str = Form("#5b7cfa"),
 ):
     user = _user(request)
     name = (name or "").strip()[:100]
@@ -250,16 +215,14 @@ def create_section(
         raise HTTPException(status_code=400, detail="Section name is required")
     section_type = section_type if section_type in SECTION_TYPES else "blank"
     icon = (icon or "📄").strip()[:8] or "📄"
-    category = category if category in SECTION_CATEGORIES else "Other"
-    color = (color or "#5b7cfa").strip()[:20]
     ts = now_iso()
     with get_conn() as conn:
         cur = conn.execute(
             """
-            INSERT INTO workspace_sections(owner_user_id,name,icon,description,section_type,category,color,created_at_utc,updated_at_utc)
-            VALUES(?,?,?,?,?,?,?,?,?)
+            INSERT INTO workspace_sections(owner_user_id,name,icon,description,section_type,created_at_utc,updated_at_utc)
+            VALUES(?,?,?,?,?,?,?)
             """,
-            (user["id"], name, icon, (description or "").strip()[:500], section_type, category, color, ts, ts),
+            (user["id"], name, icon, (description or "").strip()[:500], section_type, ts, ts),
         )
         section_id = cur.lastrowid
         conn.commit()
@@ -376,18 +339,14 @@ def update_section(
     description: str = Form(""),
     content: str = Form(""),
     show_in_sidebar: str = Form("off"),
-    category: str = Form("Personal"),
-    color: str = Form("#5b7cfa"),
-    favorite: str = Form("off"),
 ):
-    category = category if category in SECTION_CATEGORIES else "Other"
     with get_conn() as conn:
         _section_access(conn, request, section_id, require_edit=True)
         conn.execute(
             """
-            UPDATE workspace_sections SET name=?,icon=?,description=?,content=?,show_in_sidebar=?,category=?,color=?,favorite=?,updated_at_utc=? WHERE id=?
+            UPDATE workspace_sections SET name=?,icon=?,description=?,content=?,show_in_sidebar=?,updated_at_utc=? WHERE id=?
             """,
-            ((name or "Untitled").strip()[:100], (icon or "📄").strip()[:8], (description or "").strip()[:500], content or "", 1 if show_in_sidebar == "on" else 0, category, (color or "#5b7cfa")[:20], 1 if favorite == "on" else 0, now_iso(), section_id),
+            ((name or "Untitled").strip()[:100], (icon or "📄").strip()[:8], (description or "").strip()[:500], content or "", 1 if show_in_sidebar == "on" else 0, now_iso(), section_id),
         )
         conn.commit()
     return RedirectResponse(f"/sections/{section_id}", status_code=303)
