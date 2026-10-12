@@ -1,9 +1,9 @@
-# Fresh local Docker Compose deployment. For existing Portainer data use
-# docker-compose.portainer.yml, with its explicit EXTERNAL volume name.
+# Portainer Git stack deployment: use the published GitHub Container Registry image.
+# IMPORTANT: Retain existing Portainer stack name and database volume configuration.
 services:
   mlo:
-    build: .
-    image: mlo-next:v3-preview
+    image: ghcr.io/pierre-2005/study-notifier:v3-preview
+    pull_policy: always
     ports:
       - "127.0.0.1:8001:8000"
     environment:
