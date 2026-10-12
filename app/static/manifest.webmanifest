@@ -1,13 +1,13 @@
 {
   "name": "My Life Organized",
   "short_name": "MLO",
-  "description": "A calmer way to manage tasks, projects, notes and focus.",
+  "description": "Tasks, projects, calendars and focus in one workspace.",
   "id": "/life",
   "start_url": "/life",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f8f9fd",
-  "theme_color": "#536dca",
+  "background_color": "#f5f7f6",
+  "theme_color": "#168b79",
   "icons": [
     {"src":"/static/apple-touch-icon.png","sizes":"180x180","type":"image/png","purpose":"any"}
   ]

@@ -1,0 +1,13 @@
+.git
+.github
+.env
+.env.*
+__pycache__/
+*.pyc
+*.sqlite
+*.sqlite-*
+*.zip
+docs/
+tests*.py
+visual_check.py
+.DS_Store

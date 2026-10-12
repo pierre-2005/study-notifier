@@ -105,7 +105,7 @@ def create_timer(request: Request, label: str = Form("Focus timer"), minutes: in
             (user["id"], (label or "Timer").strip()[:120], tid, kind if kind in ('general','focus','break') else 'general', duration, ts, duration, ts, ts),
         )
         conn.commit()
-    return RedirectResponse(next_page if next_page.startswith('/life') or next_page == '/timers' else '/timers', status_code=303)
+    return RedirectResponse(next_page if next_page.startswith('/life') and not next_page.startswith('//') else '/life/focus', status_code=303)
 
 
 @router.post("/{timer_id}/pause")
@@ -117,7 +117,7 @@ def pause_timer(request: Request, timer_id: int):
             remaining = _remaining(row)
             conn.execute("UPDATE timers SET status='paused',remaining_seconds=?,started_at_utc=NULL,updated_at_utc=? WHERE id=?", (remaining, now_iso(), timer_id))
             conn.commit()
-    return RedirectResponse("/timers", status_code=303)
+    return RedirectResponse("/life/focus", status_code=303)
 
 
 @router.post("/{timer_id}/resume")
@@ -129,7 +129,7 @@ def resume_timer(request: Request, timer_id: int):
             ts = now_iso()
             conn.execute("UPDATE timers SET status='running',started_at_utc=?,updated_at_utc=? WHERE id=?", (ts, ts, timer_id))
             conn.commit()
-    return RedirectResponse("/timers", status_code=303)
+    return RedirectResponse("/life/focus", status_code=303)
 
 
 @router.post("/{timer_id}/restart")
@@ -142,7 +142,7 @@ def restart_timer(request: Request, timer_id: int):
             (ts, ts, timer_id, user["id"]),
         )
         conn.commit()
-    return RedirectResponse("/timers", status_code=303)
+    return RedirectResponse("/life/focus", status_code=303)
 
 
 @router.post("/{timer_id}/complete")
@@ -169,7 +169,7 @@ def complete_timer(request: Request, timer_id: int):
             conn.commit()
     if request.headers.get("x-requested-with") == "fetch":
         return JSONResponse({"ok": True})
-    return RedirectResponse("/timers", status_code=303)
+    return RedirectResponse("/life/focus", status_code=303)
 
 
 @router.post("/{timer_id}/delete")
@@ -178,4 +178,4 @@ def delete_timer(request: Request, timer_id: int):
     with get_conn() as conn:
         conn.execute("DELETE FROM timers WHERE id=? AND user_id=?", (timer_id, user["id"]))
         conn.commit()
-    return RedirectResponse("/timers", status_code=303)
+    return RedirectResponse("/life/focus", status_code=303)

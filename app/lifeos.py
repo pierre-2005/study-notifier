@@ -10,6 +10,8 @@ import io
 import json
 import calendar
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+from app.config import settings
 from pathlib import Path
 
 from fastapi import APIRouter, Form, HTTPException, Request
@@ -198,6 +200,10 @@ def init_life_schema():
         );
         CREATE INDEX IF NOT EXISTS life_time_owner ON life_time_entries(owner_id,occurred_on DESC);
         """)
+        # Index legacy timeline sources used by the consolidated calendar.
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_mlo_items_due ON items(due_at_utc)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_mlo_events_start ON events(start_at_utc)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_mlo_jobs_followup ON jobs(followup_at_utc)')
         conn.commit()
 
 
@@ -311,7 +317,25 @@ def home(request: Request):
         stats = conn.execute("SELECT COUNT(*) AS total, SUM(CASE WHEN status='done' THEN 1 ELSE 0 END) AS done FROM life_tasks WHERE owner_id=?",(uid,)).fetchone()
         focus = conn.execute("SELECT COALESCE(SUM(minutes),0) AS total FROM life_time_entries WHERE owner_id=? AND occurred_on>=?",(uid,(date.today()-timedelta(days=6)).isoformat())).fetchone()['total']
         preference = pref(conn,uid)
-    return render(request,'life_home.html',tasks=tasks,projects=projects,stats=stats,focus=focus,preference=preference,today=today())
+        is_admin=request.state.current_user['role']=='admin'
+        study=[];bills=[];jobs=[]
+        if is_admin:
+            study=conn.execute("SELECT i.id,i.title,i.type,i.due_at_utc,c.name AS course_name FROM items i JOIN courses c ON c.id=i.course_id WHERE i.status!='done' ORDER BY i.due_at_utc LIMIT 4").fetchall()
+            bills=conn.execute("SELECT id,title,amount,due_at_utc FROM expenses WHERE status='unpaid' ORDER BY due_at_utc LIMIT 3").fetchall()
+            jobs=conn.execute("SELECT id,company,role,followup_at_utc FROM jobs WHERE followup_at_utc IS NOT NULL ORDER BY followup_at_utc LIMIT 3").fetchall()
+    from datetime import datetime
+    month_days=calendar.Calendar(firstweekday=0).monthdatescalendar(date.today().year,date.today().month)
+    event_dates=set()
+    with get_conn() as conn:
+        for row in conn.execute("SELECT due_on FROM life_tasks WHERE owner_id=? AND due_on BETWEEN ? AND ? AND status != 'done' ",(uid,date.today().replace(day=1).isoformat(),(date.today().replace(day=28)+timedelta(days=4)).replace(day=1).isoformat())):
+            if row['due_on']: event_dates.add(row['due_on'])
+        for row in conn.execute('SELECT e.starts_on FROM life_external_events e JOIN life_calendar_connections c ON e.connection_id=c.id WHERE c.user_id=? AND e.starts_on>=? LIMIT 150',(uid,date.today().replace(day=1).isoformat())):
+            event_dates.add(row['starts_on'])
+    hour=datetime.now(ZoneInfo(settings.timezone)).hour
+    greeting='Good morning' if hour<12 else 'Good afternoon' if hour<18 else 'Good evening'
+    return render(request,'life_home.html',tasks=tasks,projects=projects,stats=stats,focus=focus,preference=preference,today=today(),study=study,bills=bills,jobs=jobs,is_admin=is_admin,
+        greeting=greeting,month_name=date.today().strftime('%B %Y'),month_number=date.today().month,month_weeks=month_days,event_dates=event_dates)
+
 
 
 @router.post('/preferences')
@@ -394,6 +418,8 @@ def change_task_status(request: Request,task_id:int,status:str=Form('done'), nex
         ts=now()
         conn.execute('UPDATE life_tasks SET status=?,completed_at=?,updated_at=? WHERE id=?',
                      (status,ts if status=='done' else None,ts,task_id))
+        from app.consolidation import mirror_legacy_status
+        mirror_legacy_status(conn,task_id,status)
         if status=='done' and task['status']!='done' and task['recurrence']!='none':
             due=next_due(task['due_on'],task['recurrence'])
             conn.execute("""INSERT INTO life_tasks(owner_id,project_id,parent_id,title,description,status,priority,area,due_on,estimated_minutes,recurrence,created_at,updated_at)
@@ -429,6 +455,8 @@ def edit_task(request: Request,task_id:int,title:str=Form(...),description:str=F
         task_access(conn,uid,task_id,edit=True)
         conn.execute('''UPDATE life_tasks SET title=?,description=?,status=?,priority=?,due_on=?,recurrence=?,estimated_minutes=?,updated_at=? WHERE id=?''',
             (title,text_clean(description,10000),pick(status,STATUSES,'todo'),pick(priority,PRIORITIES,'normal'),safe_day(due_on),pick(recurrence,('none','daily','weekly','monthly'),'none'),max(0,min(100000,estimated_minutes)),now(),task_id))
+        from app.consolidation import mirror_legacy_status
+        mirror_legacy_status(conn, task_id, pick(status,STATUSES,'todo'))
         conn.commit()
     return redirect(f'/life/tasks/{task_id}')
 
@@ -516,6 +544,27 @@ def edit_project(request:Request,project_id:int,name:str=Form(...),description:s
           (text_clean(name,160),text_clean(description,5000),pick(status,('active','on_hold','complete','archived'),'active'),safe_day(due_on),now(),project_id))
         conn.commit()
     return redirect(f'/life/projects/{project_id}')
+
+
+@router.post('/projects/{project_id}/delete')
+def delete_project(request: Request, project_id: int, confirmation: str = Form(...)):
+    # Only owners may remove an entire collaborative project.
+    uid = user_id(request)
+    with get_conn() as conn:
+        project = access(conn, uid, project_id)
+        if project['owner_id'] != uid:
+            raise HTTPException(403, 'Only the project owner can delete it')
+        if confirmation != project['name']:
+            raise HTTPException(422, 'Type the exact project name to confirm deletion')
+        files = conn.execute("""SELECT stored FROM life_files WHERE project_id=? OR task_id IN
+          (SELECT id FROM life_tasks WHERE project_id=?) OR note_id IN
+          (SELECT id FROM life_notes WHERE project_id=?)""", (project_id,project_id,project_id)).fetchall()
+        conn.execute('DELETE FROM life_projects WHERE id=? AND owner_id=?',(project_id,uid))
+        conn.commit()
+    from app.life_files import ROOT
+    for file in files:
+        (ROOT/file['stored']).unlink(missing_ok=True)
+    return redirect('/life/projects')
 
 
 @router.post('/projects/{project_id}/records')
@@ -640,18 +689,58 @@ def calendar_page(request:Request, month:str=''):
     first=first.replace(day=1)
     if first.year<2000 or first.year>2100: first=date.today().replace(day=1)
     last=date(first.year+(first.month//12),first.month%12+1,1)
+    grouped={}
+    def add(day,title,href,kind,status=''):
+        if first<=day<last:
+            grouped.setdefault(day.day,[]).append({'title':title,'href':href,'kind':kind,'status':status})
+    def local_day(utc_value):
+        try:
+            ts=datetime.fromisoformat(str(utc_value).replace('Z','+00:00'))
+            if ts.tzinfo is None: ts=ts.replace(tzinfo=timezone.utc)
+            return ts.astimezone(ZoneInfo(settings.timezone)).date()
+        except (ValueError,TypeError): return None
+    is_admin=request.state.current_user['role']=='admin'
     with get_conn() as conn:
         cond,params=tasks_sql(uid)
-        rows=conn.execute(f'''SELECT t.id,t.title,t.status,t.due_on,p.name AS project_name
-            FROM life_tasks t LEFT JOIN life_projects p ON p.id=t.project_id
-            WHERE {cond} AND t.due_on>=? AND t.due_on<? ORDER BY t.due_on,t.id LIMIT 300''',
+        rows=conn.execute(f'''SELECT t.id,t.title,t.status,t.due_on FROM life_tasks t
+            WHERE {cond} AND t.due_on>=? AND t.due_on<? ORDER BY t.due_on,t.id LIMIT 500''',
             (*params,first.isoformat(),last.isoformat())).fetchall()
-    grouped={}
-    for row in rows: grouped.setdefault(int(row['due_on'][-2:]),[]).append(row)
+        for x in rows: add(date.fromisoformat(x['due_on']),x['title'],f'/life/tasks/{x["id"]}','task',x['status'])
+        if is_admin:
+            # Unique domains retain their source-of-truth records. No replicated school data.
+            for x in conn.execute('''SELECT id,title,type,status,due_at_utc FROM items
+                     WHERE due_at_utc>=? AND due_at_utc<? LIMIT 500''',
+                     ((first-timedelta(days=1)).isoformat(),(last+timedelta(days=1)).isoformat())):
+                d=local_day(x['due_at_utc'])
+                if d: add(d,x['title'],f'/items/{x["id"]}',x['type'],x['status'])
+            for x in conn.execute('''SELECT id,title,kind,start_at_utc FROM events
+                     WHERE start_at_utc>=? AND start_at_utc<? LIMIT 500''',
+                     ((first-timedelta(days=1)).isoformat(),(last+timedelta(days=1)).isoformat())):
+                d=local_day(x['start_at_utc'])
+                if d: add(d,x['title'],f'/events/{x["id"]}','event')
+            for x in conn.execute('SELECT id,title,weekday,start_time_local FROM class_meetings WHERE active=1'):
+                for offset in range((last-first).days):
+                    d=first+timedelta(days=offset)
+                    if d.weekday()==x['weekday']:
+                        add(d,x['title']+' · '+x['start_time_local'],f'/classes/{x["id"]}/edit','class')
+            for x in conn.execute("SELECT id,title,due_at_utc,status FROM expenses WHERE status='unpaid' AND due_at_utc>=? AND due_at_utc<?",((first-timedelta(days=1)).isoformat(),(last+timedelta(days=1)).isoformat())):
+                d=local_day(x['due_at_utc'])
+                if d: add(d,x['title'],f'/expenses/{x["id"]}','bill')
+            for x in conn.execute("SELECT id,company,followup_at_utc FROM jobs WHERE followup_at_utc>=? AND followup_at_utc<?",((first-timedelta(days=1)).isoformat(),(last+timedelta(days=1)).isoformat())):
+                d=local_day(x['followup_at_utc'])
+                if d: add(d,'Follow up: '+x['company'],f'/jobs/{x["id"]}','job')
+        # User-specific, previously synchronized external events. No HTTP during page loads.
+        for x in conn.execute("""SELECT e.title,e.starts_on,e.href,c.label FROM life_external_events e
+                      JOIN life_calendar_connections c ON c.id=e.connection_id
+                      WHERE c.user_id=? AND e.starts_on>=? AND e.starts_on<? ORDER BY e.starts_on LIMIT 500""",
+                      (uid,first.isoformat(),last.isoformat())):
+            add(date.fromisoformat(x['starts_on']), x['title'], x['href'] if x['href'] and x['href'].startswith('https://') else '/life/calendars', 'external')
+    for values in grouped.values():
+        values.sort(key=lambda x: {'class':0,'exam':1,'assignment':2,'lab':2,'event':3,'task':4,'job':5,'bill':6}.get(x['kind'],9))
     weeks=calendar.Calendar(firstweekday=0).monthdatescalendar(first.year,first.month)
     prev=(first-timedelta(days=1)).replace(day=1).strftime('%Y-%m')
     nxt=last.strftime('%Y-%m')
-    return render(request,'life_calendar.html',month=first.strftime('%B %Y'),month_num=first.month,weeks=weeks,events=grouped,prev=prev,nxt=nxt,today=today())
+    return render(request,'life_calendar.html',month=first.strftime('%B %Y'),month_num=first.month,weeks=weeks,events=grouped,prev=prev,nxt=nxt,today=today(),is_admin=is_admin)
 
 
 @router.get('/goals',response_class=HTMLResponse)
@@ -711,7 +800,7 @@ def check_habit(request:Request,habit_id:int):
 @router.get('/focus',response_class=HTMLResponse)
 def focus_page(request:Request):
     uid=user_id(request)
-    from app.timers import active_timer_for_user
+    from app.timers import active_timer_for_user, _remaining
     with get_conn() as conn:
         tasks=data_for(conn,uid,'open',limit=100)
         entries=conn.execute('''SELECT e.*,t.title AS task_title,p.name AS project_name FROM life_time_entries e
@@ -719,7 +808,9 @@ def focus_page(request:Request):
             WHERE e.owner_id=? ORDER BY e.occurred_on DESC,e.id DESC LIMIT 50''',(uid,)).fetchall()
         total=conn.execute('SELECT COALESCE(SUM(minutes),0) FROM life_time_entries WHERE owner_id=? AND occurred_on>=?',
                 (uid,(date.today()-timedelta(days=6)).isoformat())).fetchone()[0]
-    return render(request,'life_focus.html',tasks=tasks,entries=entries,total=total,active_timer=active_timer_for_user(uid))
+        saved_timers=conn.execute("SELECT * FROM timers WHERE user_id=? ORDER BY CASE status WHEN 'running' THEN 0 WHEN 'paused' THEN 1 ELSE 2 END,updated_at_utc DESC LIMIT 20",(uid,)).fetchall()
+    timers=[dict(x)|{'remaining':_remaining(x)} for x in saved_timers]
+    return render(request,'life_focus.html',tasks=tasks,entries=entries,total=total,timers=timers,active_timer=active_timer_for_user(uid))
 
 
 @router.post('/focus/log')

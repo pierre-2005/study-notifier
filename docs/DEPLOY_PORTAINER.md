@@ -1,96 +1,42 @@
-# Portainer / Raspberry Pi upgrade guide
+# Deploy v3.2 with your existing GitHub → Portainer Stack
 
-**Before starting:** The source available for this preview was Study Notifier v1.4.1. If your currently deployed container comes from the previously generated **v2** package, **stop and test against a copy of your actual v2 SQLite database**; this preview is not verified for v2-to-v3 migration. Back up source, volume, `.env` and image tag.
+Your existing Portainer deployment uses the Git repository `https://github.com/pierre-2005/study-notifier.git`, branch `refs/heads/main`, with `docker-compose.yml`. **This package is built for that workflow.** Do not switch to Web Editor and do not build a Pi image manually.
 
-## 1. Identify your old volume and container
+## Before changing any files
 
-SSH to the Pi:
+1. In Portainer, open the **existing** stack and record its exact stack name, published port and volume mapping. Keep `127.0.0.1:8001:8000` if your current HTTPS proxy/Cloudflare tunnel targets that host port.
+2. On the Pi, inspect mounts of the running MLO container, `docker inspect CONTAINER_NAME --format '{{json .Mounts}}'`. Verify the volume mounted at `/data` and its actual name. If the supplied Compose file declares a different volume, **retain the currently deployed mapping instead**.
+3. Back up the **entire** data volume (SQLite DB, uploads, backups), ideally with the application stopped for the final copy, and verify the archive contents. Keep a second copy off the Pi. Never delete volumes to resolve port/pull errors. Preserve the currently running image/tag for rollback.
+4. Do not place passwords, PATs or actual `.env` files in your repository. Keep existing stack variables `SESSION_SECRET`, `APP_USERNAME`, `APP_PASSWORD`, `TIMEZONE`, etc.
 
-```bash
-docker ps -a
-docker volume ls
-```
+## Publish
 
-Find your existing Study Notifier volume. It might be named `study-notifier_study_notifier_data`, `mlo_study_notifier_data` or something else. **Do not guess.** Confirm with:
+1. Extract the archive. Copy the files **inside** `mlo-v3-consolidated/` into the **root** of the GitHub repository. `Dockerfile`, `app/`, `.github/` and `docker-compose.yml` must all be at the root.
+2. Commit the changes to `main`.
+3. Open **GitHub → Actions** and wait for **Build and publish MLO Docker image** to be green. It publishes `ghcr.io/pierre-2005/study-notifier:v3.2-studio` for both `linux/amd64` and `linux/arm64` (including most Raspberry Pi 64-bit installations).
+4. Set the container package visibility to public if Portainer does not have registry authentication. A successful workflow by itself does **not** make a GHCR package publicly pullable.
 
-```bash
-docker inspect YOUR_OLD_CONTAINER --format '{{json .Mounts}}'
-```
+## Redeploy existing stack
 
-The mount mapped to `/data` is your live data source. This is also where `study_notifier.db` should be located.
+In Portainer, go to **Stacks → your existing Study Notifier/MLO stack → Pull and redeploy**. Keep repository URL, branch `refs/heads/main`, credentials, port `8001` and existing environment variables. Leave GitOps polling off until verified. Do not create a separate second stack occupying port 8001.
 
-## 2. Back up the entire volume, not just the database
+The v3.2 Compose file uses `pull_policy: always`, so the new published image is pulled when you redeploy. If the image is not published or publicly readable, Portainer will fail at *image pull*, before app startup.
 
-Stop the old container before the final cold backup to avoid concurrent writes. You can also make an online SQLite backup first. Example, replacing `EXACT_VOLUME_NAME`:
+## Verify
 
-```bash
-mkdir -p ~/mlo-backups
-docker run --rm -v EXACT_VOLUME_NAME:/source:ro -v "$HOME/mlo-backups:/backup" alpine:3.20 \
-  sh -c 'cd /source && tar czf /backup/mlo-before-v3.tar.gz .'
-```
+- Visit `/health` and the HTTPS `/login` page.
+- Check Today, Tasks, Focus, Study, Work, Money, Calendar and Spaces with your admin account.
+- Verify all old courses, assessments, jobs, bills, finance categories/transactions and shared grocery data remain.
+- Verify the new Tasks module contains your old to-dos once, not twice.
+- Verify `/data/study_notifier.pre-mlo-v3.2.sqlite.backup` exists and preserve it.
+- Sign in with a separate account; check they **cannot** see administrator finance/study/jobs legacy data.
 
-Inspect the backup: `tar tzf ~/mlo-backups/mlo-before-v3.tar.gz | head`. Store another copy outside the Pi. If `alpine:3.20` isn't available locally, Docker may need internet to pull it.
+## Rollback
 
-**Do not destroy the old volume or leave two app versions writing to the same database.**
+If the app is unhealthy or data is missing, stop the current container. Restore the full volume archive and redeploy the previous known-good Docker image. An old application should not write into a database already changed by v3.2. Do not run both versions against one SQLite volume.
 
-## 3. Build the image on the Docker host
+**Limitations:** v2-to-v3 compatibility remains unverified; the GitHub workflow and live Portainer configuration cannot be tested from this archive. Pre-v3.2 snapshot is only the database, not attachments; the whole-volume backup is necessary.
 
-Extract the complete ZIP into a folder on the Pi, for example `~/mlo-next`, so that folder contains `Dockerfile`, `app/`, `requirements.txt` and `docker-compose.portainer.yml`.
+## New calendar credentials (optional)
 
-```bash
-cd ~/mlo-next
-docker build -t mlo-next:v3-preview .
-docker images mlo-next
-```
-
-A Portainer **Web Editor** stack with `build: .` often fails because it cannot access the source context. `docker-compose.portainer.yml` uses **`image: mlo-next:v3-preview`**, so Portainer only starts a prebuilt image. The Docker environment used by Portainer must be the **same host/environment** where the image was built.
-
-## 4. Configure the Portainer stack
-
-In **Portainer → Stacks → Add Stack → Web Editor**, paste `docker-compose.portainer.yml`.
-
-Set environment variables under the stack's **Environment variables** section:
-
-| Name | Value |
-|---|---|
-| `MLO_DB_VOLUME_NAME` | Actual original volume name from `docker inspect`, **not** a guessed name |
-| `APP_USERNAME` | Administrator username you already use |
-| `APP_PASSWORD` | Administrator password from your existing deployment |
-| `SESSION_SECRET` | The **existing** session secret if known, or a new one (existing sessions will sign out) |
-| `COOKIE_SECURE` | `true` with HTTPS Cloudflare Tunnel, `false` only for local HTTP testing |
-| `TIMEZONE` | e.g. `America/Edmonton` |
-| `NTFY_TOPIC` | Optional legacy *global* topic. Leave empty if using per-account phone topics only |
-| `NTFY_BASE_URL` | e.g. `https://ntfy.sh` |
-
-Generate a secret on the Pi with:
-
-```bash
-python3 -c 'import secrets; print(secrets.token_urlsafe(48))'
-```
-
-**Security:** The external volume declaration in the provided Compose file fails rather than silently creating a new empty database when the provided name doesn't exist. That's intentional.
-
-If binding `127.0.0.1:8001` prevents a reverse proxy in a separate container from reaching the app, configure a shared Docker network or an appropriate host binding. Do not expose the port publicly without HTTPS and access controls.
-
-## 5. Start and verify
-
-Deploy the new stack after stopping the old container. Watch logs:
-
-```bash
-docker ps -a
-docker logs NEW_MLO_CONTAINER --tail 200
-```
-
-Open HTTPS URL `/login`, sign in, then check `/life`, `/life/projects`, `/life/tasks`, `/life/notes` and your old Classic pages. Check that old data remains available. A `.pre-mlo-v3.sqlite.backup` should be created beside the existing database on first start if it existed beforehand. Verify that it exists.
-
-Test two accounts and their privacy before allowing other people to use the service. Connect ntfy phones under `/life/devices`.
-
-## 6. Rollback
-
-If startup or a data check fails, stop the new stack, start the old image/stack and restore the cold backup if the schema or data was changed. **Do not run old and new simultaneously against one SQLite database.** Restore with a temporary container only while both stacks are stopped.
-
-The automatically created SQLite pre-migration snapshot is a secondary safety measure, **not a substitute for the whole-volume archive** because that archive includes file attachments and other data.
-
-## 7. Git deployments
-
-If you want Portainer to deploy from GitHub, first push the extracted project files to a separate test branch. Portainer's Git stack can provide source/build context where supported, but some remote environments cannot build. The host-built image route above is the recommended tested *configuration*, although the actual Portainer UI deployment was not performed here.
+See [CALENDAR_SETUP.md](CALENDAR_SETUP.md). Add `MLO_PUBLIC_URL`, `MLO_CREDENTIAL_KEY` and optional Google/Microsoft OAuth credentials as Portainer environment variables, **never inside GitHub**. The application otherwise starts without OAuth linking enabled. Existing OAuth tokens require the same `MLO_CREDENTIAL_KEY` after every deployment.

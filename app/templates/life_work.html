@@ -1,0 +1,11 @@
+{% extends 'base.html' %}{% from 'life_components.html' import top,task_row %}
+{% block content %}<div class="mlo-space mlo-area-page">
+{{top('Work & career','YOUR PROFESSIONAL SPACE','Your projects, follow-ups and opportunities, together.','Projects ↗','/life/projects')}}
+<form method="post" action="/life/tasks" class="mlo-capture mlo-area-capture"><span class="mlo-capture-icon">＋</span><input required maxlength="240" name="title" placeholder="Add a work task…" aria-label="New work task"><input type="hidden" name="area" value="Work"><input type="hidden" name="next_page" value="/life/work"><button type="submit" class="mlo-btn mlo-primary">Add task ↗</button></form>
+<div class="mlo-area-actions"><a href="/life/projects">＋ Work project</a><a href="/life/tasks">＋ Work task</a>{% if legacy %}<a href="/jobs/new">＋ Job application</a>{% endif %}</div>
+<div class="mlo-two">
+<section class="mlo-surface"><div class="mlo-section-top"><h2>Work projects</h2><a href="/life/projects">View all ↗</a></div>{% for x in projects %}<a class="mlo-area-row" href="/life/projects/{{x.id}}"><div><strong>{{x.name}}</strong><small>{{x.status|replace('_',' ')|title}}</small></div><span>{{x.done_count}} / {{x.task_count}}</span></a>{% else %}<div class="mlo-empty small"><p>Start a project with the Work area.</p></div>{% endfor %}</section>
+<section class="mlo-surface"><div class="mlo-section-top"><h2>My work tasks</h2><a href="/life/tasks">Open tasks ↗</a></div>{% for t in tasks %}{{task_row(t,'/life/work')}}{% else %}<div class="mlo-empty small"><p>You're all caught up.</p></div>{% endfor %}</section>
+<section class="mlo-surface mlo-span-all"><div class="mlo-section-top"><div><div class="mlo-kicker">CAREER TRACKER</div><h2>Job applications</h2></div>{% if legacy %}<a href="/jobs">Manage applications ↗</a>{% endif %}</div>
+<div class="mlo-area-list-grid">{% for x in jobs %}<a href="/jobs/{{x.id}}" class="mlo-area-job"><strong>{{x.company}}</strong><span>{{x.role}}</span><small>{{x.status|title}}{% if x.followup_at_utc %} · Follow up {{x.followup_at_utc[:10]}}{% endif %}</small></a>{% else %}<div class="mlo-empty small"><p>No job applications yet.</p></div>{% endfor %}</div>
+</section></div></div>{% endblock %}

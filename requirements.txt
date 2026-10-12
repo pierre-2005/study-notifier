@@ -23,3 +23,5 @@ tzlocal==5.4
 urllib3==2.7.0
 uvicorn==0.49.0
 pypdf>=5.0
+cryptography>=44,<48
+icalendar>=6,<8

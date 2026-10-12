@@ -1,85 +1,73 @@
-# My Life Organized | MLO Next v3.0.0-preview.1
+# MLO Studio v3.2.0
 
-A **working, installable preview** of the next MLO application, built on the uploaded Study Notifier **v1.4.1** codebase. It includes a redesigned, mobile-responsive Life OS alongside the preserved classic course, expense, finance, jobs, events, sections and timer screens.
+**New UI and calendar release.** Start with [v3.2 release notes](docs/V3_2_RELEASE.md), [calendar connection setup](docs/CALENDAR_SETUP.md), [GitHub → Portainer upgrade](docs/DEPLOY_PORTAINER.md) and [file map](docs/FILE_MAP_V32.md).
 
-> **Important:** This is **not** the full several-hundred-feature product described in `docs/PRODUCT_SCOPE.md`. The connected core is implemented and tested, while enterprise collaboration, deep professional integrations, full offline synchronization, AI, rich live document editing and regulated-industry functionality remain future work. It has **not** been validated as a drop-in migration from the separately discussed v2 package, which was unavailable in this session. Test on a copy of your live database before replacing a deployed v2 system.
+The v3.2 update preserves the consolidated v3.1 source and database model, adds a server-side account-specific layout store, reference-inspired Today interface and optional read-only calendar linking.
 
-## What works now
+---
 
-- **Instant-on Home/Today:** no onboarding questionnaire; type one task and press Enter; active priorities and project cards.
-- **Unified new task engine:** personal Inbox, open/done/upcoming/today/overdue filters, details, subtasks, priorities, dates, recurrence, estimates, dependencies, completing tasks without a full page refresh.
-- **Projects:** name-only creation, optional starter templates across 35+ career/household categories, status, notes, shared members with viewer/editor permissions, board/list/due-date views, milestones, risk/issue/decision/deliverable registers, task counts and time summaries.
-- **Notes:** personal and project-linked notes with an accessible plain-text editor, attachments and private-by-default account ownership.
-- **Calendar:** monthly visual representation of linked **task deadlines** (not yet a Google/Outlook two-way calendar).
-- **Focus:** link timers to tasks, Pomodoro-duration presets, session history, automatically logged completed focus time, manual time entries, weekly totals. Break timers don't count as work.
-- **Goals & habits:** account-private goals, check-ins, seven-day counts.
-- **Search:** tasks, notes and projects with permission-aware search.
-- **Phones:** each user can generate one or more hard-to-guess ntfy topics, pause/remove/test devices, and receive account-owned task due-day notifications.
-- **Import/Export:** preview and commit a CSV task import; CSV export and owner-scoped JSON export. No hidden pricing restrictions or forced third-party accounts.
-- **Responsive UI:** desktop/sidebar, tablet and mobile dock, appearance themes inherited from classic MLO, reduced motion, accessibility focus outlines, installable PWA shell (assets-only offline cache).
-- **Compatibility:** original academic, jobs, expenses, finance, timers and shared sections are retained under Classic tools. Legacy data is **not** yet automatically synchronized into the new task engine. Legacy personal tools remain administrator-only for privacy until migration/ownership is complete.
-- **Safety:** pre-v3 SQLite database snapshot, signed login sessions, private new records, permission checks, bounded uploads, security headers, gzip and versioned static assets.
+# My Life Organized | MLO v3.1.0 Consolidated
 
-## Run locally on Windows / Linux / macOS
+This release directly addresses v3's duplicated "Classic tools" navigation and disconnected legacy features. It is built on the same existing FastAPI/SQLite Study Notifier source, **not a separate starter prototype**.
 
-Use Python 3.12 (matching the Dockerfile).
+## The actual change
+
+The app now has **one** Today dashboard, Tasks module, Calendar and Focus/Timers screen. Legacy to-dos are imported once into `life_tasks`, retaining the original records as recovery history. Study, Work, Money and Spaces are purposeful areas that **use existing academic, finance, jobs and shared-section data**, rather than creating second sets of those records.
+
+- **Today:** regular tasks/projects, plus upcoming coursework, bills and career follow-ups for the admin account.
+- **Tasks:** one primary task view. Old To-Do is hidden/redirected. Original to-dos are imported once; completion is mirrored back for compatibility with legacy reminder/digest history.
+- **Study:** courses, assessments, weekly classes, Study tasks, Study projects. Academic items continue to be managed in their existing source-of-truth tables.
+- **Work & Career:** projects, Work tasks, job applications and follow-ups in one space.
+- **Money:** expenses and subscriptions, outstanding balances, links into existing full statement/transaction/budget features.
+- **Spaces:** personal/shared projects and existing shared sections, recipes, groceries and checklists.
+- **Calendar:** task due dates plus coursework, weekly classes, calendar events, unpaid bills and job follow-ups (admin-only legacy data remains private).
+- **Focus & time:** saved timers, countdown controls, task-linked focus and timesheets on the same screen.
+- **Design:** one navigation, one command switcher, mobile More navigation, reworked principal list screens, unified CSS styling and contextual back links for detailed legacy screens.
+
+Old course/assessment/job/expense/finance records **are not duplicated or deleted**. Their existing form workflows and notifier behavior remain. Secondary accounts are not shown administrator-owned legacy personal data. The *full report roadmap* is not implemented by this consolidation.
+
+## GitHub → Portainer installation (your actual deployment method)
+
+**Important:** Keep your Portainer Git stack configured with repository `https://github.com/pierre-2005/study-notifier.git`, branch `refs/heads/main`, Compose file `docker-compose.yml` and existing secrets. No Web Editor or Raspberry Pi image-building step is required.
+
+1. **Before pushing, back up the entire current Docker volume and keep an off-device copy.** Ensure the actual existing stack name and volume mapping match `docker-compose.yml`. If the current volume name/path differs from `study_notifier_data:/data`, copy the original declaration into the new file. Otherwise Compose can start with an empty database. See `docs/DEPLOY_PORTAINER.md`.
+2. Extract this ZIP and copy its **contents into the root** of your `study-notifier` GitHub repository, not into a second nested folder. Replace the app code/templates/static, Dockerfile, `requirements.txt`, `docker-compose.yml` and `.github/workflows/publish-image.yml`.
+3. Commit/push to `main`, then wait for the **Build and publish MLO Docker image** GitHub Action to complete successfully. The workflow publishes multi-architecture `ghcr.io/pierre-2005/study-notifier:v3.1-consolidated`. Ensure the image is publicly accessible to Portainer or configure registry credentials separately. Publishing and making the image public are separate steps.
+4. In your **existing Git repository stack**, click **Pull and redeploy** only after GitHub has published the image. Keep port `127.0.0.1:8001:8000`. Do not launch a second MLO stack on the same port or share one SQLite file between two live containers.
+5. Test Today, Study, Work, Money, Calendar, Tasks, Focus, user permissions and original records. Verify the pre-v3.1 SQLite backup beside the live database. For problems, roll back to your backed-up database **and** previous Docker image; don't run old code against an already-migrated database without an appropriate rollback.
+
+**Upgrade caveat:** This release is tested against a representative old v1 and packaged v3 database. The separately mentioned v2 database version has **not** been verified as a direct upgrade target, and no actual live Raspberry Pi deployment was performed in this environment.
+
+## Build/run outside Portainer (optional)
+
+Use Python 3.12, copy `.env.production.example` to `.env`, configure secrets, then:
 
 ```bash
-python -m venv .venv
-# Windows PowerShell: .venv\Scripts\Activate.ps1
-# Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.production.example .env  # Windows: copy .env.production.example .env
-```
-
-Set `SESSION_SECRET`, `APP_USERNAME`, `APP_PASSWORD` and `COOKIE_SECURE=false` **only if testing over local HTTP**. Generate a secret:
-
-```bash
-python -c "import secrets; print(secrets.token_urlsafe(48))"
-```
-
-Start:
-
-```bash
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Visit `http://127.0.0.1:8000/login`, sign in, and open **Today** (`/life`). Other users create accounts under `/signup`; admin approves under `/admin/users`.
+Use `COOKIE_SECURE=false` only when accessing a local HTTP test server. Keep `COOKIE_SECURE=true` with your normal HTTPS/Cloudflare endpoint. Avoid committing `.env` or passwords to GitHub.
 
-## Docker / Portainer
-
-**Read [`docs/DEPLOY_PORTAINER.md`](docs/DEPLOY_PORTAINER.md) before touching an existing installation.** Its steps explicitly preserve your current Docker volume and work around Portainer's opaque `Failure [object Object]` failures when build contexts are absent.
-
-- Fresh local compose: `docker compose --env-file .env up -d --build` after setting a real `.env` file.
-- Existing Portainer setup: build `mlo-next:v3-preview` **on the Pi** from the extracted package, then deploy `docker-compose.portainer.yml` pointing at the *existing exact volume*.
-- Do **not** delete or recreate the old volume just to fix a deployment error.
-- For Cloudflare Tunnel / HTTPS leave `COOKIE_SECURE=true`; HTTP on a LAN may fail to log in with a Secure cookie.
-
-## Tests
-
-With dependencies installed, run:
+## Validation
 
 ```bash
+python tests_consolidation.py
 python tests_smoke.py
 python tests_new_features.py
+python tests_migration.py
 python -m compileall -q app
 ```
 
-The test suites substitute a no-op reminder scheduler, so they cover HTTP, schemas and account isolation but do not simulate real scheduled jobs or message delivery over ntfy. See `docs/VERIFICATION.md`.
+Tests use isolated databases and mock the reminder scheduler. They check rendering, migration idempotency, legacy status mirror, account isolation, migration backup, existing data retention, private files and team sharing. Browser render checks were also performed at mobile/tablet/desktop sizes. Network push delivery, Cloudflare routing, GitHub Actions and Portainer itself are not executed by those tests.
 
-## Document map
+## Navigation and reference
 
-- `docs/DEPLOY_PORTAINER.md`: step-by-step safe deployment, `.env`, backups, rollback.
-- `docs/PRODUCT_SCOPE.md`: implemented, partial, not yet implemented vs. expanded strategy report.
-- `docs/ARCHITECTURE.md`: data ownership, features, imports and scheduling.
-- `docs/FILE_MAP.md`: exact file locations.
-- `docs/VERIFICATION.md`: tests, what was and wasn't tested.
-- `docs/strategy/MLO_Product_Strategy_2026_Expanded.md`: original full strategy report included as a reference, **not a claim that every item shipped**.
+- `docs/DEPLOY_PORTAINER.md`: safe Git/Portainer replacement and rollback.
+- `docs/CONSOLIDATION.md`: mapping of duplicated vs unique modules, migration and known limitations.
+- `docs/PRODUCT_SCOPE.md`: shipped versus future features.
+- `docs/FILE_MAP.md`: exact files and locations.
+- `docs/VERIFICATION.md`: automated and browser checks.
+- `docs/strategy/`: longer MLO feature roadmap.
 
-## Operational cautions
-
-- The **database backup does not include the separate attachment directory** (`/data/mlo_uploads`). Back up the **entire Docker data volume** to preserve both.
-- The public `ntfy.sh` relay is not suitable for sensitive confidential content without appropriate server authentication/encryption and deployment controls. Treat random topics as secret identifiers, not cryptographic end-to-end encryption.
-- Local storage, provider quotas and hosted infrastructure cost real money. This project currently has **no billing code** or arbitrary task/project limits, but it does not provide unlimited hosted storage.
-- Only **one** Uvicorn worker should run the in-process scheduler. A multi-worker deployment requires moving scheduled reminders to a dedicated job service with locking.
-- Self-hosted app security, network access, HTTPS and backups remain the operator's responsibility.
+**Privacy notice:** the original course, expense, job and statement tables predate private multi-user ownership; they are deliberately visible only to approved administrators. Do not enable them for all accounts without a user ownership/data migration.

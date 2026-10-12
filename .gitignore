@@ -1,0 +1,12 @@
+.env
+.env.local
+.env.production
+*.sqlite
+*.sqlite-*
+*.db
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.DS_Store
+mlo_uploads/

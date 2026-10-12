@@ -21,3 +21,19 @@ def pre_v3_backup():
         return target
     finally:
         if dest.exists(): dest.unlink()
+
+
+def pre_consolidation_backup():
+    """One-time consistent snapshot before the non-destructive v3.1 import."""
+    source=Path(DB_PATH)
+    if not source.is_file() or source.stat().st_size == 0: return None
+    target=source.with_name(source.stem+'.pre-mlo-v3.1.sqlite.backup')
+    if target.exists(): return target
+    dest=target.with_suffix(target.suffix+'.partial')
+    try:
+        with sqlite3.connect(str(source),timeout=30) as original:
+            with sqlite3.connect(str(dest),timeout=30) as saved: original.backup(saved)
+        os.replace(dest,target)
+        return target
+    finally:
+        if dest.exists(): dest.unlink()

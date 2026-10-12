@@ -14,7 +14,7 @@ with TestClient(app,follow_redirects=True) as client:
     client.post('/login',data={'username':'admin','password':'admin-test-password','next':'/life'})
     client.post('/life/projects',data={'name':'Substation Panel Upgrade','template':'electrical','area':'Work'})
     client.post('/life/tasks',data={'title':'Submit the schematic package','due_on':'2026-10-16','priority':'high'})
-    css=(Path('app/static/theme.css').read_text()+"\n"+Path('app/static/life.css').read_text())
+    css=(Path('app/static/theme.css').read_text()+"\n"+Path('app/static/life.css').read_text()+"\n"+Path('app/static/design32.css').read_text())
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox','--allow-file-access-from-files'])
         for size,label in [({'width':1440,'height':900},'desktop'),({'width':390,'height':844},'mobile'),({'width':820,'height':1000},'tablet')]:

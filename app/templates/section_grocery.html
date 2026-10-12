@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
+<div class="mlo-legacy-trail"><a href="/life/spaces">← Spaces</a><span> / </span><span>Details & management</span></div>
 <div class="finance-back-row"><a class="back-link" href="/sections">← All sections</a></div>
 <div class="page-heading">
   <div><div class="section-page-title"><span class="section-page-icon">{{ section['icon'] }}</span><div><div class="eyebrow">{{ 'Your section' if section['is_owner'] else 'Shared section' }} · Grocery & meals</div><h1>{{ section['name'] }}</h1></div></div><p>{{ section['description'] or 'Plan groceries together, connect ingredients to meals, and compare what items cost over time.' }}</p></div>

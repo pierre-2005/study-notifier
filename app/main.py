@@ -32,7 +32,11 @@ from app.lifeos import router as life_router, init_life_schema
 from app.phones import router as phone_router, init_phone_schema
 from app.life_import import router as import_router, init_import_schema
 from app.life_files import router as files_router, init_file_schema
-from app.backup import pre_v3_backup
+from app.backup import pre_v3_backup, pre_consolidation_backup
+from app.consolidation import consolidate_todos
+from app.life_hubs import router as hubs_router
+from app.personalize import router as layout_router, init_layout_schema
+from app.calendar_links import router as calendar_links_router, init_calendar_links_schema
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -41,6 +45,7 @@ templates.env.globals["APP_VERSION"] = APP_VERSION
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     pre_v3_backup()
+    pre_consolidation_backup()
     init_db()
     init_auth_schema()
     ensure_bootstrap_admin(APP_USERNAME, APP_PASSWORD)
@@ -48,6 +53,9 @@ async def lifespan(app: FastAPI):
     init_workspace_schema()
     init_timer_schema()
     init_life_schema()
+    init_layout_schema()
+    init_calendar_links_schema()
+    consolidate_todos()
     init_phone_schema()
     init_import_schema()
     init_file_schema()
@@ -70,6 +78,8 @@ COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").lower() in ("1", "true", "yes
 @app.middleware("http")
 async def require_auth(request: Request, call_next):
     path = request.url.path
+    if request.method == 'GET' and path in ('/classic/dashboard','/todos','/todos/new','/schedule','/timers'):
+        return RedirectResponse('/life/tasks' if path.startswith('/todos') else '/life/calendar' if path == '/schedule' else '/life/focus' if path == '/timers' else '/life',status_code=303)
     public_paths = {"/login", "/signup", "/logout", "/favicon.ico", "/health"}
     if path.startswith("/static") or path in public_paths:
         return await call_next(request)
@@ -2147,6 +2157,9 @@ def admin_user_active(request: Request, user_id: int, active: str = Form("0")):
 
 
 app.include_router(life_router)
+app.include_router(layout_router)
+app.include_router(calendar_links_router)
+app.include_router(hubs_router)
 app.include_router(phone_router)
 app.include_router(import_router)
 app.include_router(files_router)

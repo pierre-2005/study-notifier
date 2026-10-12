@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="mlo-space mlo-area-page">
+ <div class="mlo-page-head"><div><div class="mlo-kicker">CALENDAR ACCOUNTS</div><h1>Connected calendars</h1><p>Bring your calendars together, without copying your events into tasks.</p></div><a class="mlo-btn mlo-secondary" href="/life/calendar">← Calendar</a></div>
+ {% if notice %}<div class="mlo-alert" role="status">{{ {'connected':'Account connected. Sync to load its calendars.','added':'Feed saved. Sync to load events.','synced':'Calendar events refreshed.','disconnected':'Calendar disconnected.','error':'Calendar sync failed. Review the connection error below.'}.get(notice,'') }}</div>{% endif %}
+ <div class="mlo-calendar-accounts-grid">
+ <section class="mlo-surface"><h2>Connect an account</h2>
+ <div class="mlo-account-connector"><div><strong>Google Calendar</strong><small>Multiple Google accounts, read-only</small></div>{% if google_ready %}<a class="mlo-btn mlo-primary" href="/life/calendars/connect/google">Connect Google</a>{% else %}<span class="mlo-muted-tag">Admin setup needed</span>{% endif %}</div>
+ <div class="mlo-account-connector"><div><strong>Microsoft Outlook</strong><small>Work, school and personal Microsoft accounts</small></div>{% if microsoft_ready %}<a class="mlo-btn mlo-primary" href="/life/calendars/connect/microsoft">Connect Outlook</a>{% else %}<span class="mlo-muted-tag">Admin setup needed</span>{% endif %}</div>
+ <details class="mlo-disclosure"><summary>Apple iCloud calendar feed / iCalendar URL</summary>
+ <form class="mlo-form" action="/life/calendars/feed" method="post"><label>Calendar name<input type="text" name="label" maxlength="90" required placeholder="Personal iCloud calendar"></label><label>Provider<select name="provider"><option value="apple">Apple / iCloud</option><option value="ical">Google, Outlook or iCalendar feed</option></select></label><label>HTTPS iCalendar subscription URL<input name="url" type="url" required placeholder="https://…"></label><button class="mlo-btn mlo-primary" {% if not feed_ready %}disabled{% endif %}>Add calendar feed</button></form>
+ <p class="mlo-subtle">This is read-only. Apple shared-calendar links can be viewed by anyone with the link, so do not use them for confidential calendars.</p></details>
+ </section>
+ <section class="mlo-surface"><h2>Your connections</h2>
+ {% for c in connections %}<div class="mlo-connected-item"><div><strong>{{c.label}}</strong><small>{{c.provider|title}}{% if c.last_synced_at %} · Synced {{c.last_synced_at[:16]|replace('T',' ')}} UTC{% else %} · Not synced yet{% endif %}</small>{% if c.last_error %}<small class="mlo-error">{{c.last_error}}</small>{% endif %}</div><div class="mlo-inline-actions"><form action="/life/calendars/{{c.id}}/sync" method="post"><button class="mlo-btn mlo-secondary" type="submit">Sync</button></form><form action="/life/calendars/{{c.id}}/delete" method="post" onsubmit="return confirm('Disconnect this calendar and remove its imported events?')"><button class="mlo-btn mlo-danger" type="submit">Remove</button></form></div></div>
+ {% else %}<p class="mlo-subtle">No calendars connected.</p>{% endfor %}
+ </section></div>
+</div>
+{% endblock %}

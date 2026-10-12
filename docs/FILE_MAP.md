@@ -1,144 +1,36 @@
-# File placement guide
+# Exact file locations for v3.1
 
-Extract the entire ZIP into one folder. All paths below are relative to that folder. **Do not copy files one by one into a running container.**
+Copy the **contents of the ZIP's `mlo-v3-consolidated/` folder** to the root of your GitHub repository.
 
-**38 new files, 6 updated files, 64 original files preserved.**
+| Path | Purpose |
+|---|---|
+| `app/templates/base.html` | Single consolidated sidebar, mobile dock, command search and quick-add menu |
+| `app/life_hubs.py` | New Study, Work, Money, Spaces cross-domain pages |
+| `app/templates/life_study.html` | Study home, academic tasks/projects, courses, assessments, class schedule |
+| `app/templates/life_work.html` | Work home, projects, tasks, applications |
+| `app/templates/life_money.html` | Money home, bills, finance links |
+| `app/templates/life_spaces.html` | Spaces home, shared sections and projects |
+| `app/templates/life_home.html` | Today dashboard including academic/career/financial highlights |
+| `app/templates/life_calendar.html` | Consolidated calendar screen |
+| `app/templates/life_focus.html` | Unified focus and existing timer controls |
+| `app/templates/courses.html` | Modern course list |
+| `app/templates/items.html` | Modern assessment list |
+| `app/templates/jobs.html` | Modern job application list |
+| `app/templates/expenses.html` | Modern bills/expenses list |
+| `app/templates/sections.html` | Modern shared sections list |
+| `app/static/life.css` | Consolidated responsive styles and legacy detail/form normalization |
+| `app/lifeos.py` | Calendar queries, Today feed, focus timers, index creation and legacy task status mirroring |
+| `app/consolidation.py` | Idempotent migration of legacy todos into `life_tasks` |
+| `app/backup.py` | New pre-v3.1 SQLite backup |
+| `app/main.py` | Startup consolidation, area routers and obsolete screen redirects |
+| `app/timers.py` | Timer actions return to the unified Focus screen |
+| `app/meta.py` | Release version |
+| `docker-compose.yml` | **Only Compose file** used by your current Portainer Git stack |
+| `.github/workflows/publish-image.yml` | Automatic GitHub Action publishing multi-arch Docker image |
+| `tests_consolidation.py` | New migration/privacy/connected-workflows regression tests |
+| `docs/CONSOLIDATION.md` | Exact legacy-to-new module mapping and limitations |
+| `docs/DEPLOY_PORTAINER.md` | Your GitHub-to-Portainer update and rollback guide |
+| `docs/PRODUCT_SCOPE.md` | Implemented versus future features |
+| `docs/VERIFICATION.md` | Verification and known limits |
 
-## Added files and exact locations
-
-- `.env.production.example`
-- `README.md`
-- `app/backup.py`
-- `app/life_files.py`
-- `app/life_import.py`
-- `app/lifeos.py`
-- `app/phones.py`
-- `app/static/life.css`
-- `app/static/life.js`
-- `app/static/manifest.webmanifest`
-- `app/static/sw.js`
-- `app/templates/life_calendar.html`
-- `app/templates/life_components.html`
-- `app/templates/life_devices.html`
-- `app/templates/life_focus.html`
-- `app/templates/life_goals.html`
-- `app/templates/life_home.html`
-- `app/templates/life_import.html`
-- `app/templates/life_note_detail.html`
-- `app/templates/life_notes.html`
-- `app/templates/life_project_detail.html`
-- `app/templates/life_projects.html`
-- `app/templates/life_search.html`
-- `app/templates/life_task_detail.html`
-- `app/templates/life_tasks.html`
-- `docker-compose.portainer.yml`
-- `docs/ARCHITECTURE.md`
-- `docs/DEPLOY_PORTAINER.md`
-- `docs/PRODUCT_SCOPE.md`
-- `docs/VERIFICATION.md`
-- `docs/preview/desktop-home.png`
-- `docs/preview/desktop-projects.png`
-- `docs/preview/mobile-home.png`
-- `docs/strategy/MLO_Product_Strategy_2026_Expanded.md`
-- `tests_migration.py`
-- `tests_new_features.py`
-- `tests_smoke.py`
-- `visual_check.py`
-
-## Existing files changed
-
-- `app/main.py`
-- `app/meta.py`
-- `app/scheduler.py`
-- `app/templates/base.html`
-- `app/timers.py`
-- `docker-compose.yml`
-
-## Original files included unchanged
-
-- `.env.example`
-- `.gitignore`
-- `Dockerfile`
-- `app/__init__.py`
-- `app/auth.py`
-- `app/config.py`
-- `app/db.py`
-- `app/finance/__init__.py`
-- `app/finance/budget.py`
-- `app/finance/db.py`
-- `app/finance/monthly.py`
-- `app/finance/parser.py`
-- `app/finance/routes.py`
-- `app/finance/service.py`
-- `app/notifier/__init__.py`
-- `app/notifier/base.py`
-- `app/notifier/ntfy.py`
-- `app/static/apple-touch-icon.png`
-- `app/static/favicon.ico`
-- `app/static/theme.css`
-- `app/static/theme.js`
-- `app/templates/admin_users.html`
-- `app/templates/classes.html`
-- `app/templates/course_detail.html`
-- `app/templates/courses.html`
-- `app/templates/dashboard.html`
-- `app/templates/edit_class.html`
-- `app/templates/event_detail.html`
-- `app/templates/events.html`
-- `app/templates/expense_detail.html`
-- `app/templates/expenses.html`
-- `app/templates/finance_budget.html`
-- `app/templates/finance_dashboard.html`
-- `app/templates/finance_import.html`
-- `app/templates/finance_monthly.html`
-- `app/templates/finance_rules.html`
-- `app/templates/finance_transaction_detail.html`
-- `app/templates/finance_transactions.html`
-- `app/templates/item_detail.html`
-- `app/templates/items.html`
-- `app/templates/job_detail.html`
-- `app/templates/jobs.html`
-- `app/templates/login.html`
-- `app/templates/new_class.html`
-- `app/templates/new_course.html`
-- `app/templates/new_event.html`
-- `app/templates/new_expense.html`
-- `app/templates/new_item.html`
-- `app/templates/new_job.html`
-- `app/templates/new_todo.html`
-- `app/templates/schedule.html`
-- `app/templates/section_blank.html`
-- `app/templates/section_grocery.html`
-- `app/templates/section_new.html`
-- `app/templates/sections.html`
-- `app/templates/settings.html`
-- `app/templates/signup.html`
-- `app/templates/timers.html`
-- `app/templates/todo_detail.html`
-- `app/templates/todos.html`
-- `app/timeutil.py`
-- `app/workspace.py`
-- `requirements.txt`
-- `run_app.py`
-
-## Do not overwrite these runtime locations
-
-- `/data/study_notifier.db` or the custom path specified by `STUDY_NOTIFIER_DB`
-- `/data/mlo_uploads/` or your custom `MLO_ATTACHMENT_DIR`
-- Docker named volume holding the database
-- Real `.env` with credentials/secrets
-
-## Main implementation entry points
-
-- `app/main.py`: FastAPI app, authentication, classic routes, new router registration.
-- `app/lifeos.py`: connected life projects, tasks, notes, goals, habits, search, exports.
-- `app/life_files.py`: document attachment authorization, uploads and downloads.
-- `app/life_import.py`: CSV preview and deduplicated import.
-- `app/phones.py`: per-user phone topics and management.
-- `app/timers.py`: server-persistent countdowns plus task-linked focus time.
-- `app/scheduler.py`: legacy notification jobs and new per-device reminders.
-- `app/static/life.css`, `app/static/life.js`: modern responsive interface and incremental actions.
-- `app/templates/life_*.html`: module pages.
-- `docker-compose.portainer.yml`: Portainer stack with explicit existing-volume mapping.
-
-Read `README.md` and `docs/DEPLOY_PORTAINER.md` before deploying.
+Other app files are deliberately retained because they contain important finance parsing, course and reminder business logic, custom shared sections, security, databases, imports, files and project behavior. A removed navigation label is not the same as safe deletion of its underlying feature code.

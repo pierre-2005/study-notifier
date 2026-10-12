@@ -1,9 +1,10 @@
-# Fresh local Docker Compose deployment. For existing Portainer data use
-# docker-compose.portainer.yml, with its explicit EXTERNAL volume name.
+# Portainer Git Stack: read this file from refs/heads/main.
+# Images are built/published by .github/workflows/publish-image.yml.
+# IMPORTANT: Keep the original stack name and DB volume mapping unchanged.
 services:
   mlo:
-    build: .
-    image: mlo-next:v3-preview
+    image: ghcr.io/pierre-2005/study-notifier:v3.2-studio
+    pull_policy: always
     ports:
       - "127.0.0.1:8001:8000"
     environment:
@@ -13,6 +14,12 @@ services:
       NTFY_TOPIC: ${NTFY_TOPIC:-}
       STUDY_NOTIFIER_DB: /data/study_notifier.db
       MLO_ATTACHMENT_DIR: /data/mlo_uploads
+      MLO_PUBLIC_URL: ${MLO_PUBLIC_URL:-}
+      MLO_CREDENTIAL_KEY: ${MLO_CREDENTIAL_KEY:-}
+      MLO_GOOGLE_CLIENT_ID: ${MLO_GOOGLE_CLIENT_ID:-}
+      MLO_GOOGLE_CLIENT_SECRET: ${MLO_GOOGLE_CLIENT_SECRET:-}
+      MLO_MS_CLIENT_ID: ${MLO_MS_CLIENT_ID:-}
+      MLO_MS_CLIENT_SECRET: ${MLO_MS_CLIENT_SECRET:-}
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET}
       APP_USERNAME: ${APP_USERNAME:?Set APP_USERNAME}
       APP_PASSWORD: ${APP_PASSWORD:?Set APP_PASSWORD}
@@ -21,7 +28,7 @@ services:
       - study_notifier_data:/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read()\""]
+      test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health\", timeout=5).read()"']
       interval: 30s
       timeout: 10s
       retries: 3
