@@ -31,7 +31,7 @@ with tempfile.TemporaryDirectory() as tmp:
                 for n in soup.select('script[src],link[rel="stylesheet"],link[rel="manifest"]'):
                     n.decompose()
                 style=soup.new_tag('style')
-                style.string='\n'.join((Path('app/static')/n).read_text() for n in ['theme.css','life.css','design32.css','design33.css','flow34.css','polish342.css'])
+                style.string='\n'.join((Path('app/static')/n).read_text() for n in ['theme.css','life.css','design32.css','design33.css','flow34.css','polish342.css','polish343.css'])
                 soup.head.append(style)
                 for name in ['theme.js','life.js','customize.js','flow34.js']:
                     sc=soup.new_tag('script');sc.string=(Path('app/static')/name).read_text();soup.body.append(sc)
@@ -57,6 +57,11 @@ with tempfile.TemporaryDirectory() as tmp:
             desktop.wait_for_timeout(240)
             collapsed=dims(desktop)
             assert collapsed['sidebar']['w']<expanded['sidebar']['w']-80,(collapsed,expanded)
+            # Toggle button must remain wholly within the collapsed sidebar rail.
+            toggle_bounds=desktop.locator('[data-sidebar-collapse]').bounding_box()
+            assert toggle_bounds, 'Sidebar button is hidden'
+            assert toggle_bounds['x']>=collapsed['sidebar']['x']-1,(toggle_bounds,collapsed)
+            assert toggle_bounds['x']+toggle_bounds['width']<=collapsed['sidebar']['right']+1,(toggle_bounds,collapsed)
             assert collapsed['icons']>=10,collapsed
             assert collapsed['navScrollWidth']<=collapsed['navClientWidth']+2,collapsed
             assert collapsed['customize']['h']==0,collapsed

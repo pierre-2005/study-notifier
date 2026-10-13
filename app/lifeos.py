@@ -9,6 +9,7 @@ import csv
 import io
 import json
 import calendar
+import urllib.parse
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from app.config import settings
@@ -884,11 +885,11 @@ def calendar_page(request:Request, month:str=''):
                 d=local_day(x['followup_at_utc'])
                 if d: add(d,'Follow up: '+x['company'],f'/jobs/{x["id"]}','job')
         # User-specific, previously synchronized external events. No HTTP during page loads.
-        for x in conn.execute("""SELECT e.title,e.starts_on,e.href,c.label FROM life_external_events e
+        for x in conn.execute("""SELECT e.title,e.starts_on,e.href,e.uid,e.connection_id,c.provider,c.label FROM life_external_events e
                       JOIN life_calendar_connections c ON c.id=e.connection_id
                       WHERE c.user_id=? AND e.starts_on>=? AND e.starts_on<? ORDER BY e.starts_on LIMIT 500""",
                       (uid,first.isoformat(),last.isoformat())):
-            add(date.fromisoformat(x['starts_on']), x['title'], x['href'] if x['href'] and x['href'].startswith('https://') else '/life/calendars', 'external')
+            add(date.fromisoformat(x['starts_on']), x['title'], (f"/life/calendars/{x['connection_id']}/events/{urllib.parse.quote(x['uid'],safe='')}/edit" if x['provider'] in ('google','microsoft') else (x['href'] if x['href'] and x['href'].startswith('https://') else '/life/calendars')), 'external')
     for values in grouped.values():
         values.sort(key=lambda x: {'class':0,'exam':1,'assignment':2,'lab':2,'event':3,'task':4,'job':5,'bill':6}.get(x['kind'],9))
     weeks=calendar.Calendar(firstweekday=0).monthdatescalendar(first.year,first.month)

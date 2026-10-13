@@ -1,23 +1,44 @@
-# MLO v3.4.2: CI correction + next-release plans
+> **v3.4.3 note:** [Calendar read/write setup, sidebar and deployment](docs/V343_CALENDAR_AND_SIDEBAR.md). Read before connecting provider accounts.
 
-This small additive patch repairs the **GitHub Action test dependency order** and adds the **free Microsoft Store publication plan** to the existing importer roadmap. It does **not** change MLO app source, database schema, Docker Compose or the published image tag.
+# My Life Organized Studio v3.4.2 — Layout & Usability Release
 
-## Fix confirmed by source inspection
+This release fixes the sidebar collapse, spacing between cards, and empty charts without replacing existing modules or changing their data model.
 
-`tests_v342_layout.py` imports `playwright.sync_api` and `bs4` at module import time, but the workflow tried to run the layout test **before** installing either dependency (installation occurred in the next step). A clean GitHub Actions runner therefore cannot run the layout test reliably. The fixed workflow installs both, and Chromium, **before** running the layout and contrast tests. All eight relevant test files pass locally with their dependencies installed. The precise failed GitHub step traceback still needs to be checked to confirm that this was the run's error.
+## What was fixed
 
-## Install with your existing GitHub → Portainer setup
+- Collapsed sidebar: navigation icons stay visible, labels/group headings and reordering controls hide correctly, and no horizontal scrollbar appears.
+- Mobile: the drawer still opens fully even when the desktop sidebar preference is "collapsed".
+- Navigation accessibility: sidebar links keep meaningful tooltips after renaming, collapse toggle gets an updated accessibility state, and the editor closes when the sidebar collapses.
+- Stable loading: the saved sidebar preference applies before the first paint, minimizing layout jumps.
+- Insights: separate chart and project rows with real gaps, allow headings to wrap, and improve mobile date-label readability.
+- Empty Insights: show a clear, visually quiet empty state instead of fourteen inactive columns.
+- Other modules: the core card spacing and page widths are checked on Tasks, Calendar, Study, Work, Money, Projects, Spaces and Focus.
+- Versioned CSS added last so the rules cannot accidentally be overridden by older design layers.
 
-1. Extract this ZIP.
-2. In GitHub, replace the file at `.github/workflows/publish-image.yml` with the supplied file.
-3. Add/replace `docs/NEXT_REVISION_IMPORTERS.md`, and add `docs/MICROSOFT_STORE_RELEASE_PLAN.md`.
-4. Commit on `main` and open **Actions → Build and publish MLO Docker image**.
-5. If the smoke job succeeds and the publish job succeeds, the existing `v3.4.2-layout` image is published. **Only then** redeploy your existing stack in Portainer if you intend to apply the v3.4.2 app update.
-6. If a job fails again, expand the **first red step** and provide its log excerpt, particularly the exception traceback.
+The pre-existing six palette choices, light/dark modes, welcome art, project functionality, multi-user accounts, notifications, calendar accounts, tasks, and finance/academic tools are preserved. The database schema is unchanged.
 
-**Do not** delete or rename Docker volumes, change port 8001, or copy over your current production database for this documentation/CI patch. This patch does not itself deploy the app.
+## Deployment: existing GitHub → GitHub Actions → Portainer
 
-## Plans
+1. **Back up your production data volume** and verify the backup before making changes. Include both `study_notifier.db` and any uploaded files in `/data/mlo_uploads`.
+2. Extract this archive. **Copy the contents of `mlo-v3.4.2/` into the root of your existing GitHub repository**, including `.github/workflows/publish-image.yml`.
+3. Commit to the `main` branch. Wait for the GitHub Actions **Test application** and **Publish multi-architecture Docker image** jobs to succeed.
+4. Verify that your existing Portainer stack is configured to read `docker-compose.yml` from `refs/heads/main`, and that the published image is `ghcr.io/pierre-2005/study-notifier:v3.4.2-layout`.
+5. In the **existing** Portainer Git stack, click **Pull and redeploy**. Do **not** create a second stack, switch port 8001, or delete the existing `study_notifier_data` volume.
+6. Hard-refresh your browser if an older cached stylesheet remains visible.
 
-- `docs/NEXT_REVISION_IMPORTERS.md` includes syllabus/statement extraction and a new Microsoft Store section.
-- `docs/MICROSOFT_STORE_RELEASE_PLAN.md` is the full free-registration, PWA packaging, security, certification, and maintenance plan.
+> **Caution:** The Compose file still names `study_notifier_data`; confirm this matches the volume actually used by your production stack before redeploying. Docker volume names can be scoped by the stack/project name. Do not assume matching YAML names guarantee matching physical volumes. If your stack was renamed, inspect the mounted volume in Portainer first.
+
+## Run locally
+
+Use a Python environment satisfying `requirements.txt`, configure `.env` from `.env.example`, then run `python run_app.py`. Never commit your real `.env` secrets or databases to GitHub.
+
+## Verification
+
+- Python compilation and existing account/permissions, migration, consolidation, calendar, tasks and contrast tests.
+- New `python tests_v342_layout.py`: Chromium checking collapsed/expanded sidebar, visible icons, scrollbar suppression, saved visual geometry, separated Insights cards, and responsive behavior across four viewport sizes. It also checks major route responses.
+
+See [Release notes](docs/V342_RELEASE.md), [File map](docs/V342_FILE_MAP.md), and [planned importers](docs/NEXT_REVISION_IMPORTERS.md).
+
+## Scope
+
+This is a targeted, thoroughly tested quality release, not a claim that every possible legacy form has been independently redesigned or that the app has been benchmarked on your Raspberry Pi. Calendar OAuth remains subject to external provider credentials and verification. The syllabus/statement intelligent import workflows are **planned for a future version**, not implemented here.

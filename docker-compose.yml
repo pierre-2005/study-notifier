@@ -3,7 +3,7 @@
 # IMPORTANT: Keep the original stack name and DB volume mapping unchanged.
 services:
   mlo:
-    image: ghcr.io/pierre-2005/study-notifier:v3.4.2-layout
+    image: ghcr.io/pierre-2005/study-notifier:v3.4.3-calendars
     pull_policy: always
     ports:
       - "127.0.0.1:8001:8000"

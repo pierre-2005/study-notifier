@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="mlo-space mlo-area-page">
+  <div class="mlo-page-head"><div><div class="mlo-kicker">CONNECTED CALENDAR</div><h1>{{ 'Edit event' if event else 'New event' }}</h1><p>{{connection.label}} · {{connection.provider|title}}</p></div>
+    <a class="mlo-btn mlo-secondary" href="/life/calendars">← Connected calendars</a></div>
+  <section class="mlo-surface mlo-event-editor"><form class="mlo-form" method="post" action="{% if event %}/life/calendars/{{connection.id}}/events/{{event_uid|urlencode}}/edit{% else %}/life/calendars/{{connection.id}}/events/new{% endif %}">
+    {% if not event %}<label>Calendar<select name="calendar_id" required>{% for c in calendars %}<option value="{{c.id}}">{{c.name}}</option>{% endfor %}</select></label>{% endif %}
+    <label>Event title<input type="text" maxlength="220" name="title" required value="{{event.title if event else ''}}" placeholder="Meeting, class or appointment"></label>
+    <div class="mlo-event-date-row"><label>Starts<input type="datetime-local" name="start" required value="{{event.start if event else ''}}"></label><label>Ends<input type="datetime-local" name="end" required value="{{event.end if event else ''}}"></label></div>
+    <p class="mlo-subtle">Changes are written to the selected external calendar. Timed events only. Attendees and recurring-event changes are best managed in the original calendar.</p>
+    <button class="mlo-btn mlo-primary" type="submit">{{'Save changes' if event else 'Create event'}}</button>
+  </form></section>
+  {% if event %}<details class="mlo-disclosure mlo-external-delete"><summary>Delete this event from {{connection.provider|title}}</summary><form action="/life/calendars/{{connection.id}}/events/{{event_uid|urlencode}}/delete" method="post"><p>This permanently deletes the event in the external calendar, not just MLO.</p><label>Type DELETE to confirm<input name="confirm" required autocomplete="off" pattern="DELETE"></label><button type="submit" class="mlo-btn mlo-danger">Delete external event</button></form></details>{% endif %}
+</div>
+{% endblock %}
