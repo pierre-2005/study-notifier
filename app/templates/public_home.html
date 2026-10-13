@@ -1,0 +1,26 @@
+{% extends 'public_shell.html' %}
+{% block public_content %}
+<div class="page-width public-home">
+  <section class="landing-hero">
+    <div class="hero-copy">
+      <span class="eyebrow"><span class="eyebrow-dot"></span> One organized workspace</span>
+      <h1>Make room for <em>everything that matters.</em></h1>
+      <p>Bring your projects, tasks, coursework, calendars, finances and daily plans together in a single, thoughtfully designed workspace.</p>
+      <div class="hero-actions"><a class="primary-link" href="/login">Open your workspace <span aria-hidden="true">↗</span></a><a class="secondary-link" href="/signup">Request an account</a></div>
+      <div class="trust-strip"><span>✓ Personal projects</span><span>✓ Connected calendars</span><span>✓ Shared spaces</span></div>
+    </div>
+    <div class="hero-art" aria-label="Illustrated workspace with planning cards">
+      <div class="art-orb art-orb-a"></div><div class="art-orb art-orb-b"></div>
+      <div class="art-card card-calendar"><span class="art-overline">YOUR WEEK</span><div class="week-grid"><b>M</b><b>T</b><b>W</b><b>T</b><b>F</b><i></i><i></i><i class="sel"></i><i></i><i></i></div></div>
+      <div class="art-card card-task"><span class="art-overline">TODAY</span><strong>Make meaningful progress.</strong><span class="art-check">✓ <span>Plan your next milestone</span></span><span class="art-check dim">○ <span>Review project notes</span></span></div>
+      <div class="art-floating">✦</div>
+    </div>
+  </section>
+  <section class="home-features" aria-label="What you can do in MLO">
+    <article><span class="feature-icon">▦</span><h2>Projects & tasks</h2><p>Break big goals into manageable work and keep deadlines in view.</p></article>
+    <article><span class="feature-icon">▤</span><h2>Study & schedule</h2><p>Track academic commitments and view connected calendar events together.</p></article>
+    <article><span class="feature-icon">◷</span><h2>Focus & insights</h2><p>Use focus sessions, manage time and understand your progress.</p></article>
+  </section>
+  <section class="privacy-highlight"><div><span class="eyebrow">TRANSPARENT BY DESIGN</span><h2>Your information, with clear choices.</h2><p>Learn how MLO processes your workspace content and connected calendar data.</p></div><a class="secondary-link" href="/privacy">Read our Privacy Policy ↗</a></section>
+</div>
+{% endblock %}

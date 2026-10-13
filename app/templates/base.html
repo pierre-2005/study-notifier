@@ -164,7 +164,7 @@
           {% block content %}{% endblock %}
 
   {% if logged_in %}
-          <footer class="app-footer">My Life Organized · v{{ APP_VERSION }}</footer>
+          <footer class="app-footer">My Life Organized · v{{ APP_VERSION }} <span aria-hidden="true">·</span> <a href="/privacy">Privacy</a> <span aria-hidden="true">·</span> <a href="/termsofservice">Terms</a></footer>
         </div>
       </main>
 

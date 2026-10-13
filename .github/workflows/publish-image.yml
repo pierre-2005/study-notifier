@@ -29,6 +29,8 @@ jobs:
 
       - name: Compile Python modules
         run: python -m compileall -q app
+      - name: Verify public privacy, terms and homepage
+        run: python tests_public_legal.py
       - name: Test core routes, security and accounts
         run: python tests_smoke.py
       - name: Test imports, files and devices

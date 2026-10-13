@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f8ff">
+  <meta name="description" content="My Life Organized helps you plan projects, tasks, study, finances and connected calendars in one personal workspace.">
+  <title>{{ title }}</title>
+  <link rel="icon" href="/static/favicon.ico">
+  <link rel="stylesheet" href="/static/public-legal.css?v={{ APP_VERSION }}">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+  <header class="site-header">
+    <div class="page-width header-inner">
+      <a href="/" class="brand" aria-label="My Life Organized home"><span class="brand-mark">M</span><span class="brand-name">My Life Organized<small>Workspace for everything</small></span></a>
+      <nav class="top-nav" aria-label="Site navigation">
+        <a href="/">Overview</a>
+        <a href="/privacy" {% if request.url.path == '/privacy' %}aria-current="page"{% endif %}>Privacy</a>
+        <a href="/termsofservice" {% if request.url.path == '/termsofservice' %}aria-current="page"{% endif %}>Terms</a>
+        <a class="sign-in" href="/login">Sign in <span aria-hidden="true">↗</span></a>
+      </nav>
+    </div>
+  </header>
+  <main id="content">
+    {% block public_content %}{% endblock %}
+  </main>
+  <footer class="site-footer">
+    <div class="page-width footer-inner">
+      <span>© 2026 My Life Organized</span>
+      <nav aria-label="Legal navigation"><a href="/">Home</a><a href="/privacy">Privacy Policy</a><a href="/termsofservice">Terms of Service</a></nav>
+    </div>
+  </footer>
+</body>
+</html>

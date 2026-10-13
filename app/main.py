@@ -100,7 +100,7 @@ async def require_auth(request: Request, call_next):
     path = request.url.path
     if request.method == 'GET' and path in ('/classic/dashboard','/todos','/todos/new','/schedule','/timers'):
         return RedirectResponse('/life/tasks' if path.startswith('/todos') else '/life/calendar' if path == '/schedule' else '/life/focus' if path == '/timers' else '/life',status_code=303)
-    public_paths = {"/login", "/signup", "/logout", "/favicon.ico", "/health"}
+    public_paths = {"/", "/privacy", "/termsofservice", "/login", "/signup", "/logout", "/favicon.ico", "/health"}
     if path.startswith("/static") or path in public_paths:
         return await call_next(request)
 
@@ -437,9 +437,33 @@ def health():
     return {"ok": True}
 
 # ----------------- DASHBOARD -----------------
-@app.get('/')
-def redirect_to_today():
-    return RedirectResponse('/life', status_code=303)
+@app.get('/', response_class=HTMLResponse)
+def public_or_today(request: Request):
+    # Existing users continue into their dashboard; visitors see an OAuth-compliant public home.
+    if request.session.get('user_id') or request.session.get('user'):
+        return RedirectResponse('/life', status_code=303)
+    return templates.TemplateResponse(request, 'public_home.html', {
+        'request': request,
+        'title': 'My Life Organized | Your personal workspace',
+    })
+
+
+@app.get('/privacy', response_class=HTMLResponse, include_in_schema=False)
+def privacy_page(request: Request):
+    return templates.TemplateResponse(request, 'public_privacy.html', {
+        'request': request,
+        'title': 'Privacy Policy | My Life Organized',
+        'legal_contact': os.getenv('MLO_LEGAL_CONTACT_EMAIL', '').strip(),
+    }, headers={'Cache-Control': 'public, max-age=300'})
+
+
+@app.get('/termsofservice', response_class=HTMLResponse, include_in_schema=False)
+def terms_of_service_page(request: Request):
+    return templates.TemplateResponse(request, 'public_terms.html', {
+        'request': request,
+        'title': 'Terms of Service | My Life Organized',
+        'legal_contact': os.getenv('MLO_LEGAL_CONTACT_EMAIL', '').strip(),
+    }, headers={'Cache-Control': 'public, max-age=300'})
 
 
 @app.get('/classic/dashboard', response_class=HTMLResponse)
