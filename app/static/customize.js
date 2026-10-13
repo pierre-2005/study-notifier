@@ -62,6 +62,7 @@
       const key=el.dataset.navKey;
       const label=el.querySelector('[data-nav-label]');
       if(label)label.textContent=prefs.nav_labels[key]||el.dataset.navDefault;
+      el.title=prefs.nav_labels[key]||el.dataset.navDefault;
       el.hidden=prefs.nav_hidden.includes(key) && !navEditing;
       el.draggable=false;
       const handle=el.querySelector('.mlo-nav-drag');
@@ -152,6 +153,7 @@
     document.querySelector('[data-dashboard-edit]')?.setAttribute('aria-expanded',String(enabled));
     render();
   }
+  document.addEventListener('mlo:sidebar-collapsed',()=>{if(navEditing)setNavEditing(false);});
   document.querySelector('[data-nav-edit]')?.addEventListener('click',()=>setNavEditing(!navEditing));
   document.querySelectorAll('[data-nav-edit-close]').forEach(b=>b.addEventListener('click',()=>setNavEditing(false)));
   document.querySelector('[data-nav-reset]')?.addEventListener('click',()=>{prefs.nav_order=[...initialNav];prefs.nav_labels={};prefs.nav_hidden=[];render();queueSave();});

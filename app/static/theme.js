@@ -159,8 +159,16 @@
     safeSet(SIDEBAR_KEY, collapsed ? "1" : "0");
     document.querySelectorAll("[data-sidebar-collapse]").forEach((button) => {
       button.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
+      button.setAttribute("aria-expanded", collapsed ? "false" : "true");
       button.title = collapsed ? "Expand sidebar" : "Collapse sidebar";
     });
+    if (collapsed) {
+      document.dispatchEvent(new CustomEvent("mlo:sidebar-collapsed"));
+      const quickAdd = document.querySelector("[data-quick-add-menu]");
+      if (quickAdd) quickAdd.hidden = true;
+      const quickToggle = document.querySelector("[data-quick-add-toggle]");
+      if (quickToggle) quickToggle.setAttribute("aria-expanded", "false");
+    }
   }
 
   function closeMobileSidebar() {

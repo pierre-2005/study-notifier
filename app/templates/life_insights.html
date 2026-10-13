@@ -9,11 +9,13 @@
 </div>
 <div class="mlo-two">
  <section class="mlo-surface"><div class="mlo-section-top"><h2>Tasks finished</h2><span class="mlo-subtle">2 weeks</span></div>
- <div class="mlo-bar-chart" role="img" aria-label="Completed tasks during the past fourteen days">
+ <div class="mlo-bar-chart {{'is-empty' if total_completed == 0 else ''}}" role="img" aria-label="Completed tasks during the past fourteen days">
+ {% if total_completed == 0 %}<span class="mlo-chart-empty">No tasks completed in this period</span>{% endif %}
  {% for x in trend %}<div class="mlo-bar-column" title="{{x.day}}: {{x.completed}} tasks"><div class="mlo-bar-track"><div class="mlo-bar-fill" style="height:{{(100*x.completed/max_completed)|round|int}}%"></div></div><small>{{x.label}}</small></div>{% endfor %}</div>
  </section>
  <section class="mlo-surface"><div class="mlo-section-top"><h2>Focus minutes</h2><a href="/life/focus">Open Focus ↗</a></div>
- <div class="mlo-bar-chart mlo-bar-chart-focus" role="img" aria-label="Focus minutes during the past fourteen days">
+ <div class="mlo-bar-chart mlo-bar-chart-focus {{'is-empty' if total_focus == 0 else ''}}" role="img" aria-label="Focus minutes during the past fourteen days">
+ {% if total_focus == 0 %}<span class="mlo-chart-empty">No focus sessions in this period</span>{% endif %}
  {% for x in trend %}<div class="mlo-bar-column" title="{{x.day}}: {{x.focus}} minutes"><div class="mlo-bar-track"><div class="mlo-bar-fill" style="height:{{(100*x.focus/max_focus)|round|int}}%"></div></div><small>{{x.label}}</small></div>{% endfor %}</div>
  </section>
 </div>

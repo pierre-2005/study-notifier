@@ -1,0 +1,256 @@
+/* MLO Studio 3.4.2 | Structural quality pass.
+   Runs last so every palette and both appearance modes share the same geometry. */
+:root { --mlo-page-gap: 22px; --mlo-card-gap: 18px; }
+*, *::before, *::after { box-sizing:border-box; }
+@media(min-width:821px){ .app-layout { transition:grid-template-columns 180ms ease; } }
+
+/* Collapsed navigation: show every useful ICON, hide all desktop-only labels,
+   group titles, edit affordances and ghost drag handles. */
+@media (min-width:821px) {
+  html.sidebar-collapsed .app-sidebar {
+    width:var(--sidebar-collapsed-width);
+    overflow:visible;
+  }
+  html.sidebar-collapsed .sidebar-head {
+    padding:9px 4px;
+    gap:3px;
+    justify-content:space-between;
+    min-width:0;
+  }
+  html.sidebar-collapsed .workspace-mark {
+    flex:0 0 auto;
+    min-width:0;
+    padding:2px;
+  }
+  html.sidebar-collapsed .workspace-icon {
+    width:33px;
+    height:33px;
+    flex-basis:33px;
+    font-size:17px;
+  }
+  html.sidebar-collapsed .sidebar-collapse-btn {
+    flex:0 0 25px;
+    width:25px;
+    height:32px;
+    margin:0;
+  }
+  html.sidebar-collapsed .mlo-sidebar-customize-row,
+  html.sidebar-collapsed .mlo-sidebar-section-title,
+  html.sidebar-collapsed .mlo-nav-drag,
+  html.sidebar-collapsed .mlo-nav-settings,
+  html.sidebar-collapsed .workspace-copy,
+  html.sidebar-collapsed .sidebar-tool kbd,
+  html.sidebar-collapsed .sidebar-tool .tool-chevron,
+  html.sidebar-collapsed .sidebar-tool span:not(:first-child),
+  html.sidebar-collapsed .sidebar-nav [data-nav-label],
+  html.sidebar-collapsed .sidebar-foot .nav-item>span,
+  html.sidebar-collapsed .account-copy,
+  html.sidebar-collapsed .account-logout { display:none !important; }
+  html.sidebar-collapsed .sidebar-tools {
+    margin:7px 6px 9px;
+    padding:5px 3px;
+    min-width:0;
+  }
+  html.sidebar-collapsed .sidebar-tool {
+    min-width:0;
+    width:100%;
+    padding:8px 2px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+  }
+  html.sidebar-collapsed .sidebar-tool>span:first-child {
+    display:inline-flex!important;
+    flex:0 0 auto;
+    justify-content:center;
+    font-size:23px;
+    width:24px;
+  }
+  html.sidebar-collapsed .sidebar-nav {
+    min-width:0;
+    padding:6px 5px 10px;
+    overflow-x:hidden;
+    overflow-y:auto;
+    scrollbar-width:none;
+    overscroll-behavior:contain;
+  }
+  html.sidebar-collapsed .sidebar-nav::-webkit-scrollbar { display:none; }
+  html.sidebar-collapsed .mlo-nav-group {
+    min-width:0;
+    align-items:stretch;
+    gap:3px;
+  }
+  html.sidebar-collapsed .mlo-nav-group[data-nav-group="spaces"] {
+    border-top:1px solid var(--border);
+    margin-top:12px;
+    padding-top:12px;
+  }
+  html.sidebar-collapsed .sidebar-nav .nav-item {
+    width:100%;
+    min-width:0;
+    min-height:42px;
+    padding:8px 3px;
+    justify-content:center;
+    gap:0;
+    overflow:hidden;
+  }
+  /* Navigation icons are spans, so the old generic '.nav-item span {display:none}'
+     accidentally hid ALL of the icons in collapsed mode. */
+  html.sidebar-collapsed .sidebar-nav .nav-item>.mlo-navglyph,
+  html.sidebar-collapsed .sidebar-nav .nav-item>.section-nav-icon {
+    display:inline-flex!important;
+    align-items:center;
+    justify-content:center;
+    flex:0 0 auto;
+    width:27px;
+    min-width:27px;
+    height:27px;
+    line-height:1;
+    font-size:20px;
+    overflow:visible;
+  }
+  html.sidebar-collapsed .sidebar-foot {
+    padding:9px 5px 12px;
+  }
+  html.sidebar-collapsed .sidebar-foot>.nav-item {
+    justify-content:center;
+    padding:9px 2px;
+    min-height:42px;
+  }
+  html.sidebar-collapsed .sidebar-foot>.nav-item svg {
+    flex:0 0 20px;
+    width:20px;
+    height:20px;
+  }
+  html.sidebar-collapsed .sidebar-account {
+    justify-content:center;
+    padding:11px 2px;
+    margin-top:4px;
+  }
+  html.sidebar-collapsed .quick-add-menu {
+    left:calc(100% + 9px);
+    top:0;
+  }
+}
+
+/* Never let the persistent desktop collapse setting damage the mobile drawer. */
+@media (max-width:820px) {
+  html.sidebar-collapsed .mlo-sidebar-customize-row,
+  html.sidebar-collapsed .mlo-sidebar-section-title,
+  html.sidebar-collapsed .sidebar-nav .nav-item>[data-nav-label] {
+    display:flex!important;
+  }
+  html.sidebar-collapsed .sidebar-nav .nav-item>[data-nav-label] {
+    display:inline!important;
+  }
+  html.sidebar-collapsed .sidebar-tools .sidebar-tool span,
+  html.sidebar-collapsed .sidebar-tools .sidebar-tool kbd {
+    display:inline!important;
+  }
+  html.sidebar-collapsed .sidebar-foot .nav-item span { display:inline!important; }
+  html.sidebar-collapsed .sidebar-nav { overflow-x:hidden; }
+}
+
+/* Insights: cards and rows must have actual separation rather than touching
+   edges, including where two independent grids appear one after the other. */
+.mlo-insights-page {
+  display:flex;
+  flex-direction:column;
+  gap:var(--mlo-page-gap);
+}
+.mlo-insights-page>.mlo-page-head { margin:6px 0 0; }
+.mlo-insights-page>.mlo-insight-kpis,
+.mlo-insights-page>.mlo-two { margin:0; }
+.mlo-insights-page>.mlo-two { row-gap:var(--mlo-card-gap);column-gap:var(--mlo-card-gap); }
+.mlo-insights-page .mlo-insight-kpis { gap:var(--mlo-card-gap); }
+.mlo-insights-page .mlo-surface { min-width:0; min-height:0; }
+.mlo-insights-page .mlo-section-top { min-width:0; flex-wrap:wrap;row-gap:7px; }
+.mlo-insights-page .mlo-section-top h2 { line-height:1.35;min-width:0; }
+.mlo-insights-page .mlo-section-top a,
+.mlo-insights-page .mlo-section-top .mlo-subtle { flex-shrink:0; }
+.mlo-insights-page .mlo-bar-chart {
+  min-width:0;
+  width:100%;
+  gap:clamp(3px,.6vw,10px);
+  margin-top:12px;
+}
+.mlo-insights-page .mlo-bar-column { gap:8px; }
+.mlo-insights-page .mlo-bar-column small {
+  display:block;
+  font-size:clamp(8px,.73vw,10px);
+  line-height:1.4;
+  text-overflow:clip;
+  overflow:hidden;
+}
+.mlo-insights-page .mlo-progress-project:last-child { border-bottom:0; }
+
+/* Common stacking and card gaps for all connected tools. */
+.mlo-enhanced-tasks>.mlo-saved-filters { margin-bottom:18px; }
+.mlo-enhanced-tasks>.mlo-task-workspace { margin-top:0; }
+.mlo-enhanced-tasks>.mlo-task-expanded { margin-top:20px; }
+.mlo-space>.mlo-two + .mlo-two,
+.mlo-space>.mlo-two + .mlo-surface,
+.mlo-space>.mlo-surface + .mlo-two,
+.mlo-space>.mlo-surface + .mlo-surface { margin-top:var(--mlo-page-gap); }
+.mlo-space .mlo-two > *,
+.mlo-space .mlo-insight-kpis > *,
+.mlo-space .mlo-area-dashboard-grid > * { min-width:0; }
+.mlo-space .mlo-surface { overflow-wrap:break-word; }
+.mlo-space .mlo-task-filters { row-gap:13px; }
+
+/* Layout spacing on tablet and narrow phone screens. */
+@media(max-width:860px) {
+  :root { --mlo-page-gap:16px; --mlo-card-gap:14px; }
+  .mlo-insights-page .mlo-bar-column small {font-size:9px;}
+}
+@media(max-width:540px) {
+  :root { --mlo-page-gap:14px; --mlo-card-gap:12px; }
+  .mlo-insights-page .mlo-insight-kpis { gap:10px; }
+  .mlo-insights-page .mlo-bar-chart {gap:3px;}
+  .mlo-insights-page .mlo-bar-column small {font-size:8px;}
+  .mlo-insights-page .mlo-section-top {align-items:flex-start;}
+}
+@media(prefers-reduced-motion:reduce) {
+  .app-sidebar,.app-main {transition:none!important;}
+}
+
+/* Intentional empty chart states instead of fourteen meaningless bars. */
+.mlo-insights-page .mlo-bar-chart.is-empty {
+  position:relative;
+  height:172px;
+  border:1px dashed var(--border);
+  border-radius:12px;
+  background:color-mix(in srgb, var(--panel2) 45%, var(--panel));
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.mlo-insights-page .mlo-bar-chart.is-empty .mlo-bar-column { display:none; }
+.mlo-insights-page .mlo-chart-empty {
+  color:var(--muted);
+  font-size:13px;
+  font-weight:550;
+  padding:16px;
+  text-align:center;
+}
+@media(max-width:1300px) {
+  .mlo-insights-page .mlo-bar-chart-focus .mlo-bar-column:nth-child(even) small { visibility:hidden; }
+}
+@media(max-width:600px) {
+  .mlo-insights-page .mlo-bar-column:nth-child(even) small { visibility:hidden; }
+}
+
+/* Neutral actions must never inherit a light fallback fill with dark-mode text. */
+.mlo-space :is(a,button).mlo-btn.mlo-secondary {
+  background-color:var(--panel)!important;
+  color:var(--text)!important;
+  border-color:var(--border)!important;
+}
+.mlo-space :is(a,button).mlo-btn.mlo-secondary:hover {
+  background-color:var(--panel2)!important;
+}
+/* Prevent a light-to-dark palette switch from briefly animating a light button
+   beneath already-updated light text (a transient WCAG contrast failure). */
+.mlo-space .mlo-btn {
+  transition-property:transform,box-shadow,border-color!important;
+}

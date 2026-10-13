@@ -1,18 +1,42 @@
-# My Life Organized Studio v3.4.1 (Contrast Fix)
+# My Life Organized Studio v3.4.2 — Layout & Usability Release
 
-This is the **complete v3.4 application** with a targeted fix for the light-on-light/dark-on-white coloring defect affecting Tasks, Insights and quick-capture controls. All prior functionality and the existing theme/palette choices are retained.
+This release fixes the sidebar collapse, spacing between cards, and empty charts without replacing existing modules or changing their data model.
 
-**Root cause:** the v3.4 stylesheet introduced CSS variable names that did not exist in the earlier design system and fell back to white. The patch connects them to the existing theme tokens and adds explicit accessible control/label styling.
+## What was fixed
 
-## Download and deploy
+- Collapsed sidebar: navigation icons stay visible, labels/group headings and reordering controls hide correctly, and no horizontal scrollbar appears.
+- Mobile: the drawer still opens fully even when the desktop sidebar preference is "collapsed".
+- Navigation accessibility: sidebar links keep meaningful tooltips after renaming, collapse toggle gets an updated accessibility state, and the editor closes when the sidebar collapses.
+- Stable loading: the saved sidebar preference applies before the first paint, minimizing layout jumps.
+- Insights: separate chart and project rows with real gaps, allow headings to wrap, and improve mobile date-label readability.
+- Empty Insights: show a clear, visually quiet empty state instead of fourteen inactive columns.
+- Other modules: the core card spacing and page widths are checked on Tasks, Calendar, Study, Work, Money, Projects, Spaces and Focus.
+- Versioned CSS added last so the rules cannot accidentally be overridden by older design layers.
 
-This full source package is intended for your existing GitHub → GitHub Actions → Portainer stack. Copy the contents of this folder to the root of your GitHub repository, commit to `main`, wait for the GitHub Action to build `ghcr.io/pierre-2005/study-notifier:v3.4.1-contrast`, then **Pull and redeploy** the existing Portainer Git stack.
+The pre-existing six palette choices, light/dark modes, welcome art, project functionality, multi-user accounts, notifications, calendar accounts, tasks, and finance/academic tools are preserved. The database schema is unchanged.
 
-**Do not** delete containers' database volumes, create a new stack or switch ports. Preserve existing `study_notifier_data` and `127.0.0.1:8001:8000` settings. Back up data before deployment.
+## Deployment: existing GitHub → GitHub Actions → Portainer
 
-- [Exact fix, tests, and upgrade precautions](docs/CONTRAST_FIX_V341.md)
-- [Feature audit](docs/FEATURE_AUDIT_V34.md)
-- [Calendar provider setup](docs/CALENDAR_SETUP.md)
-- [Underlying architecture](docs/ARCHITECTURE.md)
+1. **Back up your production data volume** and verify the backup before making changes. Include both `study_notifier.db` and any uploaded files in `/data/mlo_uploads`.
+2. Extract this archive. **Copy the contents of `mlo-v3.4.2/` into the root of your existing GitHub repository**, including `.github/workflows/publish-image.yml`.
+3. Commit to the `main` branch. Wait for the GitHub Actions **Test application** and **Publish multi-architecture Docker image** jobs to succeed.
+4. Verify that your existing Portainer stack is configured to read `docker-compose.yml` from `refs/heads/main`, and that the published image is `ghcr.io/pierre-2005/study-notifier:v3.4.2-layout`.
+5. In the **existing** Portainer Git stack, click **Pull and redeploy**. Do **not** create a second stack, switch port 8001, or delete the existing `study_notifier_data` volume.
+6. Hard-refresh your browser if an older cached stylesheet remains visible.
 
-This update also contains the corrected CI smoke-test dependencies (`httpx`) from the previous fix. The automated theme contrast test is `tests_v341_contrast.py`.
+> **Caution:** The Compose file still names `study_notifier_data`; confirm this matches the volume actually used by your production stack before redeploying. Docker volume names can be scoped by the stack/project name. Do not assume matching YAML names guarantee matching physical volumes. If your stack was renamed, inspect the mounted volume in Portainer first.
+
+## Run locally
+
+Use a Python environment satisfying `requirements.txt`, configure `.env` from `.env.example`, then run `python run_app.py`. Never commit your real `.env` secrets or databases to GitHub.
+
+## Verification
+
+- Python compilation and existing account/permissions, migration, consolidation, calendar, tasks and contrast tests.
+- New `python tests_v342_layout.py`: Chromium checking collapsed/expanded sidebar, visible icons, scrollbar suppression, saved visual geometry, separated Insights cards, and responsive behavior across four viewport sizes. It also checks major route responses.
+
+See [Release notes](docs/V342_RELEASE.md), [File map](docs/V342_FILE_MAP.md), and [planned importers](docs/NEXT_REVISION_IMPORTERS.md).
+
+## Scope
+
+This is a targeted, thoroughly tested quality release, not a claim that every possible legacy form has been independently redesigned or that the app has been benchmarked on your Raspberry Pi. Calendar OAuth remains subject to external provider credentials and verification. The syllabus/statement intelligent import workflows are **planned for a future version**, not implemented here.

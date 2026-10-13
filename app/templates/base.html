@@ -26,6 +26,8 @@
         document.documentElement.dataset.theme = mode;
         document.documentElement.dataset.palette = palette;
         document.documentElement.dataset.paletteStyle = paletteStyle;
+        // Keep the sidebar at its saved width from the very first paint.
+        document.documentElement.classList.toggle("sidebar-collapsed", localStorage.getItem("mlo.sidebar.collapsed") === "1");
         var meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute("content", dark ? "#191919" : "#fbfbfa");
       } catch (_) {}
@@ -37,6 +39,7 @@
   <link rel="stylesheet" href="/static/design32.css?v={{ APP_VERSION }}">
   <link rel="stylesheet" href="/static/design33.css?v={{ APP_VERSION }}">
   <link rel="stylesheet" href="/static/flow34.css?v={{ APP_VERSION }}">
+  <link rel="stylesheet" href="/static/polish342.css?v={{ APP_VERSION }}">
   <script src="/static/theme.js?v={{ APP_VERSION }}" defer></script>
   <script src="/static/life.js?v={{ APP_VERSION }}" defer></script>
   <script src="/static/customize.js?v={{ APP_VERSION }}" defer></script>
@@ -71,7 +74,7 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
             <span>Quick switcher</span><kbd>Ctrl K</kbd>
           </button>
-          <button class="sidebar-tool" type="button" data-global-capture-open title="Add task anywhere (N)"><span aria-hidden="true">＋</span><span>Quick task</span><kbd>N</kbd></button><div class="quick-add-wrap">
+          <button class="sidebar-tool" type="button" data-global-capture-open title="Add task anywhere (N)"><span aria-hidden="true">✓</span><span>Quick task</span><kbd>N</kbd></button><div class="quick-add-wrap">
             <button class="sidebar-tool" type="button" data-quick-add-toggle aria-expanded="false">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
               <span>New</span>
@@ -99,13 +102,13 @@
           <div class="mlo-nav-group" data-nav-group="core">
           {% for key,label,path,glyph in [('life-home','Dashboard','/life','⌂'),('life-tasks','My tasks','/life/tasks','☷'),('life-projects','Projects','/life/projects','▦'),('life-calendar','Calendar','/life/calendar','▤'),('life-focus','Focus & time','/life/focus','◷'),('life-notes','Notes','/life/notes','✎'),('life-insights','Insights','/life/insights','▥'),('life-goals','Goals & habits','/life/goals','✧'),('life-search','Search','/life/search','⌕'),('life-devices','Phone reminders','/life/devices','♧'),('life-import','Import tasks','/life/import','⇩'),('life-studio','Study','/life/study','▤'),('life-work','Work & career','/life/work','◇'),('life-money','Money','/life/money','＄'),('life-spaces','Spaces','/life/spaces','▧')] %}
           {% if key != 'life-money' or is_admin %}
-          <a href="{{path}}" class="nav-item {{'active' if p==path or (path!='/life' and p.startswith(path+'/')) or (key=='life-studio' and (p.startswith('/courses') or p.startswith('/items') or p.startswith('/classes'))) or (key=='life-work' and p.startswith('/jobs')) or (key=='life-money' and (p.startswith('/expenses') or p.startswith('/finance'))) or (key=='life-spaces' and p.startswith('/sections')) else ''}}" data-nav-key="{{key}}" data-nav-default="{{label}}"><span class="mlo-navglyph">{{glyph}}</span><span data-nav-label>{{label}}</span><span class="mlo-nav-drag" aria-hidden="true">⠿</span></a>
+          <a href="{{path}}" class="nav-item {{'active' if p==path or (path!='/life' and p.startswith(path+'/')) or (key=='life-studio' and (p.startswith('/courses') or p.startswith('/items') or p.startswith('/classes'))) or (key=='life-work' and p.startswith('/jobs')) or (key=='life-money' and (p.startswith('/expenses') or p.startswith('/finance'))) or (key=='life-spaces' and p.startswith('/sections')) else ''}}" data-nav-key="{{key}}" data-nav-default="{{label}}" title="{{label}}"><span class="mlo-navglyph">{{glyph}}</span><span data-nav-label>{{label}}</span><span class="mlo-nav-drag" aria-hidden="true">⠿</span></a>
           {% endif %}{% endfor %}
           </div>
           <div class="mlo-sidebar-section-title"><span>MY SPACES</span><a href="/sections/new" aria-label="Add space">＋</a></div>
           <div class="mlo-nav-group" data-nav-group="spaces">
           {% for section in request.state.custom_sections %}
-          <a class="nav-item custom-section-link {{ 'active' if p == '/sections/' ~ section['id'] else '' }}" href="/sections/{{section['id']}}" data-nav-key="section:{{section['id']}}" data-nav-default="{{section['name']}}"><span class="section-nav-icon">{{section['icon']}}</span><span data-nav-label>{{section['name']}}</span><span class="mlo-nav-drag" aria-hidden="true">⠿</span></a>
+          <a class="nav-item custom-section-link {{ 'active' if p == '/sections/' ~ section['id'] else '' }}" href="/sections/{{section['id']}}" data-nav-key="section:{{section['id']}}" data-nav-default="{{section['name']}}" title="{{section['name']}}"><span class="section-nav-icon">{{section['icon']}}</span><span data-nav-label>{{section['name']}}</span><span class="mlo-nav-drag" aria-hidden="true">⠿</span></a>
           {% endfor %}
           </div>
         </nav>
