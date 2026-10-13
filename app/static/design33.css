@@ -1,0 +1,137 @@
+/* MLO Studio 3.3: Card layout with true per-palette theming.
+   Style overrides deliberately contain no fixed brand green. */
+:root {
+  --bg:#fbfbfa; --sidebar:#f7f7f5; --sidebar-hover:#efefed; --sidebar-active:#e8e8e5;
+  --panel:#fff; --panel2:#f7f6f3; --border:rgba(55,53,47,.12); --muted:#787774;
+  --mlo-accent:var(--accent); --mlo-accent-soft:var(--accent-soft);
+  --mlo-mist:var(--panel2); --mlo-soft-border:var(--border);
+}
+html.dark {
+  --bg:#191919; --sidebar:#202020; --sidebar-hover:#292929; --sidebar-active:#30302f;
+  --panel:#202020; --panel2:#252525; --border:rgba(255,255,255,.10); --muted:#9b9b98;
+  --mlo-accent:var(--accent); --mlo-accent-soft:var(--accent-soft);
+  --mlo-mist:var(--panel2); --mlo-soft-border:var(--border);
+}
+/* Preserve the original theme picker: neutral, ocean, sage, rose, amber, lavender. */
+html[data-palette="ocean"]{--bg:#f8fafc;--sidebar:#f2f6fa;--sidebar-hover:#e8f0f7;--sidebar-active:#dde9f3}
+html[data-palette="sage"]{--bg:#fafbf8;--sidebar:#f3f6f1;--sidebar-hover:#e9efe6;--sidebar-active:#dfe8dc}
+html[data-palette="rose"]{--bg:#fcfafb;--sidebar:#f8f2f4;--sidebar-hover:#f1e7ea;--sidebar-active:#eadde1}
+html[data-palette="amber"]{--bg:#fdfbf6;--sidebar:#faf5e9;--sidebar-hover:#f3ebd9;--sidebar-active:#eadfc5}
+html[data-palette="lavender"]{--bg:#fbfafd;--sidebar:#f5f2fa;--sidebar-hover:#ece7f4;--sidebar-active:#e3dced}
+html.dark[data-palette]{--bg:#191919;--sidebar:#202020;--sidebar-hover:#292929;--sidebar-active:#30302f}
+html.dark[data-palette="ocean"]{--sidebar:#1b2025;--sidebar-hover:#252d34;--sidebar-active:#2b3640}
+html.dark[data-palette="sage"]{--sidebar:#1c211e;--sidebar-hover:#252c28;--sidebar-active:#2d3731}
+html.dark[data-palette="rose"]{--sidebar:#211c1e;--sidebar-hover:#2c2528;--sidebar-active:#382d31}
+html.dark[data-palette="amber"]{--sidebar:#211f1a;--sidebar-hover:#2d2921;--sidebar-active:#383225}
+html.dark[data-palette="lavender"]{--sidebar:#201d24;--sidebar-hover:#2a2630;--sidebar-active:#342e3d}
+/* Independent keeps backgrounds neutral; full follows the chosen palette. */
+html[data-palette-style="independent"]:not(.dark){--bg:#fbfbfa;--sidebar:#f7f7f5;--sidebar-hover:#efefed;--sidebar-active:var(--accent-soft)}
+html[data-palette-style="independent"].dark{--bg:#191919;--sidebar:#202020;--sidebar-hover:#292929;--sidebar-active:var(--accent-soft)}
+.workspace-icon{background:var(--accent);box-shadow:0 3px 12px color-mix(in srgb,var(--accent) 20%,transparent)}
+.sidebar-nav .nav-item .mlo-navglyph{color:var(--accent)}
+.sidebar-nav .nav-item.active{color:var(--accent)!important;background:var(--sidebar-active)}
+.sidebar-nav .nav-item:hover{background:var(--sidebar-hover)}
+.mlo-sidebar-customize-row button,.mlo-sidebar-section-title a{color:var(--accent)}
+.mlo-mini-days a.mlo-mini-today{background:var(--accent);color:white!important}
+.mlo-mini-days a.mlo-has-events:after{background:var(--accent)}
+.mlo-mini-days a.mlo-mini-today:after{background:white}
+.mlo-mini-timer button{background:var(--accent);color:white}
+.mlo-primary,.mlo-start-focus-form .mlo-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.mlo-primary:hover,.mlo-start-focus-form .mlo-primary:hover{background:color-mix(in srgb,var(--accent) 88%,black)}
+.mlo-widget-heading a,.mlo-text-link{color:var(--accent)}
+.mlo-widget-focus{background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 14%,var(--panel)),color-mix(in srgb,var(--accent) 8%,var(--panel)));color:var(--text);border:1px solid var(--mlo-soft-border)}
+.mlo-widget-focus p{color:var(--muted)}
+.mlo-widget-focus .mlo-text-link{color:var(--accent)}
+.mlo-focus-hills{background:radial-gradient(ellipse at 5% 110%,color-mix(in srgb,var(--accent) 23%,transparent) 0 33%,transparent 34%),radial-gradient(ellipse at 72% 120%,color-mix(in srgb,var(--accent) 15%,transparent) 0 41%,transparent 42%);opacity:.9}
+.mlo-widget-focus .mlo-widget-handle{color:var(--muted)}
+.mlo-calendar-event.mlo-kind-external{background:var(--accent-soft);color:var(--accent)}
+/* Return to the previously requested BLUE welcome illustration across palettes. */
+.mlo-widget-welcome{background:linear-gradient(115deg,#f1f4ff 0%,#e5edff 55%,#dfebff 100%);color:#243957;isolation:isolate}
+.mlo-widget-welcome h2{color:#253853}
+.mlo-widget-welcome .mlo-welcome-kicker{color:#506b9e}
+.mlo-widget-welcome p{color:#506780}
+.mlo-widget-welcome .mlo-welcome-button{color:#345fb0;background:#fff}
+.mlo-widget-welcome .mlo-welcome-button:hover{background:#f6f8ff}
+.mlo-widget-welcome::after{background:linear-gradient(90deg,#eff3ff 25%,#edf3ffd9 55%,transparent 85%);z-index:1}
+.mlo-blue-art{position:absolute;right:-5px;bottom:-35px;width:55%;height:100%;min-height:255px;pointer-events:none;overflow:hidden}
+.mlo-art-orb{position:absolute;width:230px;height:230px;background:radial-gradient(circle at 35% 35%,#c2d1ff,#89a9ed 75%,#7d9de0);border-radius:50%;right:9%;bottom:-72px;box-shadow:0 -23px 65px #a3beed83}
+.mlo-art-ring{position:absolute;right:14%;top:-60px;width:185px;height:185px;border:20px solid #cedaff99;border-radius:50%;transform:rotate(-28deg)}
+.mlo-art-star{position:absolute;right:32%;top:26px;font-size:98px;color:#7489d9;transform:rotate(-22deg);text-shadow:0 14px 20px #6389bc24}
+.mlo-art-small{position:absolute;right:5%;top:35px;font-size:37px;color:#e0a98f}
+.mlo-art-dots{position:absolute;right:45%;bottom:32px;width:14px;height:14px;background:#a9bce9;border-radius:50%;box-shadow:48px -105px 0 -3px #dfac98,110px -55px 0 -5px #8b9dda}
+html.dark .mlo-widget-welcome{background:linear-gradient(112deg,#283653,#303e63 62%,#394f70)}
+html.dark .mlo-widget-welcome h2{color:#f2f5ff}
+html.dark .mlo-widget-welcome p,html.dark .mlo-widget-welcome .mlo-welcome-kicker{color:#d0ddf6}
+html.dark .mlo-widget-welcome::after{background:linear-gradient(90deg,#283653 20%,#283653e0 54%,transparent 90%)}
+html.dark .mlo-widget-welcome .mlo-welcome-button{background:#edf2ff;color:#284770}
+/* Real ordered DOM is visual order too. Dense masonry visually scrambled saved order. */
+.mlo-dashboard-grid{grid-auto-flow:row;grid-auto-rows:auto;align-items:stretch}
+.mlo-widget{transition:border-color .15s ease,box-shadow .15s ease;contain:layout style}
+.mlo-widget:hover{transform:none;box-shadow:0 7px 21px color-mix(in srgb,var(--text) 7%,transparent)}
+.mlo-widget .mlo-widget-handle{opacity:0;pointer-events:none}
+.mlo-dashboard-grid.is-reordering .mlo-widget-handle{opacity:1;pointer-events:auto;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 9px;min-width:33px;min-height:33px;cursor:grab;touch-action:none}
+.mlo-widget-actions{z-index:6!important}
+.mlo-dashboard-grid.is-reordering .mlo-widget{border:2px dashed var(--accent);padding:21px;box-shadow:0 5px 20px var(--accent-soft)}
+.mlo-dashboard-grid.is-reordering .mlo-widget-welcome{padding:0;border:2px dashed var(--accent)}
+.mlo-dashboard-grid.is-reordering .mlo-widget::before{content:'Drag to rearrange';position:absolute;bottom:6px;right:10px;font-size:10px;letter-spacing:.02em;color:var(--muted);z-index:4;background:var(--panel);padding:2px 6px;border-radius:5px}
+.mlo-dashboard-grid .mlo-widget.mlo-dragover{outline:3px solid var(--accent);outline-offset:-4px}
+.mlo-dashboard-grid .mlo-widget.mlo-dragging{opacity:.45}
+.mlo-dashboard-grid .mlo-widget.mlo-widget-inactive{opacity:.36;filter:grayscale(.45)}
+.mlo-customize-panel{position:relative;z-index:8;box-shadow:0 12px 32px color-mix(in srgb,var(--text) 9%,transparent)}
+.mlo-widget-toggles{grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:8px}
+.mlo-toggle-widget{display:flex;gap:8px;align-items:center;background:var(--panel2);padding:9px 11px;border-radius:10px}
+.mlo-toggle-widget input{accent-color:var(--accent)}
+.mlo-toggle-widget button{font-size:16px;border:1px solid var(--border);background:var(--panel);padding:5px;min-width:33px;min-height:33px}
+.mlo-toggle-widget button:disabled{opacity:.3;cursor:not-allowed}
+.mlo-layout-guide{font-size:12px;color:var(--muted);margin:0 0 8px}
+.mlo-layout-status{font-size:12px;min-height:20px;color:var(--muted);padding:4px 0}
+.mlo-nav-edit-item input[type=checkbox]{accent-color:var(--accent)}
+.mlo-nav-edit-item button:disabled{opacity:.35;cursor:not-allowed}
+.mlo-nav-group.is-reordering .nav-item{cursor:grab}
+.mlo-nav-group.is-reordering .mlo-nav-drag{opacity:1}
+.mlo-nav-settings{min-height:270px}
+/* Instant press feedback and predictable tap targets. */
+.mlo-btn,.mlo-check,.sidebar-nav .nav-item{transition:background .12s,border-color .12s,opacity .12s,box-shadow .12s,transform .12s}
+.mlo-btn:active,.mlo-check:active{transform:scale(.98)}
+.mlo-space{animation:none}
+.mlo-capture input:focus{outline:0}
+.mlo-widget:focus-within{border-color:color-mix(in srgb,var(--accent) 28%,var(--border))}
+@media(max-width:800px){.mlo-widget .mlo-widget-handle{opacity:0}.mlo-dashboard-grid.is-reordering .mlo-widget-handle{opacity:1}}
+@media(max-width:600px){.mlo-blue-art{right:-30px;width:83%;opacity:.64}.mlo-widget-welcome::after{background:linear-gradient(90deg,#eff3ff 30%,#eff3ffd9 68%,transparent)}html.dark .mlo-widget-welcome::after{background:linear-gradient(90deg,#283653 30%,#283653db 70%,transparent)}.mlo-widget-welcome .mlo-welcome-copy{width:91%}.mlo-dashboard-grid.is-reordering .mlo-widget{padding:16px}.mlo-dashboard-grid.is-reordering .mlo-widget-welcome{padding:0}}
+@media(prefers-reduced-motion:reduce){.mlo-widget,.mlo-btn,.mlo-check{transition:none!important}}
+
+/* User-resizable cards on wide displays, with a safe two-column tablet fallback. */
+@media(min-width:801px){
+ .mlo-dashboard-grid .mlo-widget[data-widget-width="4"]{grid-column:span 4}
+ .mlo-dashboard-grid .mlo-widget[data-widget-width="6"]{grid-column:span 6}
+ .mlo-dashboard-grid .mlo-widget[data-widget-width="8"]{grid-column:span 8}
+ .mlo-dashboard-grid .mlo-widget[data-widget-width="12"]{grid-column:span 12}
+}
+@media(min-width:601px) and (max-width:800px){
+ .mlo-dashboard-grid .mlo-widget[data-widget-width="4"],.mlo-dashboard-grid .mlo-widget[data-widget-width="6"]{grid-column:span 1}
+ .mlo-dashboard-grid .mlo-widget[data-widget-width="8"],.mlo-dashboard-grid .mlo-widget[data-widget-width="12"]{grid-column:span 2}
+}
+@media(max-width:600px){.mlo-dashboard-grid .mlo-widget[data-widget-width]{grid-column:span 1}}
+.mlo-toggle-widget select{font-size:11px;border:1px solid var(--border);color:var(--text);background:var(--panel);border-radius:8px;min-height:34px;padding:4px;max-width:100px}
+@media(max-width:600px){.mlo-toggle-widget{flex-wrap:wrap}.mlo-toggle-widget span{min-width:110px}.mlo-toggle-widget select{max-width:110px}}
+/* Skip navigation remains keyboard accessible without floating into static screenshots. */
+.skip-link:not(:focus){clip-path:inset(100%);width:1px;height:1px;overflow:hidden;white-space:nowrap;padding:0;border:0}
+/* Keep header controls comfortably tappable without crowding small screens. */
+.workspace-copy strong{font-size:12px;letter-spacing:-.04em}
+@media(max-width:600px){
+ .mlo-home-toolbar .mlo-toolbar-actions a[href="/life/search"]{display:none}
+ .mlo-home-toolbar{align-items:center}
+ .mlo-home-toolbar .mlo-toolbar-actions .mlo-btn{padding:9px 10px;min-height:38px}
+ .mlo-home-toolbar .mlo-kicker{font-size:9px;letter-spacing:.09em}
+}
+/* Higher specificity than legacy neutral buttons: primary actions follow active palette. */
+.mlo-space .mlo-btn.mlo-primary,
+.mlo-space .mlo-start-focus-form .mlo-btn.mlo-primary {
+ background-color:var(--accent)!important;
+ border-color:var(--accent)!important;
+ color:#fff!important;
+}
+.mlo-space .mlo-btn.mlo-primary:hover,
+.mlo-space .mlo-start-focus-form .mlo-btn.mlo-primary:hover {
+ background-color:color-mix(in srgb,var(--accent) 88%,black)!important;
+}

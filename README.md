@@ -1,73 +1,71 @@
-# MLO Studio v3.2.0
+# MLO Studio v3.3.0 | Polished interface and working dashboard editor
 
-**New UI and calendar release.** Start with [v3.2 release notes](docs/V3_2_RELEASE.md), [calendar connection setup](docs/CALENDAR_SETUP.md), [GitHub → Portainer upgrade](docs/DEPLOY_PORTAINER.md) and [file map](docs/FILE_MAP_V32.md).
+**My Life Organized (MLO)**, updated from the full v3.2 consolidated app, not a standalone UI mockup.
 
-The v3.2 update preserves the consolidated v3.1 source and database model, adds a server-side account-specific layout store, reference-inspired Today interface and optional read-only calendar linking.
+This version restores the **blue illustrated greeting**, keeps the **v3.1 theme/palette picker**, replaces hard-coded green accents with theme-aware cards, repairs per-account widget/sidebar customization, adds **widget width controls**, and improves task capture responsiveness. Your existing Study/Work/Money/Projects/Calendars/Focus/Spaces functionality remains in the application.
 
----
+## Start here
 
-# My Life Organized | MLO v3.1.0 Consolidated
+- [GitHub → Portainer upgrade steps](docs/DEPLOY_PORTAINER.md) (specifically for the existing Portainer Git stack)
+- [v3.3 changes and limitations](docs/V3_3_RELEASE.md)
+- [Complete verification notes](docs/VERIFICATION_V33.md)
+- [Exact file locations](docs/FILE_MAP_V33.md)
+- [Google / Microsoft / Apple calendars setup](docs/CALENDAR_SETUP.md)
 
-This release directly addresses v3's duplicated "Classic tools" navigation and disconnected legacy features. It is built on the same existing FastAPI/SQLite Study Notifier source, **not a separate starter prototype**.
+## What changed visually
 
-## The actual change
+- **Blue welcome artwork** from the original v3.1 direction, inside the compact card layout.
+- **Appearance** shortcut on Today opens the existing theme configuration in Settings.
+- **All six palettes** (Neutral, Ocean, Sage, Rose, Amber, Lavender) and System/Light/Dark are retained. "Independent" keeps the UI surfaces neutral; "Full theme" colors the surrounding panels.
+- Dashboard, sidebar, controls, Focus card, today indicators and action buttons use the chosen palette. No fixed green app theme.
+- Responsive grid panels, calmer transitions and more consistent controls.
 
-The app now has **one** Today dashboard, Tasks module, Calendar and Focus/Timers screen. Legacy to-dos are imported once into `life_tasks`, retaining the original records as recovery history. Study, Work, Money and Spaces are purposeful areas that **use existing academic, finance, jobs and shared-section data**, rather than creating second sets of those records.
+## Arrange your dashboard
 
-- **Today:** regular tasks/projects, plus upcoming coursework, bills and career follow-ups for the admin account.
-- **Tasks:** one primary task view. Old To-Do is hidden/redirected. Original to-dos are imported once; completion is mirrored back for compatibility with legacy reminder/digest history.
-- **Study:** courses, assessments, weekly classes, Study tasks, Study projects. Academic items continue to be managed in their existing source-of-truth tables.
-- **Work & Career:** projects, Work tasks, job applications and follow-ups in one space.
-- **Money:** expenses and subscriptions, outstanding balances, links into existing full statement/transaction/budget features.
-- **Spaces:** personal/shared projects and existing shared sections, recipes, groceries and checklists.
-- **Calendar:** task due dates plus coursework, weekly classes, calendar events, unpaid bills and job follow-ups (admin-only legacy data remains private).
-- **Focus & time:** saved timers, countdown controls, task-linked focus and timesheets on the same screen.
-- **Design:** one navigation, one command switcher, mobile More navigation, reworked principal list screens, unified CSS styling and contextual back links for detailed legacy screens.
+1. Open **Today → Arrange**.
+2. Drag **by the card handle** on desktop. Alternatively use the **up/down arrows** in the editor (also work on touch devices).
+3. Use the checkbox to hide/show a module. Use **Width** for Small, Medium, Large, Full width or Default.
+4. Changes save to the signed-in account, including order, visibility and size. Click **Done**. Reload to verify.
+5. **Restore defaults** clears order, hidden cards and width overrides.
 
-Old course/assessment/job/expense/finance records **are not duplicated or deleted**. Their existing form workflows and notifier behavior remain. Secondary accounts are not shown administrator-owned legacy personal data. The *full report roadmap* is not implemented by this consolidation.
+Sidebar: click **Customize** in the workspace sidebar to rename, reorder and hide navigation links. Changes are also saved per account. Hidden links can be recovered in that editor; reset restores defaults.
 
-## GitHub → Portainer installation (your actual deployment method)
+If a card is hidden in arrangement mode it is temporarily shown dimmed so you can bring it back; leaving Arrange hides it normally.
 
-**Important:** Keep your Portainer Git stack configured with repository `https://github.com/pierre-2005/study-notifier.git`, branch `refs/heads/main`, Compose file `docker-compose.yml` and existing secrets. No Web Editor or Raspberry Pi image-building step is required.
+## Responsiveness changes
 
-1. **Before pushing, back up the entire current Docker volume and keep an off-device copy.** Ensure the actual existing stack name and volume mapping match `docker-compose.yml`. If the current volume name/path differs from `study_notifier_data:/data`, copy the original declaration into the new file. Otherwise Compose can start with an empty database. See `docs/DEPLOY_PORTAINER.md`.
-2. Extract this ZIP and copy its **contents into the root** of your `study-notifier` GitHub repository, not into a second nested folder. Replace the app code/templates/static, Dockerfile, `requirements.txt`, `docker-compose.yml` and `.github/workflows/publish-image.yml`.
-3. Commit/push to `main`, then wait for the **Build and publish MLO Docker image** GitHub Action to complete successfully. The workflow publishes multi-architecture `ghcr.io/pierre-2005/study-notifier:v3.1-consolidated`. Ensure the image is publicly accessible to Portainer or configure registry credentials separately. Publishing and making the image public are separate steps.
-4. In your **existing Git repository stack**, click **Pull and redeploy** only after GitHub has published the image. Keep port `127.0.0.1:8001:8000`. Do not launch a second MLO stack on the same port or share one SQLite file between two live containers.
-5. Test Today, Study, Work, Money, Calendar, Tasks, Focus, user permissions and original records. Verify the pre-v3.1 SQLite backup beside the live database. For problems, roll back to your backed-up database **and** previous Docker image; don't run old code against an already-migrated database without an appropriate rollback.
+- Task creation on Today updates the task card and open-task counters without a full navigation.
+- Inline task completion uses optimistic feedback with rollback on error and synchronizes visible totals.
+- Widget and sidebar editing no longer requires a page refresh and now saves with ordered, debounced requests.
+- The previous dense grid packing, which visually hid actual widget order, has been removed.
+- Major animations have been reduced to fast, functional interaction feedback; static responses remain compressed with GZip and versioned cached assets.
+- Dashboard calendar lookups are bounded to the displayed month. **No production Pi performance guarantee:** evaluate against your actual storage/network with browser DevTools and container stats.
 
-**Upgrade caveat:** This release is tested against a representative old v1 and packaged v3 database. The separately mentioned v2 database version has **not** been verified as a direct upgrade target, and no actual live Raspberry Pi deployment was performed in this environment.
+## Local test (optional)
 
-## Build/run outside Portainer (optional)
-
-Use Python 3.12, copy `.env.production.example` to `.env`, configure secrets, then:
+Python 3.12+ recommended. Copy `.env.production.example` into a local `.env` and provide safe dev secrets, then:
 
 ```bash
 pip install -r requirements.txt
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Use `COOKIE_SECURE=false` only when accessing a local HTTP test server. Keep `COOKIE_SECURE=true` with your normal HTTPS/Cloudflare endpoint. Avoid committing `.env` or passwords to GitHub.
-
-## Validation
+The browser tests need Playwright and Chromium and use an isolated database. Run tests from the project root:
 
 ```bash
-python tests_consolidation.py
 python tests_smoke.py
 python tests_new_features.py
 python tests_migration.py
+python tests_consolidation.py
+python tests_v32.py
+python tests_v33_browser.py
 python -m compileall -q app
 ```
 
-Tests use isolated databases and mock the reminder scheduler. They check rendering, migration idempotency, legacy status mirror, account isolation, migration backup, existing data retention, private files and team sharing. Browser render checks were also performed at mobile/tablet/desktop sizes. Network push delivery, Cloudflare routing, GitHub Actions and Portainer itself are not executed by those tests.
+## Data and deployment warnings
 
-## Navigation and reference
+**Always back up the live `/data` volume (database, uploads and keys) before upgrading.** The existing Git stack should retain its exact current name, `docker-compose.yml`, Portainer environment variables, and `/data` mount. The Compose file refers to a volume called `study_notifier_data`; Docker volume names can be stack-prefixed. Inspect the actual current mount and adapt the Compose declaration before pushing if the names differ. Do not delete any volume and do not run two versions against one SQLite database simultaneously.
 
-- `docs/DEPLOY_PORTAINER.md`: safe Git/Portainer replacement and rollback.
-- `docs/CONSOLIDATION.md`: mapping of duplicated vs unique modules, migration and known limitations.
-- `docs/PRODUCT_SCOPE.md`: shipped versus future features.
-- `docs/FILE_MAP.md`: exact files and locations.
-- `docs/VERIFICATION.md`: automated and browser checks.
-- `docs/strategy/`: longer MLO feature roadmap.
+A migration from v3.2 is tested. The separately generated v2 database format remains **unverified**, so direct upgrades from v2 require separate testing on a backup first.
 
-**Privacy notice:** the original course, expense, job and statement tables predate private multi-user ownership; they are deliberately visible only to approved administrators. Do not enable them for all accounts without a user ownership/data migration.
+This release has not been pushed to GitHub or deployed to the Raspberry Pi in this environment. Real OAuth provider linking and Cloudflare deployment also remain unverified.

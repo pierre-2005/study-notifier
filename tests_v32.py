@@ -17,15 +17,17 @@ with tempfile.TemporaryDirectory() as tmp:
   for path in ['/life','/life/calendar','/life/calendars','/life/projects']:
    r=alice.get(path);assert r.status_code==200,(path,r.status_code,r.text[:800])
   home=alice.get('/life').text
-  assert 'data-widget-grid' in home and 'mlo-landscape' in home and 'data-dashboard-edit' in home
+  assert 'data-widget-grid' in home and 'mlo-blue-art' in home and 'data-dashboard-edit' in home
   assert 'No setup. No complicated' not in home
   layout=alice.get('/life/layout').json()
   assert 'widget_order' in layout
   layout['nav_labels']={'life-home':'My Command Center'}
   layout['widget_hidden']=['money']
+  layout['widget_sizes']={'projects':8}
   layout['widget_order']=list(reversed(layout['widget_order']))
   assert alice.post('/life/layout',json=layout).json()['ok']
   assert alice.get('/life/layout').json()['nav_labels']['life-home']=='My Command Center'
+  assert alice.get('/life/layout').json()['widget_sizes']['projects']==8
   assert alice.post('/life/layout',json={'nav_labels':{'evil':'bad'},'widget_order':['hacked','tasks']}).status_code==200
   assert 'evil' not in alice.get('/life/layout').json()['nav_labels']
   r=alice.post('/life/calendars/feed',data={'provider':'apple','label':'Personal Apple','url':'https://p54-caldav.icloud.com/published/2/example'})
@@ -45,6 +47,7 @@ with tempfile.TemporaryDirectory() as tmp:
   with TestClient(app,follow_redirects=True) as bob:
    assert bob.post('/login',data={'username':'tester2','password':'strong-password-123','next':'/life'}).status_code==200
    assert 'My Command Center' not in str(bob.get('/life/layout').json())
+   assert bob.get('/life/layout').json()['widget_sizes']=={}
    assert bob.get('/life/calendars').status_code==200
    assert 'Personal Apple' not in bob.get('/life/calendars').text
    assert bob.post(f'/life/projects/{project_id}/delete',data={'confirmation':'Delete Test Project'}).status_code==404

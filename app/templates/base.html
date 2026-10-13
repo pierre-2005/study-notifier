@@ -35,6 +35,7 @@
   <link rel="stylesheet" href="/static/theme.css?v={{ APP_VERSION }}">
   <link rel="stylesheet" href="/static/life.css?v={{ APP_VERSION }}">
   <link rel="stylesheet" href="/static/design32.css?v={{ APP_VERSION }}">
+  <link rel="stylesheet" href="/static/design33.css?v={{ APP_VERSION }}">
   <script src="/static/theme.js?v={{ APP_VERSION }}" defer></script>
   <script src="/static/life.js?v={{ APP_VERSION }}" defer></script>
   <script src="/static/customize.js?v={{ APP_VERSION }}" defer></script>
@@ -106,7 +107,7 @@
           {% endfor %}
           </div>
         </nav>
-        <div data-nav-settings class="mlo-nav-settings" hidden><div class="mlo-nav-settings-head"><strong>Edit sidebar</strong><button type="button" data-nav-edit-close aria-label="Close sidebar editor">×</button></div><p>Drag items to reorder. Rename them or hide them from this sidebar.</p><div data-nav-editor-list></div><div class="mlo-nav-actions"><button type="button" data-nav-reset>Reset</button><button type="button" data-nav-edit-close>Done</button></div></div>
+        <div data-nav-settings class="mlo-nav-settings" hidden><div class="mlo-nav-settings-head"><strong>Edit sidebar</strong><button type="button" data-nav-edit-close aria-label="Close sidebar editor">×</button></div><p>Rename, show or reorder pages. Drag a handle or use the arrows.</p><div data-nav-editor-list></div><div class="mlo-nav-actions"><button type="button" data-nav-reset>Reset</button><button type="button" data-nav-edit-close>Done</button></div></div>
 
         <div class="sidebar-foot">
           {% if request.state.active_timer %}

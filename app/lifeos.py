@@ -324,12 +324,14 @@ def home(request: Request):
             bills=conn.execute("SELECT id,title,amount,due_at_utc FROM expenses WHERE status='unpaid' ORDER BY due_at_utc LIMIT 3").fetchall()
             jobs=conn.execute("SELECT id,company,role,followup_at_utc FROM jobs WHERE followup_at_utc IS NOT NULL ORDER BY followup_at_utc LIMIT 3").fetchall()
     from datetime import datetime
-    month_days=calendar.Calendar(firstweekday=0).monthdatescalendar(date.today().year,date.today().month)
+    month_start=date.today().replace(day=1)
+    month_end=(month_start.replace(day=28)+timedelta(days=4)).replace(day=1)
+    month_days=calendar.Calendar(firstweekday=0).monthdatescalendar(month_start.year,month_start.month)
     event_dates=set()
     with get_conn() as conn:
-        for row in conn.execute("SELECT due_on FROM life_tasks WHERE owner_id=? AND due_on BETWEEN ? AND ? AND status != 'done' ",(uid,date.today().replace(day=1).isoformat(),(date.today().replace(day=28)+timedelta(days=4)).replace(day=1).isoformat())):
-            if row['due_on']: event_dates.add(row['due_on'])
-        for row in conn.execute('SELECT e.starts_on FROM life_external_events e JOIN life_calendar_connections c ON e.connection_id=c.id WHERE c.user_id=? AND e.starts_on>=? LIMIT 150',(uid,date.today().replace(day=1).isoformat())):
+        for row in conn.execute("SELECT due_on FROM life_tasks WHERE owner_id=? AND due_on>=? AND due_on<? AND status!='done'",(uid,month_start.isoformat(),month_end.isoformat())):
+            if row['due_on']:event_dates.add(row['due_on'])
+        for row in conn.execute('SELECT e.starts_on FROM life_external_events e JOIN life_calendar_connections c ON e.connection_id=c.id WHERE c.user_id=? AND e.starts_on>=? AND e.starts_on<? LIMIT 150',(uid,month_start.isoformat(),month_end.isoformat())):
             event_dates.add(row['starts_on'])
     hour=datetime.now(ZoneInfo(settings.timezone)).hour
     greeting='Good morning' if hour<12 else 'Good afternoon' if hour<18 else 'Good evening'

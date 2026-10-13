@@ -1,42 +1,42 @@
-# Deploy v3.2 with your existing GitHub → Portainer Stack
+# Safe v3.3 update: GitHub repository → GitHub Actions → Portainer
 
-Your existing Portainer deployment uses the Git repository `https://github.com/pierre-2005/study-notifier.git`, branch `refs/heads/main`, with `docker-compose.yml`. **This package is built for that workflow.** Do not switch to Web Editor and do not build a Pi image manually.
+This uses your **existing** Portainer Git Stack, *not* Web Editor.
 
-## Before changing any files
+## 1. Preserve your currently running installation
 
-1. In Portainer, open the **existing** stack and record its exact stack name, published port and volume mapping. Keep `127.0.0.1:8001:8000` if your current HTTPS proxy/Cloudflare tunnel targets that host port.
-2. On the Pi, inspect mounts of the running MLO container, `docker inspect CONTAINER_NAME --format '{{json .Mounts}}'`. Verify the volume mounted at `/data` and its actual name. If the supplied Compose file declares a different volume, **retain the currently deployed mapping instead**.
-3. Back up the **entire** data volume (SQLite DB, uploads, backups), ideally with the application stopped for the final copy, and verify the archive contents. Keep a second copy off the Pi. Never delete volumes to resolve port/pull errors. Preserve the currently running image/tag for rollback.
-4. Do not place passwords, PATs or actual `.env` files in your repository. Keep existing stack variables `SESSION_SECRET`, `APP_USERNAME`, `APP_PASSWORD`, `TIMEZONE`, etc.
+1. In Portainer → **Stacks**, open your existing stack and record the stack name, compose path (`docker-compose.yml`), branch (`refs/heads/main`), environment variables, and the actual database volume mounted at `/data`.
+2. Use Portainer's Containers UI or Pi shell to inspect the current container's mounts. If using a Pi shell: `docker inspect CONTAINER_NAME --format '{{json .Mounts}}'`.
+3. Take a **complete backup of the entire `/data` Docker volume**, including the SQLite file, its write-ahead log files if any, attachments and OAuth-related persisted data. Prefer a stopped-container final backup, and verify an off-device copy. Save the exact currently working Docker image tag for rollback.
+4. Check **the exact existing volume name** against the `docker-compose.yml` in this package. `study_notifier_data` is only a Compose key and may be stack-prefixed by Docker. Do not unknowingly attach a new empty volume.
 
-## Publish
+## 2. Update GitHub
 
-1. Extract the archive. Copy the files **inside** `mlo-v3-consolidated/` into the **root** of the GitHub repository. `Dockerfile`, `app/`, `.github/` and `docker-compose.yml` must all be at the root.
-2. Commit the changes to `main`.
-3. Open **GitHub → Actions** and wait for **Build and publish MLO Docker image** to be green. It publishes `ghcr.io/pierre-2005/study-notifier:v3.2-studio` for both `linux/amd64` and `linux/arm64` (including most Raspberry Pi 64-bit installations).
-4. Set the container package visibility to public if Portainer does not have registry authentication. A successful workflow by itself does **not** make a GHCR package publicly pullable.
+1. Extract the ZIP. Copy the **contents of `mlo-v3.3/`**, including hidden `.github/`, to the **root** of `https://github.com/pierre-2005/study-notifier.git`, replacing corresponding app files. Do not create a nested folder.
+2. Make sure the root has `Dockerfile`, `app/`, `requirements.txt`, `docker-compose.yml`, `.github/workflows/publish-image.yml`.
+3. If necessary, adjust only the Compose **volume declaration** so it matches the already-running data volume, or keep your known-correct production declaration unchanged. Keep host port `127.0.0.1:8001:8000` and existing secrets.
+4. Push/commit to `main`. The GitHub Action publishes `ghcr.io/pierre-2005/study-notifier:v3.3-polished` on `linux/amd64` and `linux/arm64`.
+5. Wait until GitHub **Actions → Build and publish MLO Docker image** is **green**. Make the GHCR package readable by Portainer, either by setting the package public or by configuring GHCR registry credentials within Portainer. It does not become public automatically.
 
-## Redeploy existing stack
+## 3. Deploy from your current Portainer stack
 
-In Portainer, go to **Stacks → your existing Study Notifier/MLO stack → Pull and redeploy**. Keep repository URL, branch `refs/heads/main`, credentials, port `8001` and existing environment variables. Leave GitOps polling off until verified. Do not create a separate second stack occupying port 8001.
+1. **Do not create a second stack.** It will compete for port 8001 and may attach a new database.
+2. Open **Stacks → your existing MLO stack → Redeploy from git repository**.
+3. Keep the repo URL, `refs/heads/main`, Git authentication, and `docker-compose.yml` path as currently configured.
+4. Click **Pull and redeploy** after the image exists. `pull_policy: always` downloads the published v3.3 image.
+5. Keep current Cloudflare Tunnel target `127.0.0.1:8001` if that's what was previously working. HTTPS requires `COOKIE_SECURE=true`.
 
-The v3.2 Compose file uses `pull_policy: always`, so the new published image is pulled when you redeploy. If the image is not published or publicly readable, Portainer will fail at *image pull*, before app startup.
+## 4. Verify in your browser
 
-## Verify
+- Check `/health`, sign in to your regular account, and verify old projects, tasks, courses, expenses, attachments and calendars.
+- Open **Today → Arrange**, move a card, change size, hide it, select Done, reload and confirm persistence.
+- Change a palette in **Settings → Appearance**, visit Today, and verify that cards/sidebar change with the palette while the blue hero remains.
+- Add a task and complete it without full-page navigation; refresh and check stored state.
+- Confirm another account still has its own layout and private data.
 
-- Visit `/health` and the HTTPS `/login` page.
-- Check Today, Tasks, Focus, Study, Work, Money, Calendar and Spaces with your admin account.
-- Verify all old courses, assessments, jobs, bills, finance categories/transactions and shared grocery data remain.
-- Verify the new Tasks module contains your old to-dos once, not twice.
-- Verify `/data/study_notifier.pre-mlo-v3.2.sqlite.backup` exists and preserve it.
-- Sign in with a separate account; check they **cannot** see administrator finance/study/jobs legacy data.
+## 5. Roll back safely
 
-## Rollback
+If you find missing data, migration errors or broken authentication, stop the v3.3 app and restore **both** the old full-volume snapshot and its exact old Docker image. Do **not** run earlier code against an already changed database. Do not remove volumes to fix image pull or port-binding errors.
 
-If the app is unhealthy or data is missing, stop the current container. Restore the full volume archive and redeploy the previous known-good Docker image. An old application should not write into a database already changed by v3.2. Do not run both versions against one SQLite volume.
+## Extra calendar setup
 
-**Limitations:** v2-to-v3 compatibility remains unverified; the GitHub workflow and live Portainer configuration cannot be tested from this archive. Pre-v3.2 snapshot is only the database, not attachments; the whole-volume backup is necessary.
-
-## New calendar credentials (optional)
-
-See [CALENDAR_SETUP.md](CALENDAR_SETUP.md). Add `MLO_PUBLIC_URL`, `MLO_CREDENTIAL_KEY` and optional Google/Microsoft OAuth credentials as Portainer environment variables, **never inside GitHub**. The application otherwise starts without OAuth linking enabled. Existing OAuth tokens require the same `MLO_CREDENTIAL_KEY` after every deployment.
+Google/Outlook read-only OAuth is optional and requires your client keys plus `MLO_PUBLIC_URL`, `MLO_CREDENTIAL_KEY`. Apple/iCalendar is a read-only subscribed feed, not Apple ID OAuth or two-way sync. See [CALENDAR_SETUP.md](CALENDAR_SETUP.md).

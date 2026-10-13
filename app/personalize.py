@@ -24,7 +24,11 @@ def init_layout_schema():
             user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
             nav_order TEXT NOT NULL DEFAULT '[]', widget_order TEXT NOT NULL DEFAULT '[]',
             nav_labels TEXT NOT NULL DEFAULT '{}', nav_hidden TEXT NOT NULL DEFAULT '[]',
-            widget_hidden TEXT NOT NULL DEFAULT '[]', updated_at TEXT NOT NULL)''')
+            widget_hidden TEXT NOT NULL DEFAULT '[]', widget_sizes TEXT NOT NULL DEFAULT '{}', updated_at TEXT NOT NULL)''')
+        # Older v3.2 database installs get the width column without losing saved layouts.
+        columns={row['name'] for row in conn.execute('PRAGMA table_info(life_layouts)').fetchall()}
+        if 'widget_sizes' not in columns:
+            conn.execute("ALTER TABLE life_layouts ADD COLUMN widget_sizes TEXT NOT NULL DEFAULT '{}'")
         conn.commit()
 
 
@@ -39,8 +43,8 @@ def layout_for(uid):
     with get_conn() as conn:
         row=conn.execute('SELECT * FROM life_layouts WHERE user_id=?',(uid,)).fetchone()
     if not row:
-        return {'nav_order': list(NAV),'widget_order':list(WIDGETS), 'nav_labels':{},'nav_hidden':[], 'widget_hidden':[]}
-    return {key:_safe_json(row[key], [] if key not in ('nav_labels',) else {}) for key in ('nav_order','widget_order','nav_labels','nav_hidden','widget_hidden')}
+        return {'nav_order': list(NAV),'widget_order':list(WIDGETS), 'nav_labels':{},'nav_hidden':[], 'widget_hidden':[], 'widget_sizes':{}}
+    return {key:_safe_json(row[key], {} if key in ('nav_labels','widget_sizes') else []) for key in ('nav_order','widget_order','nav_labels','nav_hidden','widget_hidden','widget_sizes')}
 
 
 def allowed_nav(uid):
@@ -91,11 +95,14 @@ async def save_layout(request:Request):
     labels={k:v.strip()[:36] for k,v in labels.items() if k in nav and isinstance(v,str) and v.strip()}
     nav_hidden=[k for k in data.get('nav_hidden',[]) if k in nav] if isinstance(data.get('nav_hidden'),list) else []
     widget_hidden=[k for k in data.get('widget_hidden',[]) if k in WIDGETS] if isinstance(data.get('widget_hidden'),list) else []
+    raw_sizes=data.get('widget_sizes',{})
+    if not isinstance(raw_sizes,dict):raise HTTPException(422,'Invalid widget widths')
+    widget_sizes={k:int(v) for k,v in raw_sizes.items() if k in WIDGETS and str(v) in ('4','6','8','12')}
     with get_conn() as conn:
-        conn.execute('''INSERT INTO life_layouts(user_id,nav_order,widget_order,nav_labels,nav_hidden,widget_hidden,updated_at)
-          VALUES(?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET nav_order=excluded.nav_order,
+        conn.execute('''INSERT INTO life_layouts(user_id,nav_order,widget_order,nav_labels,nav_hidden,widget_hidden,widget_sizes,updated_at)
+          VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET nav_order=excluded.nav_order,
           widget_order=excluded.widget_order,nav_labels=excluded.nav_labels,nav_hidden=excluded.nav_hidden,
-          widget_hidden=excluded.widget_hidden,updated_at=excluded.updated_at''',
-          (uid,json.dumps(nav_order),json.dumps(widgets),json.dumps(labels),json.dumps(nav_hidden),json.dumps(widget_hidden),datetime.now(timezone.utc).isoformat()))
+          widget_hidden=excluded.widget_hidden,widget_sizes=excluded.widget_sizes,updated_at=excluded.updated_at''',
+          (uid,json.dumps(nav_order),json.dumps(widgets),json.dumps(labels),json.dumps(nav_hidden),json.dumps(widget_hidden),json.dumps(widget_sizes),datetime.now(timezone.utc).isoformat()))
         conn.commit()
     return {'ok':True}

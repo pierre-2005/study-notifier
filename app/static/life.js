@@ -14,9 +14,15 @@
     button.textContent = next === 'done' ? '✓' : '';
     name?.classList.toggle('is-done', next === 'done');
     try {
-      const resp = await fetch(form.action,{method:'POST',headers:{'X-MLO-Action':'fetch'},body:new FormData(form),credentials:'same-origin'});
+      const resp = await fetch(form.getAttribute('action') || form.action,{method:'POST',headers:{'X-MLO-Action':'fetch'},body:new FormData(form),credentials:'same-origin'});
       if (!resp.ok) throw new Error(`Save failed (${resp.status})`);
       form.querySelector('[name=status]').value = next === 'done' ? 'todo' : 'done';
+      // Reflect successful completion in all visible summary counters immediately.
+      const adjustment=next==='done'?-1:1;
+      document.querySelectorAll('[data-open-task-count]').forEach(label=>{
+        const count=Number(label.textContent.trim());
+        if(Number.isFinite(count))label.textContent=String(Math.max(0,count+adjustment));
+      });
       document.dispatchEvent(new CustomEvent('mlo:task-saved'));
     } catch (err) {
       button.classList.toggle('is-done', next !== 'done');
@@ -36,12 +42,12 @@
     if(!title) return;
     button.disabled=true;button.classList.add('mlo-saving');
     try {
-      const response=await fetch(form.action,{method:'POST',credentials:'same-origin',headers:{'X-MLO-Action':'fetch'},body:new FormData(form)});
+      const response=await fetch(form.getAttribute('action') || form.action,{method:'POST',credentials:'same-origin',headers:{'X-MLO-Action':'fetch'},body:new FormData(form)});
       if(!response.ok)throw new Error(`Save failed (${response.status})`);
       const item=await response.json();
       input.value='';
       const board=document.querySelector('.mlo-board-column');
-      const taskSurface=document.querySelector('.mlo-surface:has(.mlo-task)') || document.querySelector('.mlo-two-thirds > .mlo-surface') || document.querySelector('.mlo-two > .mlo-surface');
+      const taskSurface=document.querySelector('.mlo-widget-tasks') || document.querySelector('.mlo-surface:has(.mlo-task)') || document.querySelector('.mlo-two-thirds > .mlo-surface') || document.querySelector('.mlo-two > .mlo-surface');
       if(board){
         const a=document.createElement('a');a.href=`/life/tasks/${item.id}`;a.className='mlo-board-ticket';a.textContent=title;board.prepend(a);
       }else if(taskSurface){
@@ -58,8 +64,10 @@
         const first=taskSurface.querySelector('.mlo-task');
         if(first)first.before(row);else taskSurface.append(row);
       }
-      const stat=document.querySelector('.mlo-stat strong');
-      if(stat){const value=parseInt(stat.textContent,10);if(Number.isFinite(value))stat.textContent=String(value+1);}
+      document.querySelectorAll('[data-open-task-count]').forEach(label=>{
+        const count=Number(label.textContent.trim());
+        if(Number.isFinite(count))label.textContent=String(count+1);
+      });
       input.focus();
     } catch(err){alert(`Couldn't save your task. ${err.message}`);}
     finally {button.disabled=false;button.classList.remove('mlo-saving');}

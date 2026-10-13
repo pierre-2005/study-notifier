@@ -1,172 +1,211 @@
+/* MLO 3.3: persisted, account-scoped layout editor. Native drag handles + touch controls. */
 (() => {
   'use strict';
   const nav = document.querySelector('[data-custom-nav]');
-  const dashboard = document.querySelector('[data-widget-grid]');
-  if (!nav && !dashboard) return;
-  const preferences = {nav_order: [],widget_order: [],nav_labels: {},nav_hidden: [],widget_hidden: []};
-  let isEditingNav = false, isEditingWidgets = false, saveTimer = null;
-  const valid = (arr) => Array.isArray(arr) ? arr.filter(x => typeof x === 'string') : [];
-  const allNav = () => [...document.querySelectorAll('[data-nav-group] [data-nav-key]')];
-  const allWidgets = () => [...document.querySelectorAll('[data-widget-grid] [data-widget]')];
-  const keepOrder = (order,keys) => [...order.filter(key => keys.includes(key)),...keys.filter(key => !order.includes(key))];
-  const navKeys = () => allNav().map(e => e.dataset.navKey);
-  const widgetKeys = () => allWidgets().map(e => e.dataset.widget);
-  const save = () => {
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(async () => {
-      try {
-        const response = await fetch('/life/layout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(preferences),credentials:'same-origin'});
-        if(!response.ok) throw new Error('Save failed');
-      } catch(err) {
-        console.error('Layout save failed',err);
-        const status=document.querySelector('[data-layout-status]');
-        if(status)status.textContent='Could not save changes. Reload and try again.';
-      }
-    },150);
-  };
-  function reorder() {
-    for (const group of document.querySelectorAll('[data-nav-group]')) {
-      const children=[...group.querySelectorAll('[data-nav-key]')];
-      children.sort((a,b)=>preferences.nav_order.indexOf(a.dataset.navKey)-preferences.nav_order.indexOf(b.dataset.navKey));
-      for(const child of children)group.appendChild(child);
+  const grid = document.querySelector('[data-widget-grid]');
+  if (!nav && !grid) return;
+
+  const initialNav = [...document.querySelectorAll('[data-nav-group] [data-nav-key]')].map(e => e.dataset.navKey);
+  const initialWidgets = [...document.querySelectorAll('[data-widget-grid] [data-widget]')].map(e => e.dataset.widget);
+  const defaults = () => ({nav_order: [...initialNav], widget_order: [...initialWidgets], nav_labels: {}, nav_hidden: [], widget_hidden: [],widget_sizes: {}});
+  const prefs = defaults();
+  let navEditing = false;
+  let widgetEditing = false;
+  let pending = null;
+  let inflight = null;
+  let dirty = false;
+  let dragElement = null;
+  let dragGroup = null;
+  const status = document.querySelector('[data-layout-status]');
+  const navItems = () => [...document.querySelectorAll('[data-nav-group] [data-nav-key]')];
+  const widgets = () => [...document.querySelectorAll('[data-widget-grid] [data-widget]')];
+  const ordered = (values, available) => [...new Set([...(Array.isArray(values) ? values : []), ...available])].filter(k => available.includes(k));
+  const currentNavKeys = () => navItems().map(e => e.dataset.navKey);
+  const currentWidgetKeys = () => widgets().map(e => e.dataset.widget);
+  const setStatus = (message, error = false) => {if(status) {status.textContent = message;status.classList.toggle('mlo-error',error);}};
+
+  async function flush() {
+    clearTimeout(pending);
+    if (inflight) {dirty = true; return;}
+    const payload = JSON.stringify(prefs);
+    setStatus('Saving…');
+    try {
+      inflight = fetch('/life/layout', {method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:payload});
+      const response = await inflight;
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      setStatus('Saved');
+    } catch (error) {
+      setStatus('Could not save layout. Try again.',true);
+      console.error('MLO layout save:',error);
+      dirty = false;
+    } finally {
+      inflight = null;
+      if(dirty){dirty=false;queueSave();}
     }
-    if(dashboard){const children=allWidgets().sort((a,b)=>preferences.widget_order.indexOf(a.dataset.widget)-preferences.widget_order.indexOf(b.dataset.widget));children.forEach(child=>dashboard.appendChild(child));}
   }
-  function paint() {
-    preferences.nav_order = keepOrder(valid(preferences.nav_order),navKeys());
-    preferences.widget_order = keepOrder(valid(preferences.widget_order),widgetKeys());
-    reorder();
-    allNav().forEach(el => {
+  function queueSave() {setStatus('Unsaved changes');clearTimeout(pending);pending=setTimeout(flush,250);}
+  function orderDom(items, key, parent) {
+    items.sort((a,b) => prefs[key].indexOf(a.dataset[key==='widget_order'?'widget':'navKey']) - prefs[key].indexOf(b.dataset[key==='widget_order'?'widget':'navKey']));
+    items.forEach(el=>parent.append(el));
+  }
+  function normalize() {
+    prefs.nav_order=ordered(prefs.nav_order,currentNavKeys());
+    prefs.widget_order=ordered(prefs.widget_order,currentWidgetKeys());
+    prefs.nav_hidden=prefs.nav_hidden.filter(k=>currentNavKeys().includes(k));
+    prefs.widget_hidden=prefs.widget_hidden.filter(k=>currentWidgetKeys().includes(k));
+  }
+  function render() {
+    normalize();
+    document.querySelectorAll('[data-nav-group]').forEach(group=>orderDom([...group.querySelectorAll('[data-nav-key]')], 'nav_order', group));
+    if(grid)orderDom(widgets(),'widget_order',grid);
+    for(const el of navItems()) {
       const key=el.dataset.navKey;
       const label=el.querySelector('[data-nav-label]');
-      if(label)label.textContent=preferences.nav_labels[key] || el.dataset.navDefault;
-      el.hidden=preferences.nav_hidden.includes(key) && !isEditingNav;
-      el.draggable=isEditingNav;
-    });
-    allWidgets().forEach(el => {
-      el.hidden=preferences.widget_hidden.includes(el.dataset.widget);
-      el.draggable=isEditingWidgets;
+      if(label)label.textContent=prefs.nav_labels[key]||el.dataset.navDefault;
+      el.hidden=prefs.nav_hidden.includes(key) && !navEditing;
+      el.draggable=false;
+      const handle=el.querySelector('.mlo-nav-drag');
+      if(handle){handle.draggable=navEditing;handle.setAttribute('aria-hidden',String(!navEditing));}
+    }
+    for(const el of widgets()) {
+      el.hidden=prefs.widget_hidden.includes(el.dataset.widget) && !widgetEditing;
+      el.classList.toggle('mlo-widget-inactive',prefs.widget_hidden.includes(el.dataset.widget) && widgetEditing);
+      el.draggable=false;
+      const size=prefs.widget_sizes?.[el.dataset.widget];
+      if(size)el.dataset.widgetWidth=String(size);else delete el.dataset.widgetWidth;
       const handle=el.querySelector('.mlo-widget-handle');
-      if(handle)handle.tabIndex=isEditingWidgets?0:-1;
-    });
-    if(isEditingNav)buildNavEditor();
-    if(isEditingWidgets)buildWidgetEditor();
+      if(handle){handle.draggable=widgetEditing;handle.tabIndex=widgetEditing?0:-1;handle.title=widgetEditing?'Drag to move; or use arrow keys':'Arrange dashboard to move widgets';}
+    }
+    if(navEditing)renderNavEditor();
+    if(widgetEditing)renderWidgetEditor();
   }
-  function moveKey(list,key,direction) {
-    const index=list.indexOf(key), newIndex=index+direction;
-    if(index<0 || newIndex<0 || newIndex>=list.length)return;
-    [list[index],list[newIndex]]=[list[newIndex],list[index]];
-    paint();save();
+  function move(orderName,id,relative,withinGroup=null) {
+    const order = prefs[orderName];
+    const keys = withinGroup ? [...withinGroup.querySelectorAll('[data-nav-key]')].map(el=>el.dataset.navKey) : order;
+    const ix=keys.indexOf(id), dest=keys[ix+relative];
+    if(ix<0||!dest)return;
+    const from=order.indexOf(id),to=order.indexOf(dest);
+    order.splice(from,1);order.splice(to,0,id);
+    render();queueSave();
   }
-  function buildNavEditor() {
-    const list=document.querySelector('[data-nav-editor-list]');
-    if(!list)return;
+  function moveTo(orderName,id,dest) {
+    if(id===dest)return;
+    const order=prefs[orderName];
+    order.splice(order.indexOf(id),1);
+    order.splice(order.indexOf(dest),0,id);
+    render();queueSave();
+  }
+  const el=(tag,cls='',text='') => {const node=document.createElement(tag);node.className=cls;node.textContent=text;return node;};
+  const button=(label,action,disabled=false)=>{const b=el('button','',label);b.type='button';b.disabled=disabled;b.addEventListener('click',action);return b;};
+  function renderWidgetEditor() {
+    const list=document.querySelector('[data-widget-toggles]');if(!list)return;
     list.replaceChildren();
-    const grouped=[['Navigation',allNav().filter(el=>el.closest('[data-nav-group]').dataset.navGroup==='core')],['My spaces',allNav().filter(el=>el.closest('[data-nav-group]').dataset.navGroup==='spaces')]];
-    for(const [title,rows] of grouped) {
+    const rows=widgets();
+    for(const item of rows) {
+      const id=item.dataset.widget, title=item.querySelector('h2')?.textContent?.trim()||id;
+      const row=el('div','mlo-toggle-widget');
+      const check=document.createElement('input');check.type='checkbox';check.checked=!prefs.widget_hidden.includes(id);check.setAttribute('aria-label',`Show ${title}`);
+      check.addEventListener('change',()=>{prefs.widget_hidden=prefs.widget_hidden.filter(k=>k!==id);if(!check.checked)prefs.widget_hidden.push(id);render();queueSave();});
+      const name=el('span','',title);
+      const up=button('↑',()=>move('widget_order',id,-1),rows.indexOf(item)===0);up.setAttribute('aria-label',`Move ${title} up`);
+      const down=button('↓',()=>move('widget_order',id,1),rows.indexOf(item)===rows.length-1);down.setAttribute('aria-label',`Move ${title} down`);
+      const sizes=document.createElement('select');
+      sizes.setAttribute('aria-label',`Width for ${title}`);
+      for(const [value,label] of [['','Default'],['4','Small'],['6','Medium'],['8','Large'],['12','Full width']]){
+        const opt=document.createElement('option');opt.value=value;opt.textContent=label;sizes.append(opt);
+      }
+      sizes.value=String(prefs.widget_sizes?.[id]||'');
+      sizes.addEventListener('change',()=>{if(sizes.value)prefs.widget_sizes[id]=Number(sizes.value);else delete prefs.widget_sizes[id];render();queueSave();});
+      row.append(check,name,sizes,up,down);list.append(row);
+    }
+  }
+  function renderNavEditor() {
+    const list=document.querySelector('[data-nav-editor-list]');if(!list)return;
+    list.replaceChildren();
+    for(const group of document.querySelectorAll('[data-nav-group]')) {
+      const rows=[...group.querySelectorAll('[data-nav-key]')];
       if(!rows.length)continue;
-      const h=document.createElement('div');h.className='mlo-nav-edit-group';h.textContent=title;list.append(h);
-      for(const el of rows) {
-        const key=el.dataset.navKey;
-        const item=document.createElement('div');item.className='mlo-nav-edit-item';
-        const input=document.createElement('input');input.type='text';input.maxLength=36;input.value=preferences.nav_labels[key] || el.dataset.navDefault;input.setAttribute('aria-label',`Rename ${el.dataset.navDefault}`);
-        input.addEventListener('change',()=>{let value=input.value.trim().slice(0,36);if(value && value!==el.dataset.navDefault)preferences.nav_labels[key]=value;else delete preferences.nav_labels[key];paint();save();});
-        const hide=document.createElement('input');hide.type='checkbox';hide.checked=!preferences.nav_hidden.includes(key);hide.setAttribute('aria-label',`Show ${el.dataset.navDefault}`);hide.addEventListener('change',()=>{preferences.nav_hidden=preferences.nav_hidden.filter(k=>k!==key);if(!hide.checked)preferences.nav_hidden.push(key);paint();save();});
-        const left=document.createElement('button');left.type='button';left.textContent='↑';left.setAttribute('aria-label',`Move ${el.dataset.navDefault} up`);left.onclick=()=>moveKey(preferences.nav_order,key,-1);
-        const right=document.createElement('button');right.type='button';right.textContent='↓';right.setAttribute('aria-label',`Move ${el.dataset.navDefault} down`);right.onclick=()=>moveKey(preferences.nav_order,key,1);
-        item.append(hide,input,left,right);list.append(item);
+      list.append(el('div','mlo-nav-edit-group',group.dataset.navGroup==='spaces'?'My spaces':'Navigation'));
+      for(const item of rows) {
+        const id=item.dataset.navKey, def=item.dataset.navDefault;
+        const row=el('div','mlo-nav-edit-item');
+        const check=document.createElement('input');check.type='checkbox';check.checked=!prefs.nav_hidden.includes(id);check.setAttribute('aria-label',`Show ${def}`);
+        check.onchange=()=>{prefs.nav_hidden=prefs.nav_hidden.filter(k=>k!==id);if(!check.checked)prefs.nav_hidden.push(id);render();queueSave();};
+        const input=document.createElement('input');input.type='text';input.maxLength=36;input.value=prefs.nav_labels[id]||def;input.setAttribute('aria-label',`Rename ${def}`);
+        input.addEventListener('change',()=>{const text=input.value.trim().slice(0,36);if(text&&text!==def)prefs.nav_labels[id]=text;else delete prefs.nav_labels[id];render();queueSave();});
+        const up=button('↑',()=>move('nav_order',id,-1,group),rows.indexOf(item)===0);up.setAttribute('aria-label',`Move ${def} up`);
+        const down=button('↓',()=>move('nav_order',id,1,group),rows.indexOf(item)===rows.length-1);down.setAttribute('aria-label',`Move ${def} down`);
+        row.append(check,input,up,down);list.append(row);
       }
     }
   }
-  function buildWidgetEditor() {
-    const list=document.querySelector('[data-widget-toggles]');if(!list)return;
-    list.replaceChildren();
-    for(const el of allWidgets()) {
-      const id=el.dataset.widget;
-      const label=document.createElement('label');label.className='mlo-toggle-widget';
-      const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=!preferences.widget_hidden.includes(id);
-      checkbox.onchange=()=>{preferences.widget_hidden=preferences.widget_hidden.filter(x=>x!==id);if(!checkbox.checked)preferences.widget_hidden.push(id);paint();save();};
-      const name=document.createElement('span');name.textContent=el.querySelector('h2')?.textContent || id;
-      const up=document.createElement('button');up.type='button';up.textContent='↑';up.setAttribute('aria-label',`Move ${name.textContent} up`);up.onclick=()=>moveKey(preferences.widget_order,id,-1);
-      const down=document.createElement('button');down.type='button';down.textContent='↓';down.setAttribute('aria-label',`Move ${name.textContent} down`);down.onclick=()=>moveKey(preferences.widget_order,id,1);
-      label.append(checkbox,name,up,down);list.append(label);
-    }
+  function setNavEditing(enabled) {
+    navEditing=enabled;
+    const panel=document.querySelector('[data-nav-settings]');if(panel)panel.hidden=!enabled;
+    document.querySelectorAll('[data-nav-group]').forEach(g=>g.classList.toggle('is-reordering',enabled));
+    render();
   }
-  async function load() {
-    try {
-      const response=await fetch('/life/layout',{credentials:'same-origin',cache:'no-store'});
-      if(!response.ok)throw new Error('Layout unavailable');
-      Object.assign(preferences, await response.json());
-    } catch(err){console.warn('Using default layout',err);}
-    paint();
+  function setWidgetEditing(enabled) {
+    widgetEditing=enabled;
+    const panel=document.querySelector('[data-widget-settings]');if(panel)panel.hidden=!enabled;
+    if(grid)grid.classList.toggle('is-reordering',enabled);
+    document.querySelector('[data-dashboard-edit]')?.setAttribute('aria-expanded',String(enabled));
+    render();
   }
-  document.querySelector('[data-nav-edit]')?.addEventListener('click',()=>{
-    isEditingNav=!isEditingNav;
-    document.querySelector('[data-nav-settings]').hidden=!isEditingNav;
-    nav?.classList.toggle('is-reordering',isEditingNav);
-    paint();
+  document.querySelector('[data-nav-edit]')?.addEventListener('click',()=>setNavEditing(!navEditing));
+  document.querySelectorAll('[data-nav-edit-close]').forEach(b=>b.addEventListener('click',()=>setNavEditing(false)));
+  document.querySelector('[data-nav-reset]')?.addEventListener('click',()=>{prefs.nav_order=[...initialNav];prefs.nav_labels={};prefs.nav_hidden=[];render();queueSave();});
+  document.querySelector('[data-dashboard-edit]')?.addEventListener('click',()=>setWidgetEditing(!widgetEditing));
+  document.querySelector('[data-dashboard-done]')?.addEventListener('click',()=>setWidgetEditing(false));
+  document.querySelector('[data-widget-reset]')?.addEventListener('click',()=>{prefs.widget_order=[...initialWidgets];prefs.widget_hidden=[];prefs.widget_sizes={};render();queueSave();});
+  document.addEventListener('click',e=>{
+    if(navEditing && e.target.closest('[data-nav-key]'))e.preventDefault();
   });
-  document.querySelectorAll('[data-nav-edit-close]').forEach(button=>button.addEventListener('click',()=>{
-    isEditingNav=false;document.querySelector('[data-nav-settings]').hidden=true;nav?.classList.remove('is-reordering');paint();
-  }));
-  document.querySelector('[data-nav-reset]')?.addEventListener('click',()=>{
-    preferences.nav_order=navKeys();preferences.nav_hidden=[];preferences.nav_labels={};paint();save();
-  });
-  document.querySelector('[data-dashboard-edit]')?.addEventListener('click',e=>{
-    isEditingWidgets=!isEditingWidgets;
-    const panel=document.querySelector('[data-widget-settings]');if(panel)panel.hidden=!isEditingWidgets;
-    dashboard.classList.toggle('is-reordering',isEditingWidgets);
-    e.currentTarget.setAttribute('aria-expanded',String(isEditingWidgets));paint();
-  });
-  document.querySelector('[data-dashboard-done]')?.addEventListener('click',()=>{
-    isEditingWidgets=false;document.querySelector('[data-widget-settings]').hidden=true;
-    dashboard.classList.remove('is-reordering');paint();
-  });
-  document.querySelector('[data-widget-reset]')?.addEventListener('click',()=>{
-    preferences.widget_order=widgetKeys();preferences.widget_hidden=[];paint();save();
-  });
-  let dragging=null;
   document.addEventListener('dragstart',e=>{
-    const item=e.target.closest('[data-widget],[data-nav-key]');
-    if(!item || !(item.matches('[data-widget]')?isEditingWidgets:isEditingNav))return;
-    dragging=item;
-    e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain','mlo-item');item.classList.add('mlo-dragging');
+    const handle=e.target.closest('.mlo-widget-handle,.mlo-nav-drag');
+    if(!handle)return;
+    dragElement=handle.closest('[data-widget],[data-nav-key]');
+    dragGroup=dragElement?.parentElement||null;
+    if(!dragElement||(dragElement.hasAttribute('data-widget')?!widgetEditing:!navEditing)){e.preventDefault();return;}
+    e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain','mlo-layout');
+    dragElement.classList.add('mlo-dragging');
   });
   document.addEventListener('dragover',e=>{
     const target=e.target.closest('[data-widget],[data-nav-key]');
-    if(!dragging || !target || dragging===target)return;
-    if(dragging.hasAttribute('data-widget')!==target.hasAttribute('data-widget'))return;
-    if(dragging.hasAttribute('data-nav-key') && dragging.parentElement!==target.parentElement)return;
-    e.preventDefault();e.dataTransfer.dropEffect='move';
+    if(!dragElement||!target||dragElement===target||target.parentElement!==dragGroup)return;
+    e.preventDefault();e.dataTransfer.dropEffect='move';target.classList.add('mlo-dragover');
   });
+  document.addEventListener('dragleave',e=>{const target=e.target.closest('[data-widget],[data-nav-key]');if(target&&!target.contains(e.relatedTarget))target.classList.remove('mlo-dragover');});
   document.addEventListener('drop',e=>{
     const target=e.target.closest('[data-widget],[data-nav-key]');
-    if(!dragging || !target || dragging===target || dragging.parentElement!==target.parentElement)return;
+    if(!dragElement||!target||target===dragElement||target.parentElement!==dragGroup)return;
     e.preventDefault();
-    const keyname=dragging.hasAttribute('data-widget')?'widget':'nav';
-    const key=keyname==='widget'?'widget_order':'nav_order';
-    const id=dragging.dataset[keyname==='widget'?'widget':'navKey'];
-    const destination=target.dataset[keyname==='widget'?'widget':'navKey'];
-    preferences[key]=preferences[key].filter(x=>x!==id);
-    preferences[key].splice(preferences[key].indexOf(destination),0,id);
-    paint();save();
+    moveTo(dragElement.hasAttribute('data-widget')?'widget_order':'nav_order',dragElement.dataset.widget||dragElement.dataset.navKey,target.dataset.widget||target.dataset.navKey);
+    document.querySelectorAll('.mlo-dragover').forEach(node=>node.classList.remove('mlo-dragover'));
   });
-  document.addEventListener('dragend',()=>{
-    dragging?.classList.remove('mlo-dragging');dragging=null;
-  });
+  document.addEventListener('dragend',()=>{dragElement?.classList.remove('mlo-dragging');dragElement=null;dragGroup=null;document.querySelectorAll('.mlo-dragover').forEach(node=>node.classList.remove('mlo-dragover'));});
   document.addEventListener('keydown',e=>{
-    const handle=e.target.closest('.mlo-widget-handle');
-    if(!handle || !isEditingWidgets || !['ArrowUp','ArrowDown'].includes(e.key))return;
-    e.preventDefault();
-    const key=handle.closest('[data-widget]')?.dataset.widget;
-    if(key)moveKey(preferences.widget_order,key,e.key==='ArrowUp'?-1:1);
+    if(!widgetEditing||!e.target.closest('.mlo-widget-handle')||!['ArrowUp','ArrowDown'].includes(e.key))return;
+    e.preventDefault();const id=e.target.closest('[data-widget]').dataset.widget;
+    move('widget_order',id,e.key==='ArrowUp'?-1:1);
+    // DOM nodes are preserved during reordering so focus remains on the dragged handle.
   });
-  document.querySelectorAll('[data-quick-timer]').forEach(timer=>{
-    const output=timer.querySelector('[data-mini-clock]');const form=timer.closest('[data-widget]').querySelector('[data-mini-minutes]');
-    for(const btn of timer.querySelectorAll('[data-focus-adjust]'))btn.addEventListener('click',()=>{
-      const duration=Math.min(180,Math.max(5,Number(form.value)+Number(btn.dataset.focusAdjust)));
-      form.value=String(duration);output.textContent=duration+' min';
-    });
-  });
-  load();
+  const quickTimer=document.querySelector('[data-quick-timer]');
+  if(quickTimer){
+    const form=quickTimer.closest('[data-widget]').querySelector('[data-mini-minutes]');
+    const output=quickTimer.querySelector('[data-mini-clock]');
+    quickTimer.querySelectorAll('[data-focus-adjust]').forEach(b=>b.addEventListener('click',()=>{
+      const minutes=Math.min(180,Math.max(5,Number(form.value)+Number(b.dataset.focusAdjust)));
+      form.value=String(minutes);output.textContent=minutes+' min';
+    }));
+  }
+  (async()=>{
+    try {
+      const response=await fetch('/life/layout',{credentials:'same-origin',cache:'no-store'});
+      if(!response.ok)throw new Error('HTTP '+response.status);
+      const loaded=await response.json();
+      for(const key of Object.keys(prefs))if(Object.hasOwn(loaded,key)&&loaded[key]!==null)prefs[key]=loaded[key];
+    } catch(error){console.warn('Layout defaults loaded',error);}
+    render();
+  })();
 })();
