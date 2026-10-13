@@ -12,7 +12,7 @@ from app.workspace import list_sections_for_user
 
 router = APIRouter(prefix='/life/layout', tags=['interface'])
 NAV = ('life-home','life-tasks','life-projects','life-calendar','life-focus',
-       'life-notes','life-goals','life-search','life-devices','life-import',
+       'life-notes','life-insights','life-goals','life-search','life-devices','life-import',
        'life-studio','life-work','life-money','life-spaces')
 WIDGETS = ('welcome','calendar','capture','tasks','focus','projects','study','money','career','numbers')
 DEFAULT_WIDGETS = list(WIDGETS)

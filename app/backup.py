@@ -37,3 +37,20 @@ def pre_consolidation_backup():
         return target
     finally:
         if dest.exists(): dest.unlink()
+
+
+def pre_v34_backup():
+    """Consistent one-time snapshot before v3.4 starts modifying indexes/data."""
+    source=Path(DB_PATH)
+    if not source.is_file() or not source.stat().st_size: return None
+    target=source.with_name(source.stem+'.pre-mlo-v3.4.sqlite.backup')
+    if target.exists(): return target
+    partial=target.with_name(target.name+'.partial')
+    try:
+        with sqlite3.connect(str(source),timeout=30) as existing:
+            with sqlite3.connect(str(partial),timeout=30) as saved:
+                existing.backup(saved)
+        os.replace(partial,target)
+        return target
+    finally:
+        if partial.exists(): partial.unlink()

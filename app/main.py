@@ -32,7 +32,7 @@ from app.lifeos import router as life_router, init_life_schema
 from app.phones import router as phone_router, init_phone_schema
 from app.life_import import router as import_router, init_import_schema
 from app.life_files import router as files_router, init_file_schema
-from app.backup import pre_v3_backup, pre_consolidation_backup
+from app.backup import pre_v3_backup, pre_consolidation_backup, pre_v34_backup
 from app.consolidation import consolidate_todos
 from app.life_hubs import router as hubs_router
 from app.personalize import router as layout_router, init_layout_schema
@@ -46,6 +46,7 @@ templates.env.globals["APP_VERSION"] = APP_VERSION
 async def lifespan(app: FastAPI):
     pre_v3_backup()
     pre_consolidation_backup()
+    pre_v34_backup()
     init_db()
     init_auth_schema()
     ensure_bootstrap_admin(APP_USERNAME, APP_PASSWORD)
@@ -74,6 +75,25 @@ COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").lower() in ("1", "true", "yes
 
 
 
+# Reject cross-site form/API writes. This guards session-authenticated POST routes
+# without requiring JavaScript or changing the existing HTML form workflow.
+@app.middleware("http")
+async def reject_cross_site_writes(request: Request, call_next):
+    if request.method in ('POST','PUT','PATCH','DELETE'):
+        origin=request.headers.get('origin','')
+        from urllib.parse import urlparse
+        public_host=urlparse(os.getenv('MLO_PUBLIC_URL','')).netloc.lower()
+        current=request.headers.get('host','').lower()
+        allowed={current}
+        if public_host: allowed.add(public_host)
+        if origin and urlparse(origin).netloc.lower() not in allowed:
+            from fastapi.responses import JSONResponse
+            return JSONResponse({'detail':'Cross-origin write blocked'},status_code=403)
+        if request.headers.get('sec-fetch-site','').lower() == 'cross-site':
+            from fastapi.responses import JSONResponse
+            return JSONResponse({'detail':'Cross-site write blocked'},status_code=403)
+    return await call_next(request)
+
 # Resolve the signed-in database user and protect private routes.
 @app.middleware("http")
 async def require_auth(request: Request, call_next):
@@ -101,8 +121,14 @@ async def require_auth(request: Request, call_next):
     request.session["user"] = user["username"]
     request.session["role"] = user["role"]
     request.state.current_user = user
-    request.state.custom_sections = list_sections_for_user(int(user["id"]), sidebar_only=True)
-    request.state.active_timer = active_timer_for_user(int(user["id"]))
+    # POST/JSON endpoints don't render the sidebar: avoid two extra SQL reads.
+    needs_shell = request.method == 'GET' and not path.startswith('/life/layout')
+    if needs_shell:
+        request.state.custom_sections = list_sections_for_user(int(user["id"]), sidebar_only=True)
+        request.state.active_timer = active_timer_for_user(int(user["id"]))
+    else:
+        request.state.custom_sections = []
+        request.state.active_timer = None
 
     # Member accounts are collaboration accounts by default. Personal school,
     # finance, job, and expense data remains private to administrators.
@@ -144,8 +170,11 @@ async def add_security_headers(request: Request, call_next):
     response.headers['Referrer-Policy']='same-origin'
     response.headers['X-Frame-Options']='DENY'
     if request.url.path.startswith('/static/'):
-        response.headers['Cache-Control']='public, max-age=604800'
-    elif request.url.path.startswith('/life'):
+        if request.query_params.get('v') == APP_VERSION:
+            response.headers['Cache-Control']='public, max-age=31536000, immutable'
+        else:
+            response.headers['Cache-Control']='public, max-age=604800'
+    elif request.url.path not in ('/health', '/favicon.ico'):
         response.headers['Cache-Control']='private, no-store'
     return response
 

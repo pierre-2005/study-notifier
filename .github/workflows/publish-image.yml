@@ -7,7 +7,27 @@ permissions:
   contents: read
   packages: write
 jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install app dependencies
+        run: pip install -r requirements.txt
+      - name: Compile and test with isolated databases
+        run: |
+          python -m compileall -q app
+          python tests_smoke.py
+          python tests_new_features.py
+          python tests_migration.py
+          python tests_consolidation.py
+          python tests_v32.py
+          python tests_v34.py
   publish:
+    needs: smoke
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,4 +45,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/pierre-2005/study-notifier:v3.3-polished
+          tags: ghcr.io/pierre-2005/study-notifier:v3.4-enhanced

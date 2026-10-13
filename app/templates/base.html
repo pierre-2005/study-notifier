@@ -36,9 +36,11 @@
   <link rel="stylesheet" href="/static/life.css?v={{ APP_VERSION }}">
   <link rel="stylesheet" href="/static/design32.css?v={{ APP_VERSION }}">
   <link rel="stylesheet" href="/static/design33.css?v={{ APP_VERSION }}">
+  <link rel="stylesheet" href="/static/flow34.css?v={{ APP_VERSION }}">
   <script src="/static/theme.js?v={{ APP_VERSION }}" defer></script>
   <script src="/static/life.js?v={{ APP_VERSION }}" defer></script>
   <script src="/static/customize.js?v={{ APP_VERSION }}" defer></script>
+  <script src="/static/flow34.js?v={{ APP_VERSION }}" defer></script>
 </head>
 
 <body>
@@ -69,7 +71,7 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
             <span>Quick switcher</span><kbd>Ctrl K</kbd>
           </button>
-          <div class="quick-add-wrap">
+          <button class="sidebar-tool" type="button" data-global-capture-open title="Add task anywhere (N)"><span aria-hidden="true">＋</span><span>Quick task</span><kbd>N</kbd></button><div class="quick-add-wrap">
             <button class="sidebar-tool" type="button" data-quick-add-toggle aria-expanded="false">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
               <span>New</span>
@@ -95,7 +97,7 @@
         <div class="mlo-sidebar-customize-row"><span>WORKSPACE</span><button type="button" data-nav-edit aria-label="Edit and reorder navigation">Customize</button></div>
         <nav class="sidebar-nav" data-custom-nav>
           <div class="mlo-nav-group" data-nav-group="core">
-          {% for key,label,path,glyph in [('life-home','Dashboard','/life','⌂'),('life-tasks','My tasks','/life/tasks','☷'),('life-projects','Projects','/life/projects','▦'),('life-calendar','Calendar','/life/calendar','▤'),('life-focus','Focus & time','/life/focus','◷'),('life-notes','Notes','/life/notes','✎'),('life-goals','Goals & habits','/life/goals','✧'),('life-search','Search','/life/search','⌕'),('life-devices','Phone reminders','/life/devices','♧'),('life-import','Import tasks','/life/import','⇩'),('life-studio','Study','/life/study','▤'),('life-work','Work & career','/life/work','◇'),('life-money','Money','/life/money','＄'),('life-spaces','Spaces','/life/spaces','▧')] %}
+          {% for key,label,path,glyph in [('life-home','Dashboard','/life','⌂'),('life-tasks','My tasks','/life/tasks','☷'),('life-projects','Projects','/life/projects','▦'),('life-calendar','Calendar','/life/calendar','▤'),('life-focus','Focus & time','/life/focus','◷'),('life-notes','Notes','/life/notes','✎'),('life-insights','Insights','/life/insights','▥'),('life-goals','Goals & habits','/life/goals','✧'),('life-search','Search','/life/search','⌕'),('life-devices','Phone reminders','/life/devices','♧'),('life-import','Import tasks','/life/import','⇩'),('life-studio','Study','/life/study','▤'),('life-work','Work & career','/life/work','◇'),('life-money','Money','/life/money','＄'),('life-spaces','Spaces','/life/spaces','▧')] %}
           {% if key != 'life-money' or is_admin %}
           <a href="{{path}}" class="nav-item {{'active' if p==path or (path!='/life' and p.startswith(path+'/')) or (key=='life-studio' and (p.startswith('/courses') or p.startswith('/items') or p.startswith('/classes'))) or (key=='life-work' and p.startswith('/jobs')) or (key=='life-money' and (p.startswith('/expenses') or p.startswith('/finance'))) or (key=='life-spaces' and p.startswith('/sections')) else ''}}" data-nav-key="{{key}}" data-nav-default="{{label}}"><span class="mlo-navglyph">{{glyph}}</span><span data-nav-label>{{label}}</span><span class="mlo-nav-drag" aria-hidden="true">⠿</span></a>
           {% endif %}{% endfor %}
@@ -147,6 +149,7 @@
             <button class="icon-btn" type="button" data-mobile-menu aria-label="Open navigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
           </div>
           <a class="mobile-brand" href="/life"><span class="workspace-icon">M</span><strong>My Life Organized</strong></a>
+          <button class="icon-btn" type="button" data-global-capture-open aria-label="Add a task"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
           <button class="icon-btn" type="button" data-command-open aria-label="Open quick switcher"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
         </header>
         <div class="shell app-content">
@@ -174,11 +177,24 @@
         <div class="mobile-more-grid">
           <a href="/life/study">Study</a><a href="/life/work">Work & career</a>
           {% if is_admin %}<a href="/life/money">Money</a>{% endif %}
-          <a href="/life/spaces">Spaces</a><a href="/life/calendar">Calendar</a><a href="/life/calendars">Connected calendars</a><a href="/life/notes">Notes</a><a href="/life/goals">Goals & habits</a><a href="/life/devices">Phone reminders</a><a href="/life/import">Import tasks</a><a href="/life/search">Search</a><a href="/settings">Settings</a><a href="/sections/new">New space</a>
+          <a href="/life/spaces">Spaces</a><a href="/life/calendar">Calendar</a><a href="/life/calendars">Connected calendars</a><a href="/life/notes">Notes</a><a href="/life/insights">Insights</a><a href="/life/goals">Goals & habits</a><a href="/life/devices">Phone reminders</a><a href="/life/import">Import tasks</a><a href="/life/search">Search</a><a href="/settings">Settings</a><a href="/sections/new">New space</a>
         </div>
       </section>
     </div>
 
+    <div class="mlo-capture-backdrop" data-global-capture-dialog hidden>
+      <section class="mlo-capture-dialog" role="dialog" aria-modal="true" aria-labelledby="mlo-global-capture-title">
+        <div class="mlo-dialog-header"><h2 id="mlo-global-capture-title">Add a task</h2><button type="button" data-global-capture-close aria-label="Close">×</button></div>
+        <form method="post" action="/life/tasks" data-global-capture-form>
+          <label class="mlo-capture-field">Task name<input type="text" required maxlength="240" name="title" autocomplete="off" placeholder="What needs to get done?"></label>
+          <label class="mlo-capture-field">Schedule<select name="schedule"><option value="inbox">Inbox, no date</option><option value="today">Today</option><option value="tomorrow">Tomorrow</option></select></label>
+          <input type="hidden" name="due_on" value="">
+          <input type="hidden" name="next_page" value="/life/tasks">
+          <div class="mlo-dialog-footer"><a href="/life/tasks">Advanced details ↗</a><button type="submit" class="mlo-btn mlo-primary">Add task</button></div>
+          <p data-global-capture-feedback class="mlo-sr-only" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+    </div>
     <div class="dialog-backdrop" data-command-dialog hidden>
       <section class="command-dialog" role="dialog" aria-modal="true" aria-label="Quick switcher">
         <div class="command-search-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Go to a page or create something…" autocomplete="off" data-command-input><kbd>Esc</kbd></div>
@@ -189,7 +205,7 @@
           <a href="/life/projects" data-command-item data-search="projects boards"><span>Projects</span><small>Manage</small></a>
           <a href="/life/calendar" data-command-item data-search="calendar events schedule deadline"><span>Calendar</span><small>Schedule</small></a>
           <a href="/life/focus" data-command-item data-search="focus timers countdown pomodoro"><span>Focus & timers</span><small>Time</small></a>
-          <a href="/life/notes" data-command-item data-search="notes knowledge"><span>Notes</span><small>Write</small></a>
+          <a href="/life/notes" data-command-item data-search="notes knowledge"><span>Notes</span><small>Write</small></a><a href="/life/insights" data-command-item data-search="insights reports stats progress analytics"><span>Insights</span><small>Progress</small></a>
           <a href="/life/study" data-command-item data-search="study courses assignments exams labs class"><span>Study</span><small>Academics</small></a>
           <a href="/life/work" data-command-item data-search="work career jobs applications"><span>Work & career</span><small>Career</small></a>
           {% if is_admin %}<a href="/life/money" data-command-item data-search="money finance expenses budgets bills"><span>Money</span><small>Finance</small></a>{% endif %}

@@ -199,11 +199,22 @@ def init_life_schema():
           note TEXT NOT NULL DEFAULT '', occurred_on TEXT NOT NULL, created_at TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS life_time_owner ON life_time_entries(owner_id,occurred_on DESC);
+        CREATE TABLE IF NOT EXISTS life_task_views (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          query_params TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_task_views_user ON life_task_views(user_id,id DESC);
         """)
         # Index legacy timeline sources used by the consolidated calendar.
         conn.execute('CREATE INDEX IF NOT EXISTS idx_mlo_items_due ON items(due_at_utc)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_mlo_events_start ON events(start_at_utc)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_mlo_jobs_followup ON jobs(followup_at_utc)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_mlo_tasks_owner_created ON life_tasks(owner_id,created_at DESC)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_mlo_tasks_owner_area ON life_tasks(owner_id,area,status)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_mlo_time_day ON life_time_entries(owner_id,occurred_on)')
         conn.commit()
 
 
@@ -256,7 +267,7 @@ def tasks_sql(uid):
             "WHERE p.id=t.project_id AND (p.owner_id=? OR m.user_id IS NOT NULL)))", (uid,uid,uid))
 
 
-def data_for(conn, uid, view='all', project=None, limit=150):
+def data_for(conn, uid, view='all', project=None, limit=150, area=None):
     cond, params = tasks_sql(uid)
     where = [cond]
     vals = list(params)
@@ -281,6 +292,9 @@ def data_for(conn, uid, view='all', project=None, limit=150):
         where.append("t.project_id IS NULL AND t.status!='done'")
     elif view == "open":
         where.append("t.status!='done'")
+    if area in AREAS:
+        where.append('t.area=?')
+        vals.append(area)
     vals.append(limit)
     return conn.execute(f"""
        SELECT t.*, p.name AS project_name FROM life_tasks t
@@ -292,6 +306,58 @@ def data_for(conn, uid, view='all', project=None, limit=150):
                 t.id DESC LIMIT ?
     """, vals).fetchall()
 
+
+
+def filtered_tasks(conn, uid, view='open', project=None, *, query='', priority='', area='', sort='due', page=1, page_size=40):
+    """Paginated, permission-scoped task finder; never materializes the entire list."""
+    cond, params = tasks_sql(uid)
+    clauses = [cond]
+    vals = list(params)
+    if project is not None:
+        access(conn, uid, project)
+        clauses.append('t.project_id=?')
+        vals.append(project)
+    if view in ('today','upcoming','overdue'):
+        clauses.append("t.status!='done'")
+        if view == 'today':
+            clauses.append('(t.due_on<=? OR t.due_on IS NULL)')
+            vals.append(today())
+        elif view == 'overdue':
+            clauses.append('t.due_on<?')
+            vals.append(today())
+        else:
+            clauses.append('t.due_on>? AND t.due_on<=?')
+            vals.extend([today(), (date.today()+timedelta(days=14)).isoformat()])
+    elif view == 'done': clauses.append("t.status='done'")
+    elif view == 'inbox': clauses.append("t.project_id IS NULL AND t.status!='done'")
+    elif view == 'open': clauses.append("t.status!='done'")
+    if priority in PRIORITIES:
+        clauses.append('t.priority=?'); vals.append(priority)
+    if area in AREAS:
+        clauses.append('t.area=?'); vals.append(area)
+    if query:
+        pattern='%'+query.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
+        clauses.append("(t.title LIKE ? ESCAPE '\\' OR t.description LIKE ? ESCAPE '\\')")
+        vals.extend([pattern,pattern])
+    where=' AND '.join(clauses)
+    total=conn.execute(f'SELECT COUNT(*) FROM life_tasks t WHERE {where}', vals).fetchone()[0]
+    sort_sql={
+      'due': "CASE WHEN t.due_on IS NULL THEN 1 ELSE 0 END, t.due_on, t.id DESC",
+      'priority': "CASE t.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END, t.due_on, t.id DESC",
+      'newest': 't.id DESC',
+      'oldest': 't.id ASC',
+      'title': 't.title COLLATE NOCASE, t.id DESC'
+    }.get(sort, 'CASE WHEN t.due_on IS NULL THEN 1 ELSE 0 END, t.due_on, t.id DESC')
+    page_size=max(10,min(100,int(page_size)))
+    pages=max(1,(total+page_size-1)//page_size)
+    page=max(1,min(int(page),pages))
+    rows=conn.execute(f"""SELECT t.*, p.name AS project_name,
+            CASE WHEN t.project_id IS NULL OR p.owner_id=? OR EXISTS(
+                SELECT 1 FROM life_project_members m WHERE m.project_id=t.project_id AND m.user_id=? AND m.role='editor'
+            ) THEN 1 ELSE 0 END AS can_edit
+            FROM life_tasks t LEFT JOIN life_projects p ON p.id=t.project_id WHERE {where}
+            ORDER BY {sort_sql} LIMIT ? OFFSET ?""",(uid,uid,*vals,page_size,(page-1)*page_size)).fetchall()
+    return rows,total,page,pages
 
 def projects_for(conn, uid):
     return conn.execute("""
@@ -351,14 +417,61 @@ def set_preferences(request: Request, experience: str=Form('simple')):
 
 
 @router.get('/tasks', response_class=HTMLResponse)
-def tasks_page(request: Request, view: str='open', project: int|None=None):
+def tasks_page(request: Request, view: str='open', project: str='',
+               q: str='', priority: str='', area: str='', sort: str='due', page: int=1):
     uid=user_id(request)
     view=pick(view,('all','open','inbox','today','upcoming','overdue','done'),'open')
+    q=text_clean(q,100)
+    if project and not project.isdecimal(): raise HTTPException(422,'Invalid project')
+    project=int(project) if project else None
+    priority=priority if priority in PRIORITIES else ''
+    area=area if area in AREAS else ''
+    sort=sort if sort in ('due','priority','newest','oldest','title') else 'due'
     with get_conn() as conn:
-        tasks=data_for(conn,uid,view,project,limit=250)
+        tasks,total,page,pages=filtered_tasks(conn,uid,view,project,query=q,priority=priority,area=area,sort=sort,page=page)
         projects=projects_for(conn,uid)
         preference=pref(conn,uid)
-    return render(request,'life_tasks.html',tasks=tasks,projects=projects,view=view,selected_project=project,preference=preference,today=today())
+        saved_views=conn.execute('SELECT id,name,query_params FROM life_task_views WHERE user_id=? ORDER BY id DESC LIMIT 20',(uid,)).fetchall()
+    from urllib.parse import urlencode
+    params={'view':view,'q':q,'priority':priority,'area':area,'sort':sort}
+    if project is not None: params['project']=project
+    query_string=urlencode({k:v for k,v in params.items() if v!=''})
+    return render(request,'life_tasks.html',tasks=tasks,projects=projects,view=view,selected_project=project,
+                  preference=preference,today=today(),filters=params,total=total,page=page,pages=pages,
+                  query_string=query_string,priorities=PRIORITIES,areas=AREAS,saved_views=saved_views)
+
+
+@router.post('/tasks/views')
+def save_task_view(request:Request, name: str=Form(...), view: str=Form('open'),
+                   project: str=Form(''),q: str=Form(''),priority: str=Form(''),
+                   area: str=Form(''),sort: str=Form('due')):
+    uid=user_id(request)
+    name=text_clean(name,45)
+    if not name: raise HTTPException(422,'A saved filter name is required')
+    if project and not project.isdecimal():raise HTTPException(422,'Invalid project')
+    with get_conn() as conn:
+        if project:access(conn,uid,int(project))
+        if conn.execute('SELECT COUNT(*) FROM life_task_views WHERE user_id=?',(uid,)).fetchone()[0]>=20:
+            raise HTTPException(422,'Saved filter limit reached (20)')
+        from urllib.parse import urlencode
+        params={'view':pick(view,('all','open','inbox','today','upcoming','overdue','done'),'open'),
+          'q':text_clean(q,100),'priority':priority if priority in PRIORITIES else '',
+          'area':area if area in AREAS else '','sort':sort if sort in ('due','priority','newest','oldest','title') else 'due'}
+        if project:params['project']=int(project)
+        uri=urlencode({k:v for k,v in params.items() if v!=''})
+        conn.execute('INSERT INTO life_task_views(user_id,name,query_params,created_at) VALUES(?,?,?,?)',
+                     (uid,name,uri,now()))
+        conn.commit()
+    return redirect('/life/tasks?'+uri)
+
+
+@router.post('/tasks/views/{view_id}/delete')
+def delete_task_view(request:Request,view_id:int):
+    uid=user_id(request)
+    with get_conn() as conn:
+        conn.execute('DELETE FROM life_task_views WHERE user_id=? AND id=?',(uid,view_id))
+        conn.commit()
+    return redirect('/life/tasks')
 
 
 @router.post('/tasks')
@@ -430,6 +543,45 @@ def change_task_status(request: Request,task_id:int,status:str=Form('done'), nex
         conn.commit()
     if request.headers.get('x-mlo-action')=='fetch':
         return JSONResponse({'ok':True,'status':status})
+    return redirect(next_page)
+
+
+@router.post('/tasks/batch')
+def batch_tasks(request: Request, ids: list[int]=Form([]), operation: str=Form('done'),
+                next_page: str=Form('/life/tasks')):
+    """Atomic, permission-checked multi-select editing with recurring tasks honored."""
+    uid=user_id(request)
+    unique=list(dict.fromkeys(ids))
+    if not unique or len(unique)>100: raise HTTPException(422,'Select between 1 and 100 tasks')
+    if operation not in ('done','todo','doing','blocked','high','normal','low','urgent'):
+        raise HTTPException(422,'Invalid operation')
+    with get_conn() as conn:
+        tasks=[task_access(conn,uid,task_id,edit=True) for task_id in unique]
+        ts=now()
+        from app.consolidation import mirror_legacy_status
+        if operation in STATUSES:
+            if operation=='done':
+                incomplete=set(row['id'] for row in tasks if row['status']!='done')
+                for row in tasks:
+                    remaining=conn.execute("""SELECT d.depends_on_id FROM life_task_dependencies d
+                        JOIN life_tasks t ON t.id=d.depends_on_id
+                        WHERE d.task_id=? AND t.status!='done' """,(row['id'],)).fetchall()
+                    if any(b['depends_on_id'] not in incomplete for b in remaining):
+                        raise HTTPException(409,'Complete dependent tasks first. No changes were saved.')
+                # Dependencies in a batch are processed together, so all prerequisites will be complete.
+            for row in tasks:
+                conn.execute('UPDATE life_tasks SET status=?,completed_at=?,updated_at=? WHERE id=?',
+                             (operation,ts if operation=='done' else None,ts,row['id']))
+                mirror_legacy_status(conn,row['id'],operation)
+                if operation=='done' and row['status']!='done' and row['recurrence']!='none':
+                    due=next_due(row['due_on'],row['recurrence'])
+                    conn.execute("""INSERT INTO life_tasks(owner_id,project_id,parent_id,title,description,status,priority,area,due_on,estimated_minutes,recurrence,created_at,updated_at)
+                       VALUES(?,?,?,?,?,'todo',?,?,?,?,?,?,?)""",
+                       (row['owner_id'],row['project_id'],row['parent_id'],row['title'],row['description'],row['priority'],row['area'],due,row['estimated_minutes'],row['recurrence'],ts,ts))
+        else:
+            for row in tasks:
+                conn.execute('UPDATE life_tasks SET priority=?,updated_at=? WHERE id=?',(operation,ts,row['id']))
+        conn.commit()
     return redirect(next_page)
 
 
@@ -845,6 +997,36 @@ def search_page(request:Request,q:str=''):
                    WHERE ((n.owner_id=? AND n.project_id IS NULL) OR (p.owner_id=? OR m.user_id IS NOT NULL))
                    AND (n.title LIKE ? ESCAPE '\\' OR n.body LIKE ? ESCAPE '\\') LIMIT 50""",(uid,uid,uid,mask,mask)).fetchall()
     return render(request,'life_search.html',q=q,results=results)
+
+
+@router.get('/insights',response_class=HTMLResponse)
+def insights_page(request: Request):
+    uid=user_id(request)
+    start=(date.today()-timedelta(days=13)).isoformat()
+    with get_conn() as conn:
+        summary=conn.execute("""SELECT COUNT(*) AS total,
+          SUM(CASE WHEN status='done' THEN 1 ELSE 0 END) AS completed,
+          SUM(CASE WHEN status!='done' AND due_on<? THEN 1 ELSE 0 END) AS overdue,
+          SUM(CASE WHEN status!='done' AND priority IN ('urgent','high') THEN 1 ELSE 0 END) AS high_priority
+          FROM life_tasks WHERE owner_id=?""",(today(),uid)).fetchone()
+        completed=conn.execute("""SELECT substr(completed_at,1,10) AS day, COUNT(*) AS n
+           FROM life_tasks WHERE owner_id=? AND status='done' AND completed_at>=?
+           GROUP BY substr(completed_at,1,10)""",(uid,start)).fetchall()
+        focus=conn.execute("""SELECT occurred_on AS day,SUM(minutes) AS minutes
+            FROM life_time_entries WHERE owner_id=? AND occurred_on>=?
+            GROUP BY occurred_on""",(uid,start)).fetchall()
+        project_rows=projects_for(conn,uid)
+        upcoming=data_for(conn,uid,'upcoming',limit=8)
+    by_completed={r['day']:r['n'] for r in completed}
+    by_focus={r['day']:r['minutes'] for r in focus}
+    days=[(date.today()-timedelta(days=13-i)).isoformat() for i in range(14)]
+    trend=[{'day':d,'label':date.fromisoformat(d).strftime('%a %d'),
+            'completed':by_completed.get(d,0),'focus':by_focus.get(d,0)} for d in days]
+    max_completed=max([x['completed'] for x in trend]+[1])
+    max_focus=max([x['focus'] for x in trend]+[1])
+    return render(request,'life_insights.html',summary=summary,trend=trend,projects=project_rows,
+       upcoming=upcoming,max_completed=max_completed,max_focus=max_focus,
+       total_focus=sum(x['focus'] for x in trend),total_completed=sum(x['completed'] for x in trend))
 
 
 @router.get('/export.json')

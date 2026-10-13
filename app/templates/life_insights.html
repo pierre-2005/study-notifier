@@ -1,0 +1,23 @@
+{% extends 'base.html' %}{% from 'life_components.html' import task_row %}
+{% block content %}<div class="mlo-space mlo-insights-page">
+<div class="mlo-page-head"><div><div class="mlo-kicker">YOUR PROGRESS</div><h1>Insights</h1><p>See your progress over the last 14 days.</p></div><a href="/life/tasks" class="mlo-btn mlo-secondary">Back to tasks ↗</a></div>
+<div class="mlo-insight-kpis">
+ <div class="mlo-surface"><span>Tasks completed</span><strong>{{total_completed}}</strong><small>Last 14 days</small></div>
+ <div class="mlo-surface"><span>Focus time</span><strong>{{ (total_focus // 60) }}h {{ (total_focus % 60) }}m</strong><small>Last 14 days</small></div>
+ <div class="mlo-surface"><span>Open overdue</span><strong>{{summary.overdue or 0}}</strong><small>Across your tasks</small></div>
+ <div class="mlo-surface"><span>High priority open</span><strong>{{summary.high_priority or 0}}</strong><small>Needs attention</small></div>
+</div>
+<div class="mlo-two">
+ <section class="mlo-surface"><div class="mlo-section-top"><h2>Tasks finished</h2><span class="mlo-subtle">2 weeks</span></div>
+ <div class="mlo-bar-chart" role="img" aria-label="Completed tasks during the past fourteen days">
+ {% for x in trend %}<div class="mlo-bar-column" title="{{x.day}}: {{x.completed}} tasks"><div class="mlo-bar-track"><div class="mlo-bar-fill" style="height:{{(100*x.completed/max_completed)|round|int}}%"></div></div><small>{{x.label}}</small></div>{% endfor %}</div>
+ </section>
+ <section class="mlo-surface"><div class="mlo-section-top"><h2>Focus minutes</h2><a href="/life/focus">Open Focus ↗</a></div>
+ <div class="mlo-bar-chart mlo-bar-chart-focus" role="img" aria-label="Focus minutes during the past fourteen days">
+ {% for x in trend %}<div class="mlo-bar-column" title="{{x.day}}: {{x.focus}} minutes"><div class="mlo-bar-track"><div class="mlo-bar-fill" style="height:{{(100*x.focus/max_focus)|round|int}}%"></div></div><small>{{x.label}}</small></div>{% endfor %}</div>
+ </section>
+</div>
+<div class="mlo-two"><section class="mlo-surface"><div class="mlo-section-top"><h2>Project progress</h2><a href="/life/projects">All projects ↗</a></div>
+ {% for p in projects[:8] %}<a class="mlo-progress-project" href="/life/projects/{{p.id}}"><div><strong>{{p.name}}</strong><small>{{p.done_count}} of {{p.task_count}} tasks</small></div><div class="mlo-progress-track"><span style="width:{{ (p.done_count * 100 / p.task_count)|round|int if p.task_count else 0 }}%"></span></div></a>{% else %}<div class="mlo-empty">No active projects</div>{% endfor %}</section>
+ <section class="mlo-surface"><div class="mlo-section-top"><h2>Coming up</h2><a href="/life/calendar">Calendar ↗</a></div>{% for t in upcoming %}{{task_row(t,'/life/insights')}}{% else %}<div class="mlo-empty">No upcoming deadlines</div>{% endfor %}</section></div>
+</div>{% endblock %}

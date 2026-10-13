@@ -28,7 +28,7 @@ def render(request, template, **kwargs):
 def study(request:Request):
     uid=user_id(request)
     with get_conn() as conn:
-        tasks=[dict(x) for x in data_for(conn,uid,'open',limit=200) if x['area']=='Study'][:8]
+        tasks=[dict(x) for x in data_for(conn,uid,'open',limit=8,area='Study')]
         projects=[dict(x) for x in projects_for(conn,uid) if x['area']=='Study'][:6]
         courses=[];items=[];classes=[]
         if admin(request):
@@ -46,7 +46,7 @@ def study(request:Request):
 def work(request:Request):
     uid=user_id(request)
     with get_conn() as conn:
-        tasks=[dict(x) for x in data_for(conn,uid,'open',limit=200) if x['area']=='Work'][:10]
+        tasks=[dict(x) for x in data_for(conn,uid,'open',limit=10,area='Work')]
         projects=[dict(x) for x in projects_for(conn,uid) if x['area']=='Work'][:8]
         jobs=[]
         if admin(request):
