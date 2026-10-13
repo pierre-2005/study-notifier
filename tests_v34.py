@@ -10,6 +10,7 @@ scratch=tempfile.TemporaryDirectory()
 os.environ.update(STUDY_NOTIFIER_DB=str(Path(scratch.name)/'mlo.db'),SESSION_SECRET='test-secret-v34',COOKIE_SECURE='false',APP_USERNAME='admin',APP_PASSWORD='admin-pass-strong')
 from fastapi.testclient import TestClient
 from app.main import app
+from app.meta import APP_VERSION
 from app.db import get_conn
 from app.auth import create_pending_user
 from app.lifeos import filtered_tasks
@@ -20,7 +21,7 @@ with TestClient(app,follow_redirects=False) as c:
     assert c.get('/life/tasks?project=').status_code==200, 'Empty project selection must not error'
     assert 'Quick task' in c.get('/life').text
     assert 'flow34.js' in c.get('/life').text
-    assert 'max-age=31536000' in c.get('/static/flow34.css?v=3.4.0').headers['cache-control']
+    assert 'max-age=31536000' in c.get(f'/static/flow34.css?v={APP_VERSION}').headers['cache-control']
     tasks=[(1, None,None,f'Backlog {i:03}', '', 'todo','normal','Personal',None, f'2026-10-10T12:00:00',f'2026-10-10T12:00:00') for i in range(127)]
     with get_conn() as db:
         uid=db.execute("SELECT id FROM users WHERE username='admin'").fetchone()['id']

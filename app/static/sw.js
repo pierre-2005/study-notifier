@@ -1,5 +1,5 @@
 /* Offline installation shell caches static resources only; private data is never cached. */
-const CACHE='mlo-static-v3.4.0';
+const CACHE='mlo-static-v3.4.1';
 const ASSETS=['/static/theme.css?v=3.4.0','/static/life.css?v=3.4.0','/static/design32.css?v=3.4.0','/static/design33.css?v=3.4.0','/static/flow34.css?v=3.4.0','/static/flow34.js?v=3.4.0','/static/theme.js?v=3.4.0','/static/life.js?v=3.4.0','/static/customize.js?v=3.4.0','/static/apple-touch-icon.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS))));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key))))));

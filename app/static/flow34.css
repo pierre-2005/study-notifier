@@ -1,4 +1,13 @@
-/* Version 3.4: responsive task tools, reports and keyboard capture. Colors inherit palette tokens. */
+/* MLO 3.4.1: responsive task tools and theme-safe controls.
+   Map 3.4 surface tokens to MLO's canonical theme tokens. These aliases
+   intentionally stay dynamic so light/dark and all palettes still work. */
+:root {
+  --surface: var(--panel);
+  --surface-2: var(--panel2);
+  --line: var(--border);
+  --text-muted: var(--muted);
+}
+
 .mlo-enhanced-tasks .mlo-task-workspace {padding:clamp(15px,2vw,25px)}
 .mlo-task-filters {display:grid;grid-template-columns:minmax(150px,1.4fr) repeat(4,minmax(115px,1fr)) auto auto;align-items:end;gap:11px;margin-bottom:20px}
 .mlo-task-filters label {font-size:12px;color:var(--text-muted,var(--muted,#777));font-weight:650;display:flex;flex-direction:column;gap:6px;min-width:0}
@@ -57,3 +66,71 @@
 .mlo-saved-filter{display:flex;align-items:center;border:1px solid var(--line,#ddd);background:var(--surface-2,rgba(120,125,150,.06));border-radius:10px}
 .mlo-saved-filter a{padding:7px 9px;color:inherit;text-decoration:none;font-size:13px}.mlo-saved-filter button{background:transparent;border:0;color:inherit;font-size:18px;cursor:pointer;padding:5px 9px}
 .mlo-save-filter-form{display:flex;gap:7px;align-items:center;max-width:100%;flex-wrap:wrap}.mlo-save-filter-form input{min-width:100px;max-width:200px;flex:1 1 100px;min-height:36px;border:1px solid var(--line,#ddd);border-radius:10px;padding:8px 10px;background:var(--surface,#fff);color:var(--text,#222)}
+
+/* Contrast and native form-control consistency: all palettes / light / dark. */
+.mlo-enhanced-tasks .mlo-saved-filters {
+  background: var(--panel);
+  color: var(--text);
+  border-color: var(--border);
+}
+.mlo-enhanced-tasks .mlo-saved-filters > summary {
+  color: var(--text);
+}
+.mlo-enhanced-tasks .mlo-saved-filters > summary:hover {
+  color: var(--accent);
+}
+.mlo-enhanced-tasks .mlo-saved-filter {
+  background: var(--panel2);
+  border-color: var(--border);
+  color: var(--text);
+}
+.mlo-enhanced-tasks .mlo-task-filters :is(input, select),
+.mlo-enhanced-tasks .mlo-bulkbar select,
+.mlo-enhanced-tasks .mlo-save-filter-form input,
+.mlo-capture-dialog .mlo-capture-field :is(input,select) {
+  background-color: var(--panel);
+  color: var(--text);
+  border-color: var(--border-strong, var(--border));
+}
+.mlo-enhanced-tasks .mlo-task-filters :is(input,select)::placeholder,
+.mlo-enhanced-tasks .mlo-save-filter-form input::placeholder,
+.mlo-capture-dialog .mlo-capture-field input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+.mlo-enhanced-tasks :is(select, input) option,
+.mlo-capture-dialog select option {
+  background-color: var(--panel);
+  color: var(--text);
+}
+.mlo-enhanced-tasks .mlo-bulkbar {
+  background: var(--panel2);
+  color: var(--text);
+}
+.mlo-enhanced-tasks .mlo-bulkbar .mlo-bulk-select,
+.mlo-enhanced-tasks .mlo-task-filters label,
+.mlo-enhanced-tasks .mlo-pagination {
+  color: var(--text);
+}
+.mlo-enhanced-tasks :is(.mlo-task-filters input,.mlo-task-filters select,.mlo-bulkbar select,.mlo-save-filter-form input):focus-visible,
+.mlo-capture-dialog .mlo-capture-field :is(input,select):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+
+/* Accent buttons need a dark label against the lighter accent palette in dark mode.
+   Slightly deepen light-mode neutral/accent fills for normal-size white labels. */
+html:not(.dark) .mlo-space .mlo-btn.mlo-primary {
+  background-color: color-mix(in srgb, var(--accent) 95%, black) !important;
+  border-color: color-mix(in srgb, var(--accent) 95%, black) !important;
+  color: #fff !important;
+}
+html.dark .mlo-space .mlo-btn.mlo-primary {
+  background-color: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #111827 !important;
+}
+html.dark :is(.workspace-icon,.mlo-mini-timer button,.mlo-mini-days a.mlo-mini-today,.mlo-calendar-day.is-today strong) {
+  color: #111827 !important;
+}

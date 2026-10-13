@@ -1,34 +1,18 @@
-# My Life Organized (MLO) Studio v3.4 Enhanced
+# My Life Organized Studio v3.4.1 (Contrast Fix)
 
-A practical, self-hosted personal productivity app integrating task management, projects, timers, study, work, money, notes, calendars and shared workspaces.
+This is the **complete v3.4 application** with a targeted fix for the light-on-light/dark-on-white coloring defect affecting Tasks, Insights and quick-capture controls. All prior functionality and the existing theme/palette choices are retained.
 
-**This is a source-code release, not a deployed service.** It upgrades the v3.3 application and preserves its blue dashboard artwork, modular card arrangements, sidebar customization and independent theme controls.
+**Root cause:** the v3.4 stylesheet introduced CSS variable names that did not exist in the earlier design system and fell back to white. The patch connects them to the existing theme tokens and adds explicit accessible control/label styling.
 
-## New in this release
+## Download and deploy
 
-- Global quick task: click **Quick task**, tap `+` in the mobile header, or press `N` outside a text field. Pick Inbox, Today or Tomorrow.
-- Tasks: search, filter by project/priority/area, sort, paginate and save named private filter presets.
-- Select several tasks to change their completion/status/priority together (permissions and dependencies checked).
-- Insights: 14-day completion/focus trends, project progress, overdue and high-priority items.
-- Faster area queries, fewer unnecessary per-request database operations and versioned cached assets.
-- Safety: pre-upgrade SQLite snapshot, cross-site write protection and automated privacy/interaction tests.
+This full source package is intended for your existing GitHub → GitHub Actions → Portainer stack. Copy the contents of this folder to the root of your GitHub repository, commit to `main`, wait for the GitHub Action to build `ghcr.io/pierre-2005/study-notifier:v3.4.1-contrast`, then **Pull and redeploy** the existing Portainer Git stack.
 
-## Documentation
+**Do not** delete containers' database volumes, create a new stack or switch ports. Preserve existing `study_notifier_data` and `127.0.0.1:8001:8000` settings. Back up data before deployment.
 
-- [Every audited feature and the honest remaining backlog](docs/FEATURE_AUDIT_V34.md)
-- [Release notes, performance figures and test commands](docs/RELEASE_V34.md)
-- [Exact GitHub → Portainer instructions](docs/DEPLOY_V34_PORTAINER.md)
-- [Previous calendar-provider setup guide](docs/CALENDAR_SETUP.md)
-- [Previous MLO release architectural notes](docs/V3_3_RELEASE.md)
+- [Exact fix, tests, and upgrade precautions](docs/CONTRAST_FIX_V341.md)
+- [Feature audit](docs/FEATURE_AUDIT_V34.md)
+- [Calendar provider setup](docs/CALENDAR_SETUP.md)
+- [Underlying architecture](docs/ARCHITECTURE.md)
 
-## Local setup
-
-Requirements: Python 3.12+ recommended, SQLite, dependencies in `requirements.txt`.
-
-```bash
-pip install -r requirements.txt
-# Set SESSION_SECRET, APP_USERNAME, APP_PASSWORD and COOKIE_SECURE appropriately
-uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
-
-Read the deployment guide before upgrading an existing Docker volume. Keep secrets out of Git. See `docs/FEATURE_AUDIT_V34.md` for what is and is not implemented.
+This update also contains the corrected CI smoke-test dependencies (`httpx`) from the previous fix. The automated theme contrast test is `tests_v341_contrast.py`.
