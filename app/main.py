@@ -36,7 +36,7 @@ from app.backup import pre_v3_backup, pre_consolidation_backup, pre_v34_backup
 from app.consolidation import consolidate_todos
 from app.life_hubs import router as hubs_router
 from app.personalize import router as layout_router, init_layout_schema
-from app.calendar_links import router as calendar_links_router, init_calendar_links_schema
+from app.calendar_links import router as calendar_links_router, init_calendar_links_schema, sync_due_calendars, AUTO_SYNC
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -61,6 +61,10 @@ async def lifespan(app: FastAPI):
     init_import_schema()
     init_file_schema()
     sched = start_scheduler(settings.timezone)
+    if AUTO_SYNC and hasattr(sched, "add_job"):
+        sched.add_job(sync_due_calendars,trigger='interval',seconds=60,id='calendar_auto_sync',
+                      replace_existing=True,max_instances=1,coalesce=True,
+                      next_run_time=datetime.now(timezone.utc)+timedelta(seconds=10))
     yield
     sched.shutdown(wait=False)
 
@@ -1996,11 +2000,12 @@ def events(request: Request):
 
 @app.get("/events/new", response_class=HTMLResponse)
 def new_event(request: Request):
-    return templates.TemplateResponse(request,"new_event.html", {"request": request, "tz": settings.timezone})
+    return RedirectResponse("/life/calendars/new", status_code=303)
 
 
 @app.post("/events/new")
 def create_event(
+    request: Request,
     title: str = Form(...),
     kind: str = Form("meeting"),
     location: str = Form(""),
@@ -2008,6 +2013,8 @@ def create_event(
     end_at_local: str = Form(""),
     notes: str = Form(""),
 ):
+    if request.state.current_user["role"] != "admin":
+        raise HTTPException(403, "Legacy shared events require administrator access")
     start_utc = parse_local_datetime_localinput(start_at_local, settings.timezone).isoformat()
     end_utc = parse_local_datetime_localinput(end_at_local, settings.timezone).isoformat() if end_at_local else None
     now = now_utc().isoformat()

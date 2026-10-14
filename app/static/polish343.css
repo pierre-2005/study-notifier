@@ -47,3 +47,7 @@
 .mlo-external-delete input{display:block;margin-top:6px}
 .mlo-connected-item{flex-wrap:wrap}
 .mlo-connected-item .mlo-inline-actions{flex-wrap:wrap;gap:7px}
+
+/* Keep the unified event calendar picker hidden until an external account is selected. */
+#mlo-event-calendar-wrap[hidden],#mlo-event-local-options[hidden]{display:none!important}
+#mlo-unified-event-form [disabled]{opacity:.55;cursor:not-allowed}

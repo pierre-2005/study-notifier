@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="mlo-space mlo-area-page">
+  <div class="mlo-page-head"><div><div class="mlo-kicker">MLO CALENDAR</div><h1>Edit event</h1><p>Stored privately in your MLO workspace.</p></div><a href="/life/calendar" class="mlo-btn mlo-secondary">← Calendar</a></div>
+  <section class="mlo-surface mlo-event-editor">
+    <form class="mlo-form" method="post" action="/life/calendars/local/{{event.id}}/edit">
+      <label>Title<input name="title" maxlength="220" required value="{{event.title}}"></label>
+      <div class="mlo-event-date-row"><label>Start<input name="start" type="datetime-local" required value="{{local_start}}"></label><label>End<input name="end" type="datetime-local" required value="{{local_end}}"></label></div>
+      <div class="mlo-event-date-row"><label>Category<select name="kind"><option value="meeting" {% if event.kind=='meeting' %}selected{% endif %}>Meeting</option><option value="personal" {% if event.kind=='personal' %}selected{% endif %}>Personal</option><option value="other" {% if event.kind=='other' %}selected{% endif %}>Other</option></select></label><label>Location<input name="location" maxlength="240" value="{{event.location}}"></label></div>
+      <label>Notes<textarea name="notes" rows="3">{{event.notes}}</textarea></label><button class="mlo-btn mlo-primary" type="submit">Save changes</button>
+    </form>
+  </section>
+  <details class="mlo-disclosure"><summary>Delete event</summary><form class="mlo-form" method="post" action="/life/calendars/local/{{event.id}}/delete"><p>Type DELETE to remove this event from your MLO workspace.</p><label>Confirmation<input name="confirm" required pattern="DELETE" autocomplete="off"></label><button class="mlo-btn mlo-danger" type="submit">Delete event</button></form></details>
+</div>
+{% endblock %}

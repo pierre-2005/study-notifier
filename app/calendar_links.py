@@ -12,7 +12,7 @@ from pathlib import Path
 import requests
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import APIRouter, Form, Request, HTTPException
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from app.db import get_conn
 from app.lifeos import user_id
@@ -23,6 +23,12 @@ templates=Jinja2Templates(directory=str(Path(__file__).resolve().parent/'templat
 templates.env.globals['APP_VERSION']=APP_VERSION
 PUBLIC_URL=os.environ.get('MLO_PUBLIC_URL','').rstrip('/')
 KEY=os.environ.get('MLO_CREDENTIAL_KEY','').strip()
+AUTO_SYNC = os.environ.get('MLO_CALENDAR_AUTO_SYNC','true').lower() in ('1','yes','on','true')
+def _bounded_int(name, default, low, high):
+    try: return max(low,min(high,int(os.environ.get(name,str(default)))))
+    except ValueError: return default
+SYNC_MINUTES = _bounded_int('MLO_CALENDAR_SYNC_MINUTES',10,5,120)
+SYNC_BATCH_SIZE = _bounded_int('MLO_CALENDAR_SYNC_BATCH_SIZE',3,1,10)
 GOOGLE_ID=os.environ.get('MLO_GOOGLE_CLIENT_ID','').strip()
 GOOGLE_SECRET=os.environ.get('MLO_GOOGLE_CLIENT_SECRET','').strip()
 MS_ID=os.environ.get('MLO_MS_CLIENT_ID','').strip()
@@ -53,6 +59,15 @@ def init_calendar_links_schema():
           created_at TEXT NOT NULL, UNIQUE(user_id,provider,external_id)
         );
         CREATE INDEX IF NOT EXISTS life_cal_connections_user ON life_calendar_connections(user_id);
+        CREATE TABLE IF NOT EXISTS life_local_events (
+          id INTEGER PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          title TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'meeting',
+          location TEXT NOT NULL DEFAULT '', start_at_utc TEXT NOT NULL,
+          end_at_utc TEXT NOT NULL, notes TEXT NOT NULL DEFAULT '',
+          created_at_utc TEXT NOT NULL, updated_at_utc TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS life_local_events_user_start ON life_local_events(user_id,start_at_utc);
         CREATE TABLE IF NOT EXISTS life_external_events (
           connection_id INTEGER NOT NULL REFERENCES life_calendar_connections(id) ON DELETE CASCADE,
           uid TEXT NOT NULL, title TEXT NOT NULL, starts_on TEXT NOT NULL,
@@ -61,6 +76,9 @@ def init_calendar_links_schema():
         );
         CREATE INDEX IF NOT EXISTS life_external_events_day ON life_external_events(starts_on);
         ''')
+        columns={r[1] for r in db.execute('PRAGMA table_info(life_calendar_connections)')}
+        if 'last_sync_attempt_at' not in columns:
+            db.execute('ALTER TABLE life_calendar_connections ADD COLUMN last_sync_attempt_at TEXT')
         db.commit()
 
 def _safe_ics_url(url):
@@ -119,7 +137,7 @@ def connections_page(request: Request, notice: str=''):
     ms_missing=[key for key,present in [('MLO_PUBLIC_URL (public HTTPS address)',origin_ready),('MLO_CREDENTIAL_KEY',bool(KEY)),('MLO_MS_CLIENT_ID',bool(MS_ID)),('MLO_MS_CLIENT_SECRET',bool(MS_SECRET))] if not present]
     # This flag controls help text only, not any authorization decision.
     is_admin=request.state.current_user['role']=='admin'
-    return templates.TemplateResponse(request,'life_calendar_connections.html',{'request':request,'connections':rows,'notice':notice,'google_ready':not google_missing,'microsoft_ready':not ms_missing,'feed_ready':bool(KEY),'google_missing':google_missing,'microsoft_missing':ms_missing,'is_admin':is_admin})
+    return templates.TemplateResponse(request,'life_calendar_connections.html',{'request':request,'connections':rows,'notice':notice,'google_ready':not google_missing,'microsoft_ready':not ms_missing,'feed_ready':bool(KEY),'google_missing':google_missing,'microsoft_missing':ms_missing,'is_admin':is_admin,'auto_sync':AUTO_SYNC,'sync_minutes':SYNC_MINUTES})
 
 @router.get('/connect/{provider}')
 def connect(request: Request, provider: str):
@@ -177,8 +195,9 @@ def add_feed(request:Request,provider:str=Form('ical'),label:str=Form(...),url:s
     label=label.strip()[:90]
     if not label:raise HTTPException(422,'A calendar name is required')
     with get_conn() as db:
-        db.execute('INSERT INTO life_calendar_connections(user_id,provider,label,external_id,secret_blob,created_at) VALUES(?,?,?,?,?,?)',
+        cur=db.execute('INSERT INTO life_calendar_connections(user_id,provider,label,external_id,secret_blob,created_at) VALUES(?,?,?,?,?,?)',
           (uid,provider,label,secrets.token_hex(10),_encrypt(json_dump({'url':url})),datetime.now(timezone.utc).isoformat()))
+        added_id=cur.lastrowid
         db.commit()
     return RedirectResponse('/life/calendars?notice=added',status_code=303)
 
@@ -249,30 +268,58 @@ def _get_ics_events(encrypted):
         if len(result)>=1000:break
     return result
 
-@router.post('/{connection_id}/sync')
-def sync_connection(request:Request,connection_id:int):
-    uid=user_id(request)
+def sync_one_connection(connection_id:int):
+    # Refresh credentials privately without deleting valid cached events on failure.
+    attempt=datetime.now(timezone.utc).isoformat()
     with get_conn() as db:
-        connection=db.execute('SELECT * FROM life_calendar_connections WHERE id=? AND user_id=?',(connection_id,uid)).fetchone()
-    if not connection:raise HTTPException(404,'Calendar connection not found')
+        conn=db.execute('SELECT * FROM life_calendar_connections WHERE id=?',(connection_id,)).fetchone()
+        if conn:
+            db.execute('UPDATE life_calendar_connections SET last_sync_attempt_at=? WHERE id=?',(attempt,connection_id))
+            db.commit()
+    if not conn:return False
     try:
-        token=json_load(_decrypt(connection['secret_blob']))
-        if connection['provider'] in ('google','microsoft'):
-            events=_get_events(connection['provider'],token,connection_id)
+        if conn['provider'] in ('google','microsoft'):
+            events=_get_events(conn['provider'],json_load(_decrypt(conn['secret_blob'])),connection_id)
         else:
-            events=_get_ics_events(connection['secret_blob'])
+            events=_get_ics_events(conn['secret_blob'])
         with get_conn() as db:
+            # A user can disconnect an account while the API call is in progress.
+            if not db.execute('SELECT id FROM life_calendar_connections WHERE id=?',(connection_id,)).fetchone():return False
             db.execute('DELETE FROM life_external_events WHERE connection_id=?',(connection_id,))
             db.executemany('INSERT INTO life_external_events(connection_id,uid,title,starts_on,starts_at,href,calendar_name) VALUES(?,?,?,?,?,?,?)',
-                  ((connection_id,*event) for event in events if event[2]))
-            db.execute('UPDATE life_calendar_connections SET last_synced_at=?,last_error=NULL WHERE id=?',(datetime.now(timezone.utc).isoformat(),connection_id))
+                           ((connection_id,*e) for e in events if e[2]))
+            db.execute('UPDATE life_calendar_connections SET last_synced_at=?,last_error=NULL WHERE id=?',
+                       (datetime.now(timezone.utc).isoformat(),connection_id))
             db.commit()
-        return RedirectResponse('/life/calendars?notice=synced',status_code=303)
-    except (RuntimeError,ValueError,KeyError,HTTPException) as exc:
+        return True
+    except (RuntimeError,ValueError,KeyError,ImportError,HTTPException,requests.RequestException) as exc:
         with get_conn() as db:
-            db.execute('UPDATE life_calendar_connections SET last_error=? WHERE id=?',(str(exc)[:150],connection_id))
+            db.execute('UPDATE life_calendar_connections SET last_error=? WHERE id=?',
+                       (('Reauthorize account' if isinstance(exc,HTTPException) and exc.status_code in (401,403) else str(exc))[:150],connection_id))
             db.commit()
-        return RedirectResponse('/life/calendars?notice=error',status_code=303)
+        return False
+
+
+def sync_due_calendars():
+    # Rate-limit automatic provider refreshes and bound background workload.
+    if not AUTO_SYNC or not KEY:return 0
+    threshold=(datetime.now(timezone.utc)-timedelta(minutes=SYNC_MINUTES)).isoformat()
+    with get_conn() as db:
+        due=db.execute('''SELECT id FROM life_calendar_connections
+             WHERE last_sync_attempt_at IS NULL OR last_sync_attempt_at < ?
+             ORDER BY COALESCE(last_sync_attempt_at,'') ASC LIMIT ?''',(threshold,SYNC_BATCH_SIZE)).fetchall()
+    for row in due:
+        sync_one_connection(row['id'])
+    return len(due)
+
+
+@router.post('/{connection_id}/sync')
+def sync_connection(request:Request,connection_id:int):
+    # Retained for backwards compatibility, not needed for routine use.
+    uid=user_id(request)
+    _owned_connection(uid,connection_id)
+    ok=sync_one_connection(connection_id)
+    return RedirectResponse('/life/calendars?notice='+('synced' if ok else 'error'),status_code=303)
 
 @router.post('/{connection_id}/delete')
 def disconnect(request:Request,connection_id:int):
@@ -372,30 +419,103 @@ def _cache_changed(connection,calendar_id,event_data):
                     event_data.get('htmlLink' if provider=='google' else 'webLink',''),connection['label']))
         db.commit()
 
-@router.get('/new', response_class=HTMLResponse)
-def choose_event_destination(request: Request):
-    """Choose a destination before creating an event; never silently write locally.
-
-    Local-only events and provider-managed events have different storage/write
-    semantics, so the destination must be chosen explicitly by the user.
-    """
-    uid=user_id(request)
+def _my_writable_accounts(uid):
     with get_conn() as db:
         records=db.execute("SELECT id,provider,label,secret_blob FROM life_calendar_connections WHERE user_id=? AND provider IN ('google','microsoft') ORDER BY provider,label",(uid,)).fetchall()
-    connections=[]
-    for record in records:
-        entry={'id':record['id'],'provider':record['provider'],'label':record['label'],'can_edit':False}
-        try:
-            scopes=set(json_load(_decrypt(record['secret_blob'])).get('scope','').split())
-            needed='https://www.googleapis.com/auth/calendar.events' if record['provider']=='google' else 'Calendars.ReadWrite'
-            entry['can_edit']=needed in scopes
-        except (HTTPException,ValueError,KeyError):
-            pass
-        connections.append(entry)
-    return templates.TemplateResponse(request,'life_event_destination.html',{
-        'request':request,'connections':connections,
-        'is_admin':request.state.current_user['role']=='admin'
-    })
+    result=[]
+    for r in records:
+        scopes=set()
+        try:scopes=set(json_load(_decrypt(r['secret_blob'])).get('scope','').split())
+        except (HTTPException,ValueError,KeyError):pass
+        allowed=('https://www.googleapis.com/auth/calendar.events' if r['provider']=='google' else 'Calendars.ReadWrite') in scopes
+        result.append({'id':r['id'],'provider':r['provider'],'label':r['label'],'can_edit':allowed})
+    return result
+
+
+@router.get('/new', response_class=HTMLResponse)
+def choose_event_destination(request: Request):
+    uid=user_id(request)
+    return templates.TemplateResponse(request,'life_event_destination.html',
+       {'request':request,'connections':_my_writable_accounts(uid),
+        'is_admin':request.state.current_user['role']=='admin',
+        'tz':os.environ.get('TIMEZONE','America/Edmonton')})
+
+
+@router.get('/{connection_id}/calendars.json')
+def account_calendars(request:Request,connection_id:int):
+    connection=_owned_connection(user_id(request),connection_id,writable=True)
+    try:return {'calendars':_available_calendars(connection)}
+    except (RuntimeError,KeyError,ValueError) as exc:
+        raise HTTPException(502,'Calendar provider unavailable; retry in a moment') from exc
+
+
+@router.post('/new')
+def create_unified_event(request:Request,destination:str=Form(...),calendar_id:str=Form(''),
+                         title:str=Form(...),start:str=Form(...),end:str=Form(...),
+                         kind:str=Form('meeting'),location:str=Form(''),notes:str=Form('')):
+    uid=user_id(request)
+    title,start_dt,end_dt=_validate_event(title,start,end)
+    if destination=='mlo':
+        now=datetime.now(timezone.utc).isoformat()
+        with get_conn() as db:
+            db.execute('''INSERT INTO life_local_events(user_id,title,kind,location,start_at_utc,end_at_utc,notes,created_at_utc,updated_at_utc)
+                       VALUES(?,?,?,?,?,?,?,?,?)''',(uid,title,kind[:40],location[:240],start_dt.astimezone(timezone.utc).isoformat(),
+                                                  end_dt.astimezone(timezone.utc).isoformat(),notes[:4000],now,now))
+            db.commit()
+        return RedirectResponse('/life/calendar?notice=event-created',status_code=303)
+    if not destination.startswith('external:'):raise HTTPException(422,'Choose a destination')
+    try:connection_id=int(destination.split(':',1)[1])
+    except ValueError:raise HTTPException(422,'Choose a valid calendar account')
+    connection=_owned_connection(uid,connection_id,writable=True)
+    calendars=_available_calendars(connection)
+    if not calendar_id or calendar_id not in {c['id'] for c in calendars}:
+        raise HTTPException(422,'Choose a writable calendar')
+    payload=_event_payload(connection['provider'],title,start_dt,end_dt)
+    data=_request('POST',_api_event_url(connection['provider'],calendar_id),
+                  headers={**_provider_headers(connection),'Content-Type':'application/json'},json=payload).json()
+    _cache_changed(connection,calendar_id,data)
+    # If provider accepted creation but omitted start in response, update through
+    # the next background refresh. Do not create a duplicate local event.
+    return RedirectResponse('/life/calendar?notice=event-created',status_code=303)
+
+
+@router.get('/local/{event_id}/edit',response_class=HTMLResponse)
+def edit_local_event_page(request:Request,event_id:int):
+    uid=user_id(request)
+    with get_conn() as db:
+        event=db.execute('SELECT * FROM life_local_events WHERE id=? AND user_id=?',(event_id,uid)).fetchone()
+    if not event:raise HTTPException(404,'Event not found')
+    zone=ZoneInfo(os.environ.get('TIMEZONE','UTC'))
+    def local(stamp):return datetime.fromisoformat(stamp).astimezone(zone).strftime('%Y-%m-%dT%H:%M')
+    return templates.TemplateResponse(request,'life_local_event_form.html',{
+        'request':request,'event':event,'local_start':local(event['start_at_utc']),
+        'local_end':local(event['end_at_utc'])})
+
+
+@router.post('/local/{event_id}/edit')
+def update_local_event(request:Request,event_id:int,title:str=Form(...),start:str=Form(...),end:str=Form(...),
+                       kind:str=Form('meeting'),location:str=Form(''),notes:str=Form('')):
+    uid=user_id(request)
+    title,start_dt,end_dt=_validate_event(title,start,end)
+    with get_conn() as db:
+        cur=db.execute('''UPDATE life_local_events SET title=?,kind=?,location=?,start_at_utc=?,end_at_utc=?,notes=?,updated_at_utc=?
+                          WHERE id=? AND user_id=?''',(title,kind[:40],location[:240],start_dt.astimezone(timezone.utc).isoformat(),
+                          end_dt.astimezone(timezone.utc).isoformat(),notes[:4000],datetime.now(timezone.utc).isoformat(),event_id,uid))
+        if cur.rowcount!=1:raise HTTPException(404,'Event not found')
+        db.commit()
+    return RedirectResponse('/life/calendar?notice=event-updated',status_code=303)
+
+
+@router.post('/local/{event_id}/delete')
+def delete_local_event(request:Request,event_id:int,confirm:str=Form(...)):
+    uid=user_id(request)
+    if confirm!='DELETE':raise HTTPException(422,'Type DELETE to confirm')
+    with get_conn() as db:
+        cur=db.execute('DELETE FROM life_local_events WHERE id=? AND user_id=?',(event_id,uid))
+        if cur.rowcount!=1:raise HTTPException(404,'Event not found')
+        db.commit()
+    return RedirectResponse('/life/calendar?notice=event-deleted',status_code=303)
+
 
 @router.get('/{connection_id}/events/new',response_class=HTMLResponse)
 def new_event_page(request:Request,connection_id:int):

@@ -398,6 +398,8 @@ def home(request: Request):
     with get_conn() as conn:
         for row in conn.execute("SELECT due_on FROM life_tasks WHERE owner_id=? AND due_on>=? AND due_on<? AND status!='done'",(uid,month_start.isoformat(),month_end.isoformat())):
             if row['due_on']:event_dates.add(row['due_on'])
+        for row in conn.execute('SELECT start_at_utc FROM life_local_events WHERE user_id=? AND start_at_utc>=? AND start_at_utc<?',(uid,month_start.isoformat(),month_end.isoformat())):
+            if row['start_at_utc']:event_dates.add(str(row['start_at_utc'])[:10])
         for row in conn.execute('SELECT e.starts_on FROM life_external_events e JOIN life_calendar_connections c ON e.connection_id=c.id WHERE c.user_id=? AND e.starts_on>=? AND e.starts_on<? LIMIT 150',(uid,month_start.isoformat(),month_end.isoformat())):
             event_dates.add(row['starts_on'])
     hour=datetime.now(ZoneInfo(settings.timezone)).hour
@@ -884,6 +886,12 @@ def calendar_page(request:Request, month:str=''):
             for x in conn.execute("SELECT id,company,followup_at_utc FROM jobs WHERE followup_at_utc>=? AND followup_at_utc<?",((first-timedelta(days=1)).isoformat(),(last+timedelta(days=1)).isoformat())):
                 d=local_day(x['followup_at_utc'])
                 if d: add(d,'Follow up: '+x['company'],f'/jobs/{x["id"]}','job')
+        # Private MLO-only events. Legacy shared events above remain admin-visible.
+        for x in conn.execute('''SELECT id,title,start_at_utc FROM life_local_events
+                         WHERE user_id=? AND start_at_utc>=? AND start_at_utc<? ORDER BY start_at_utc LIMIT 500''',
+                         (uid,(first-timedelta(days=1)).isoformat(),(last+timedelta(days=1)).isoformat())):
+            d=local_day(x['start_at_utc'])
+            if d:add(d,x['title'],f'/life/calendars/local/{x["id"]}/edit','event')
         # User-specific, previously synchronized external events. No HTTP during page loads.
         for x in conn.execute("""SELECT e.title,e.starts_on,e.href,e.uid,e.connection_id,c.provider,c.label FROM life_external_events e
                       JOIN life_calendar_connections c ON c.id=e.connection_id

@@ -2,33 +2,92 @@
 {% block content %}
 <div class="mlo-space mlo-area-page">
   <div class="mlo-page-head">
-    <div><div class="mlo-kicker">CALENDAR</div><h1>New event</h1><p>Choose where to save this event.</p></div>
-    <a class="mlo-btn mlo-secondary" href="/life/calendar">← Calendar</a>
+    <div><div class="mlo-kicker">CALENDAR</div><h1>New event</h1><p>Create an event in MLO or a connected calendar.</p></div>
+    <a href="/life/calendar" class="mlo-btn mlo-secondary">← Calendar</a>
   </div>
-  <section class="mlo-surface">
-    <div class="mlo-section-top"><h2>Connected calendars</h2><a href="/life/calendars">Manage accounts ↗</a></div>
-    {% for c in connections %}
-    <div class="mlo-connected-item">
-      <div><strong>{{ c.label }}</strong><small>{{ 'Google Calendar' if c.provider == 'google' else 'Microsoft Outlook' }} · {% if c.can_edit %}Read/write connection{% else %}Read-only authorization{% endif %}</small></div>
-      <div class="mlo-inline-actions">
-      {% if c.can_edit %}
-        <a class="mlo-btn mlo-primary" href="/life/calendars/{{ c.id }}/events/new">Create in {{ 'Google' if c.provider == 'google' else 'Outlook' }} ↗</a>
-      {% else %}
-        <a class="mlo-btn mlo-secondary" href="/life/calendars/connect/{{ c.provider }}">Reconnect to enable editing</a>
-      {% endif %}
+  <section class="mlo-surface mlo-event-editor">
+    <form class="mlo-form" method="post" action="/life/calendars/new" id="mlo-unified-event-form">
+      <label>Save to
+        <select name="destination" id="mlo-event-destination" required>
+          <option value="mlo">MLO only</option>
+          {% for c in connections %}
+          <option value="external:{{c.id}}" {% if not c.can_edit %}disabled{% endif %}>
+            {{c.label}} ({{'Google' if c.provider=='google' else 'Outlook'}}){% if not c.can_edit %} · Reconnect to edit{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </label>
+      <label id="mlo-event-calendar-wrap" hidden>Calendar
+        <select name="calendar_id" id="mlo-event-calendar"></select>
+      </label>
+      <div class="mlo-subtle" role="status" aria-live="polite" id="mlo-event-calendar-status"></div>
+      <label>Title<input type="text" name="title" maxlength="220" required autofocus placeholder="Appointment, meeting or class"></label>
+      <div class="mlo-event-date-row">
+        <label>Start<input type="datetime-local" name="start" required></label>
+        <label>End<input type="datetime-local" name="end" required></label>
       </div>
-    </div>
-    {% else %}
-    <p class="mlo-subtle">No Google or Outlook accounts connected yet. Connect an account to create events in an external calendar.</p>
-    {% endfor %}
-    <p class="mlo-subtle">Events created in Google or Outlook are also shown on your MLO calendar. To edit events in another calendar, choose that calendar's account.</p>
+      <div id="mlo-event-local-options">
+        <div class="mlo-event-date-row">
+          <label>Category<select name="kind"><option value="meeting">Meeting</option><option value="personal">Personal</option><option value="other">Other</option></select></label>
+          <label>Location<input type="text" name="location" maxlength="240" placeholder="Optional"></label>
+        </div>
+        <label>Notes<textarea name="notes" rows="3" placeholder="Optional"></textarea></label>
+      </div>
+      <p class="mlo-subtle" id="mlo-event-help">MLO-only events are stored on your MLO server. Connected events are saved to the chosen provider.</p>
+      <div class="mlo-inline-actions">
+        <button type="submit" class="mlo-btn mlo-primary" id="mlo-event-submit">Create event</button>
+        <a href="/life/calendars" class="mlo-btn mlo-secondary">Manage calendar accounts</a>
+      </div>
+    </form>
   </section>
-  {% if is_admin %}
-  <section class="mlo-surface" style="margin-top:16px">
-    <div class="mlo-section-top"><h2>MLO only</h2></div>
-    <p class="mlo-subtle">Save an event exclusively in MLO. It will not appear in Google or Outlook.</p>
-    <a class="mlo-btn mlo-secondary" href="/events/new">Create MLO-only event</a>
-  </section>
-  {% endif %}
 </div>
+<script>
+(() => {
+  const destination=document.getElementById('mlo-event-destination');
+  const calendar=document.getElementById('mlo-event-calendar');
+  const wrap=document.getElementById('mlo-event-calendar-wrap');
+  const status=document.getElementById('mlo-event-calendar-status');
+  const submit=document.getElementById('mlo-event-submit');
+  const localOptions=document.getElementById('mlo-event-local-options');
+  const help=document.getElementById('mlo-event-help');
+  if (!destination || !calendar) return;
+  let seq=0;
+  async function refresh() {
+    const selection=destination.value;
+    const current=++seq;
+    const external=selection.startsWith('external:');
+    wrap.hidden=!external;
+    localOptions.hidden=external;
+    calendar.required=external;
+    calendar.replaceChildren();
+    status.textContent='';
+    help.textContent=external ? 'This event will be written to the selected external calendar and displayed in MLO.' : 'This event will be stored in MLO only.';
+    if (!external) { submit.disabled=false; return; }
+    submit.disabled=true;
+    status.textContent='Loading calendars…';
+    try {
+      const id=selection.slice(9);
+      const response=await fetch('/life/calendars/'+encodeURIComponent(id)+'/calendars.json',{credentials:'same-origin'});
+      if(!response.ok)throw new Error(response.status===409 ? 'Reconnect this account to enable editing.' : 'Unable to load calendars. Check the connection.');
+      const data=await response.json();
+      if(current!==seq)return;
+      for(const item of data.calendars || []) {
+        const option=document.createElement('option');
+        option.value=item.id;
+        option.textContent=item.name;
+        calendar.append(option);
+      }
+      if(!calendar.options.length)throw new Error('No writable calendars are available in this account.');
+      status.textContent='';
+      submit.disabled=false;
+    } catch(e) {
+      if(current!==seq)return;
+      status.textContent=e.message || 'Unable to load calendars.';
+      submit.disabled=true;
+    }
+  }
+  destination.addEventListener('change',refresh);
+  refresh();
+})();
+</script>
 {% endblock %}

@@ -28,16 +28,3 @@ Acceptance test: sample anonymized statements from multiple formats/banks, valid
 ## Technology approach
 
 Use deterministic parsers for structured CSV/OFX first. For variable PDF syllabi and statements, use a document-processing service that can return structured JSON with page/row citations, schema validation and confidence estimates. OCR/AI should be optional; never rely on a generative model alone for financial totals or deadlines. Keep previews and confirmation authoritative. Local OCR or hosted AI must be an explicit privacy choice.
-
-
----
-
-## C. Microsoft Store release (free app / no registration fee)
-
-**Objective:** Ship the existing hosted MLO as a free Windows PWA listed in the Microsoft Store, without maintaining a second Windows-specific backend. **This is a plan, not included in v3.4.2.**
-
-The detailed implementation and release checklist is in [MICROSOFT_STORE_RELEASE_PLAN.md](MICROSOFT_STORE_RELEASE_PLAN.md). The first work items are production security/privacy readiness, manifest icons (192px/512px), offline experience, public HTTPS availability, and Microsoft Store developer onboarding. Then use PWABuilder and Microsoft Partner Center to package, certify and publish.
-
-As of October 2026, Microsoft's new registration flow at https://storedeveloper.microsoft.com/ has no onboarding fee for individual developers in supported markets. You can set your app's Microsoft Store price to **Free**. Publishing does not make your server, domain, optional AI processing or support costs disappear.
-
-**Do not publish MLO as a general public app until user signup, account privacy, deletion/export, backups, and access control have been verified against the actual production release.**

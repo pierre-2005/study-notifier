@@ -7,7 +7,7 @@ Calendar integration is entirely optional; MLO can run with these settings blank
 Under the existing Git-deployed stack's Environment variables, add:
 
 ```text
-MLO_PUBLIC_URL=https://organizer.overvault.ca
+MLO_PUBLIC_URL=https://your-existing-mlo-domain.example
 MLO_CREDENTIAL_KEY=<a stable Fernet key generated ONCE>
 MLO_GOOGLE_CLIENT_ID=<Google OAuth Client ID>
 MLO_GOOGLE_CLIENT_SECRET=<Google OAuth Client Secret>

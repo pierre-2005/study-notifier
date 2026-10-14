@@ -26,12 +26,11 @@ with tempfile.TemporaryDirectory() as temp:
         assert 'href="/events/new"' not in page.text
         chooser=client.get('/life/calendars/new')
         assert chooser.status_code==200
-        assert 'No Google or Outlook accounts' in chooser.text
-        assert 'Create MLO-only event' in chooser.text
-        assert 'Create in Google' not in chooser.text
+        assert 'MLO only' in chooser.text
+        assert 'mlo-event-destination' in chooser.text
         local=client.get('/events/new')
         assert local.status_code==200
-        assert 'does not create a Google or Outlook event' in local.text
+        assert 'mlo-event-destination' in local.text
         # Add a real-owner connection with a write scope; read-only accounts cannot falsely claim editing.
         with get_conn() as db:
             db.execute("INSERT INTO life_calendar_connections(user_id,provider,label,external_id,secret_blob,created_at) VALUES(?,?,?,?,?,?)",
@@ -41,9 +40,9 @@ with tempfile.TemporaryDirectory() as temp:
             db.commit()
         chooser=client.get('/life/calendars/new')
         assert 'primary@example.com' in chooser.text
-        assert 'Create in Google' in chooser.text
+        assert 'external:' in chooser.text
         assert 'work@example.com' in chooser.text
-        assert 'Reconnect to enable editing' in chooser.text
+        assert 'Reconnect to edit' in chooser.text
         ok,msg=create_pending_user('member','Member','some-test-password'); assert ok,msg
         with get_conn() as db:
             db.execute("UPDATE users SET approved=1 WHERE username='member'");db.commit()
@@ -52,5 +51,5 @@ with tempfile.TemporaryDirectory() as temp:
             m=member.get('/life/calendars/new')
             assert m.status_code==200
             assert 'primary@example.com' not in m.text
-            assert 'Create MLO-only event' not in m.text
-print('PASS: main calendar routes through chooser; permissions and local-only labels; account isolation')
+            assert 'MLO only' in m.text
+print('PASS: main calendar uses one form; per-account permissions and private MLO events')
