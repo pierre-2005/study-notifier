@@ -7,4 +7,4 @@
 {% for day in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}<div class="mlo-calendar-header">{{day}}</div>{% endfor %}
 {% for week in weeks %}{% for d in week %}<div class="mlo-calendar-day {{'mlo-other-month' if d.month!=month_num else ''}} {{'is-today' if d.isoformat()==today else ''}}"><strong>{{d.day}}</strong>{% if d.month==month_num %}{% for x in events.get(d.day,[]) %}<a href="{{x.href}}" class="mlo-calendar-event mlo-kind-{{x.kind}} {{'is-done' if x.status=='done' else ''}}" title="{{x.kind|title}}: {{x.title}}">{{x.title}}</a>{% endfor %}{% endif %}</div>{% endfor %}{% endfor %}
 </div></section>
-<div class="mlo-area-actions"><a href="/life/tasks">＋ Add task</a>{% if is_admin %}<a href="/events/new">＋ New event</a><a href="/classes/new">＋ Class meeting</a><a href="/items/new">＋ Academic deadline</a>{% endif %}</div></div>{% endblock %}
+<div class="mlo-area-actions"><a href="/life/tasks">＋ Add task</a><a href="/life/calendars/new">＋ New event</a>{% if is_admin %}<a href="/classes/new">＋ Class meeting</a><a href="/items/new">＋ Academic deadline</a>{% endif %}</div></div>{% endblock %}

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="mlo-space mlo-area-page">
- <div class="mlo-page-head"><div><div class="mlo-kicker">CALENDAR ACCOUNTS</div><h1>Connected calendars</h1><p>Connect calendars for events, planning and optional editing.</p></div><a class="mlo-btn mlo-secondary" href="/life/calendar">← Calendar</a></div>
+ <div class="mlo-page-head"><div><div class="mlo-kicker">CALENDAR ACCOUNTS</div><h1>Connected calendars</h1><p>Connect calendars for events, planning and optional editing.</p></div><div class="mlo-inline-actions"><a class="mlo-btn mlo-primary" href="/life/calendars/new">＋ New event</a><a class="mlo-btn mlo-secondary" href="/life/calendar">← Calendar</a></div></div>
  {% if notice %}<div class="mlo-alert" role="status">{{ {'connected':'Account connected. Sync to load its calendars.','added':'Feed saved. Sync to load events.','synced':'Calendar events refreshed.','disconnected':'Calendar disconnected.','error':'Calendar sync failed. Review the connection error below.','event-created':'Event created in the connected calendar.'}.get(notice,'') }}</div>{% endif %}
  <div class="mlo-calendar-accounts-grid">
  <section class="mlo-surface"><h2>Connect an account</h2>

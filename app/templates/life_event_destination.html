@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="mlo-space mlo-area-page">
+  <div class="mlo-page-head">
+    <div><div class="mlo-kicker">CALENDAR</div><h1>New event</h1><p>Choose where to save this event.</p></div>
+    <a class="mlo-btn mlo-secondary" href="/life/calendar">← Calendar</a>
+  </div>
+  <section class="mlo-surface">
+    <div class="mlo-section-top"><h2>Connected calendars</h2><a href="/life/calendars">Manage accounts ↗</a></div>
+    {% for c in connections %}
+    <div class="mlo-connected-item">
+      <div><strong>{{ c.label }}</strong><small>{{ 'Google Calendar' if c.provider == 'google' else 'Microsoft Outlook' }} · {% if c.can_edit %}Read/write connection{% else %}Read-only authorization{% endif %}</small></div>
+      <div class="mlo-inline-actions">
+      {% if c.can_edit %}
+        <a class="mlo-btn mlo-primary" href="/life/calendars/{{ c.id }}/events/new">Create in {{ 'Google' if c.provider == 'google' else 'Outlook' }} ↗</a>
+      {% else %}
+        <a class="mlo-btn mlo-secondary" href="/life/calendars/connect/{{ c.provider }}">Reconnect to enable editing</a>
+      {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <p class="mlo-subtle">No Google or Outlook accounts connected yet. Connect an account to create events in an external calendar.</p>
+    {% endfor %}
+    <p class="mlo-subtle">Events created in Google or Outlook are also shown on your MLO calendar. To edit events in another calendar, choose that calendar's account.</p>
+  </section>
+  {% if is_admin %}
+  <section class="mlo-surface" style="margin-top:16px">
+    <div class="mlo-section-top"><h2>MLO only</h2></div>
+    <p class="mlo-subtle">Save an event exclusively in MLO. It will not appear in Google or Outlook.</p>
+    <a class="mlo-btn mlo-secondary" href="/events/new">Create MLO-only event</a>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

@@ -4,7 +4,7 @@
 <div class="mlo-area-intro"><div><strong>Study, without the busywork.</strong><p>Create a study task in Tasks. Manage coursework and class meetings here. Both appear on your Today and Calendar views.</p></div></div>
 <form method="post" action="/life/tasks" class="mlo-capture mlo-area-capture"><span class="mlo-capture-icon">＋</span><input required maxlength="240" name="title" placeholder="Add a study task…" aria-label="New study task"><input type="hidden" name="area" value="Study"><input type="hidden" name="next_page" value="/life/study"><button type="submit" class="mlo-btn mlo-primary">Add task ↗</button></form>
 <div class="mlo-area-actions">
- {% if legacy %}<a href="/courses/new">＋ New course</a><a href="/items/new">＋ Assignment / exam</a><a href="/classes/new">＋ Class meeting</a><a href="/events/new">＋ Event</a>{% endif %}
+ {% if legacy %}<a href="/courses/new">＋ New course</a><a href="/items/new">＋ Assignment / exam</a><a href="/classes/new">＋ Class meeting</a><a href="/life/calendars/new">＋ Event</a>{% endif %}
  <a href="/life/projects">＋ Study project</a>
 </div>
 <div class="mlo-two">

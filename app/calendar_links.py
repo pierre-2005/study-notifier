@@ -372,6 +372,31 @@ def _cache_changed(connection,calendar_id,event_data):
                     event_data.get('htmlLink' if provider=='google' else 'webLink',''),connection['label']))
         db.commit()
 
+@router.get('/new', response_class=HTMLResponse)
+def choose_event_destination(request: Request):
+    """Choose a destination before creating an event; never silently write locally.
+
+    Local-only events and provider-managed events have different storage/write
+    semantics, so the destination must be chosen explicitly by the user.
+    """
+    uid=user_id(request)
+    with get_conn() as db:
+        records=db.execute("SELECT id,provider,label,secret_blob FROM life_calendar_connections WHERE user_id=? AND provider IN ('google','microsoft') ORDER BY provider,label",(uid,)).fetchall()
+    connections=[]
+    for record in records:
+        entry={'id':record['id'],'provider':record['provider'],'label':record['label'],'can_edit':False}
+        try:
+            scopes=set(json_load(_decrypt(record['secret_blob'])).get('scope','').split())
+            needed='https://www.googleapis.com/auth/calendar.events' if record['provider']=='google' else 'Calendars.ReadWrite'
+            entry['can_edit']=needed in scopes
+        except (HTTPException,ValueError,KeyError):
+            pass
+        connections.append(entry)
+    return templates.TemplateResponse(request,'life_event_destination.html',{
+        'request':request,'connections':connections,
+        'is_admin':request.state.current_user['role']=='admin'
+    })
+
 @router.get('/{connection_id}/events/new',response_class=HTMLResponse)
 def new_event_page(request:Request,connection_id:int):
     connection=_owned_connection(user_id(request),connection_id,writable=True)
