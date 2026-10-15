@@ -2160,7 +2160,8 @@ def settings_save(
 @app.post("/settings/test")
 def settings_test_notification(request: Request):
     _require_admin(request)
-    if not settings.ntfy_topic:
+    from app.scheduler import legacy_global_notifications_allowed
+    if not legacy_global_notifications_allowed():
         return RedirectResponse('/life/devices?notice=no_global', status_code=303)
     notifier = build_notifier()
     notifier.send("Test notification", "✅ Your notifier is working.")

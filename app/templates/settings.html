@@ -3,7 +3,7 @@
 {% set is_admin = request.session.get('role') == 'admin' %}
 <div class="page-heading">
   <div><div class="eyebrow">Preferences</div><h1>Settings</h1><p>Personalize the workspace appearance and navigation{% if is_admin %}, plus reminder templates and notifier behavior{% endif %}.</p></div>
-  {% if is_admin %}<form method="post" action="/settings/test"><button class="btn" type="submit">Send test notification</button></form>{% endif %}
+  {% if is_admin %}<a class="btn" href="/life/devices">Test my notification devices</a>{% endif %}
 </div>
 
 <div class="settings-layout">

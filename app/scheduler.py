@@ -1,6 +1,7 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timezone
+import os
 from zoneinfo import ZoneInfo
 
 from app.db import get_conn
@@ -42,8 +43,25 @@ def _safe_send(notifier, title: str, body: str) -> bool:
         print(f"[scheduler] notification failed: {e}")
         return False
 
+def legacy_global_notifications_allowed() -> bool:
+    """Explicit single-user compatibility mode, never a multi-account delivery path.
+
+    The old NTFY_TOPIC has no device owner. Fail closed if users cannot be
+    counted, or if more than one account has been approved and activated.
+    Personal task-to-device notifications use life_devices and are unaffected.
+    """
+    if not settings.ntfy_topic or os.getenv('MLO_ENABLE_LEGACY_GLOBAL_NTFY','false').lower() not in ('1','true','yes','on'):
+        return False
+    try:
+        with get_conn() as conn:
+            active=conn.execute('SELECT COUNT(*) FROM users WHERE approved=1 AND active=1').fetchone()[0]
+        return active == 1
+    except Exception:
+        return False
+
+
 def process_due_reminders() -> None:
-    if not settings.ntfy_topic: return  # classic global notifications are optional
+    if not legacy_global_notifications_allowed(): return  # shared legacy topics are disabled by default
     notifier = build_notifier()
     now = now_utc()
     tz = ZoneInfo(settings.timezone)
@@ -78,7 +96,7 @@ def process_due_reminders() -> None:
 
 
 def process_todo_digest() -> None:
-    if not settings.ntfy_topic: return  # classic global notifications are optional
+    if not legacy_global_notifications_allowed(): return  # shared legacy topics are disabled by default
     notifier = build_notifier()
     now = now_utc()
 

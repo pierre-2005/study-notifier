@@ -65,7 +65,9 @@ def add_device(request:Request,name:str=Form('My phone')):
 @router.post('/{device_id}/toggle')
 def toggle_device(request:Request,device_id:int):
     with get_conn() as conn:
-        conn.execute('UPDATE life_devices SET enabled=CASE WHEN enabled=1 THEN 0 ELSE 1 END WHERE id=? AND owner_id=?',(device_id,uid(request)))
+        result=conn.execute('UPDATE life_devices SET enabled=CASE WHEN enabled=1 THEN 0 ELSE 1 END WHERE id=? AND owner_id=?',(device_id,uid(request)))
+        if result.rowcount != 1:
+            raise HTTPException(404,'Device not found')
         conn.commit()
     return RedirectResponse('/life/devices',status_code=303)
 
@@ -73,7 +75,9 @@ def toggle_device(request:Request,device_id:int):
 @router.post('/{device_id}/delete')
 def remove_device(request:Request,device_id:int):
     with get_conn() as conn:
-        conn.execute('DELETE FROM life_devices WHERE id=? AND owner_id=?',(device_id,uid(request)))
+        result=conn.execute('DELETE FROM life_devices WHERE id=? AND owner_id=?',(device_id,uid(request)))
+        if result.rowcount != 1:
+            raise HTTPException(404,'Device not found')
         conn.commit()
     return RedirectResponse('/life/devices',status_code=303)
 

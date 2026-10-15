@@ -22,3 +22,7 @@ The update adds administrator-managed passwords and member capabilities, optiona
 All optional email settings are listed in `.env.production.example`; use Portainer environment variables for production and keep real passwords outside GitHub. Every existing user must sign in again after the new session-version check activates.
 
 **Scope note:** syllabus and bank-statement extraction and Microsoft Store submission are described in the consolidated plan, but are **not** implemented in this release. Live SMTP must be configured and tested before email recovery can deliver messages. Public deployment should wait until remaining tenant isolation and security concerns are addressed.
+
+## v3.6.1 notification-device privacy hardening
+
+All phone records are account-owned. This update adds explicit 404 responses for cross-account toggle and delete attempts, disables legacy shared-topic delivery by default, and checks owner-matched notification routing in CI. See `docs/DEVICE_PRIVACY_V361.md` for behavior, caveats, and upgrade instructions.

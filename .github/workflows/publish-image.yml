@@ -35,6 +35,8 @@ jobs:
         run: python tests_smoke.py
       - name: Test imports, files and devices
         run: python tests_new_features.py
+      - name: Verify device ownership, admin isolation, and notification routing
+        run: python tests_v361_device_isolation.py
       - name: Test legacy data migration
         run: python tests_migration.py
       - name: Test module consolidation
@@ -77,4 +79,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/pierre-2005/study-notifier:v3.6-account-security
+          tags: ghcr.io/pierre-2005/study-notifier:v3.6.1-device-privacy

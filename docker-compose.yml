@@ -3,7 +3,7 @@
 # IMPORTANT: Keep the original stack name and DB volume mapping unchanged.
 services:
   mlo:
-    image: ghcr.io/pierre-2005/study-notifier:v3.6-account-security
+    image: ghcr.io/pierre-2005/study-notifier:v3.6.1-device-privacy
     pull_policy: always
     ports:
       - "127.0.0.1:8001:8000"
@@ -12,6 +12,8 @@ services:
       TIMEZONE: ${TIMEZONE:-America/Edmonton}
       NTFY_BASE_URL: ${NTFY_BASE_URL:-https://ntfy.sh}
       NTFY_TOPIC: ${NTFY_TOPIC:-}
+      # Legacy shared-topic notifications are unsafe for multi-user accounts.
+      MLO_ENABLE_LEGACY_GLOBAL_NTFY: ${MLO_ENABLE_LEGACY_GLOBAL_NTFY:-false}
       STUDY_NOTIFIER_DB: /data/study_notifier.db
       MLO_ATTACHMENT_DIR: /data/mlo_uploads
       MLO_PUBLIC_URL: ${MLO_PUBLIC_URL:-}

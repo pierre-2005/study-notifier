@@ -48,7 +48,7 @@ with TestClient(app,follow_redirects=True) as a:
         assert b.get(f'/life/files/{fileid}').status_code==404
         assert b.get('/life/devices').status_code==200
         assert 'Work phone' not in b.get('/life/devices').text
-        assert b.post(f'/life/devices/{did}/delete',follow_redirects=False).status_code==303
+        assert b.post(f'/life/devices/{did}/delete',follow_redirects=False).status_code==404
         assert 'Work phone' in a.get('/life/devices').text
         assert b.post('/life/files/upload',files={'file':('bad.pdf',b'data','application/pdf')},data={'task_id':str(tid)}).status_code==404
     assert a.post(f'/life/files/{fileid}/delete').status_code==200
