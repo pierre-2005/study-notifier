@@ -107,7 +107,7 @@ async def require_auth(request: Request, call_next):
     path = request.url.path
     if request.method == 'GET' and path in ('/classic/dashboard','/todos','/todos/new','/schedule','/timers'):
         return RedirectResponse('/life/tasks' if path.startswith('/todos') else '/life/calendar' if path == '/schedule' else '/life/focus' if path == '/timers' else '/life',status_code=303)
-    public_paths = {"/", "/privacy", "/termsofservice", "/login", "/signup", "/logout", "/favicon.ico", "/health", "/forgot-password"}
+    public_paths = {"/", "/privacy", "/termsofservice", "/login", "/signup", "/logout", "/favicon.ico", "/health", "/forgot-password", "/service-worker.js"}
     if path.startswith(("/password-reset/", "/verify-email/")):
         return await call_next(request)
     if path.startswith("/static") or path in public_paths:

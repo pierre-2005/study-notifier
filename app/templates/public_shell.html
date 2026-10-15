@@ -7,6 +7,8 @@
   <meta name="description" content="My Life Organized helps you plan projects, tasks, study, finances and connected calendars in one personal workspace.">
   <title>{{ title }}</title>
   <link rel="icon" href="/static/favicon.ico">
+  <link rel="manifest" href="/static/manifest.webmanifest" type="application/manifest+json">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <link rel="stylesheet" href="/static/public-legal.css?v={{ APP_VERSION }}">
 </head>
 <body>
@@ -33,5 +35,15 @@
       <nav aria-label="Legal navigation"><a href="/">Home</a><a href="/privacy">Privacy Policy</a><a href="/termsofservice">Terms of Service</a></nav>
     </div>
   </footer>
+  <!-- The public homepage must register the same static-only worker as signed-in MLO.
+       Never cache authenticated HTML, APIs, or private workspace content. -->
+  <script>
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+          .catch(function (error) { console.warn('MLO offline support unavailable:', error); });
+      });
+    }
+  </script>
 </body>
 </html>
