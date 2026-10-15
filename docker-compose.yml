@@ -3,7 +3,7 @@
 # IMPORTANT: Keep the original stack name and DB volume mapping unchanged.
 services:
   mlo:
-    image: ghcr.io/pierre-2005/study-notifier:v3.5-unified-calendars
+    image: ghcr.io/pierre-2005/study-notifier:v3.6-account-security
     pull_policy: always
     ports:
       - "127.0.0.1:8001:8000"
@@ -24,6 +24,12 @@ services:
       MLO_CALENDAR_AUTO_SYNC: ${MLO_CALENDAR_AUTO_SYNC:-true}
       MLO_CALENDAR_SYNC_MINUTES: ${MLO_CALENDAR_SYNC_MINUTES:-10}
       MLO_CALENDAR_SYNC_BATCH_SIZE: ${MLO_CALENDAR_SYNC_BATCH_SIZE:-3}
+      MLO_SMTP_HOST: ${MLO_SMTP_HOST:-}
+      MLO_SMTP_PORT: ${MLO_SMTP_PORT:-587}
+      MLO_SMTP_STARTTLS: ${MLO_SMTP_STARTTLS:-true}
+      MLO_SMTP_USER: ${MLO_SMTP_USER:-}
+      MLO_SMTP_PASSWORD: ${MLO_SMTP_PASSWORD:-}
+      MLO_SMTP_FROM: ${MLO_SMTP_FROM:-}
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET}
       APP_USERNAME: ${APP_USERNAME:?Set APP_USERNAME}
       APP_PASSWORD: ${APP_PASSWORD:?Set APP_PASSWORD}

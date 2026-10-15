@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block content %}
+{% block content %}<div class="mlo-tip">Your password and recovery email are managed on <a href="/account/security"><strong>Account security</strong></a>.</div>
 {% set is_admin = request.session.get('role') == 'admin' %}
 <div class="page-heading">
   <div><div class="eyebrow">Preferences</div><h1>Settings</h1><p>Personalize the workspace appearance and navigation{% if is_admin %}, plus reminder templates and notifier behavior{% endif %}.</p></div>

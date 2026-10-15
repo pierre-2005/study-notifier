@@ -4,6 +4,7 @@
   <div><div class="eyebrow">Administration</div><h1>Users</h1><p>Approve new accounts and control access. Member accounts can use sections shared with them, create their own sections, and use timers; your personal school, finance, jobs, and expenses stay private.</p></div>
 </div>
 
+{% if request.query_params.get("notice") %}<div class="mlo-tip" role="status">{{request.query_params.get("notice")}}</div>{% endif %}
 <section class="card">
   <div class="card-h"><div><div class="h2">Workspace accounts</div><div class="muted mt-1">Pending users cannot sign in until you approve them.</div></div></div>
   <div class="card-b user-list">
@@ -16,7 +17,7 @@
           {% elif u['approved'] %}<span class="status-pill approved">Approved</span>
           {% else %}<span class="status-pill pending">Pending</span>{% endif %}
         </div>
-        <div class="small mt-1">Joined {{ u['created_at_utc'][:10] }}</div>
+        <div class="small mt-1">Joined {{ u['created_at_utc'][:10] }} · {{u['email'] or 'No recovery email'}} {% if u['email_verified'] %}· Verified{% endif %}</div>
       </div>
       {% if u['role'] != 'admin' %}
       <div class="user-actions">
@@ -25,6 +26,25 @@
         {% if u['active'] %}<form method="post" action="/admin/users/{{ u['id'] }}/active"><input type="hidden" name="active" value="0"><button class="btn btn-danger" type="submit">Disable</button></form>
         {% else %}<form method="post" action="/admin/users/{{ u['id'] }}/active"><input type="hidden" name="active" value="1"><button class="btn" type="submit">Enable</button></form>{% endif %}
       </div>
+      {% endif %}
+      {% if u['role'] != 'admin' %}
+      <details class="mlo-account-card" style="grid-column:1/-1;width:100%;margin-top:12px"><summary><strong>Account controls</strong></summary>
+        <div class="mlo-account-divider"></div>
+        <h3>Module permissions</h3><form method="post" action="/admin/users/{{u['id']}}/permissions">
+        <div class="mlo-account-permissions">
+          {% set caps=user_capabilities(u) %}{% for key,label in capability_labels.items() %}<label><input type="checkbox" name="{{key}}" {{'checked' if caps[key] else ''}}> {{label}}</label>{% endfor %}
+        </div><button type="submit" class="btn btn-primary" style="margin-top:12px">Save permissions</button></form>
+        <div class="mlo-account-divider"></div>
+        <h3>Recovery email</h3><form method="post" action="/admin/users/{{u['id']}}/email" class="mlo-account-form"><label>Email (unverified until user confirms)<input type="email" name="email" value="{{u['email'] or ''}}" maxlength="254"></label><label>Your admin password<input type="password" name="admin_password" required autocomplete="current-password"></label><button class="btn">Update email</button></form>
+        <div class="mlo-account-divider"></div>
+        <h3>Reset password</h3><p class="muted">Set a temporary password (12+ characters). Existing sessions will be revoked. The user must change it at next sign-in.</p>
+        <form method="post" action="/admin/users/{{u['id']}}/reset-password" class="mlo-account-form" onsubmit="return confirm('Reset this user password and revoke their existing sessions?')">
+          <label>Temporary password<input type="password" name="new_password" minlength="12" maxlength="256" autocomplete="new-password" required></label>
+          <label>Confirm temporary password<input type="password" name="confirm_password" minlength="12" maxlength="256" autocomplete="new-password" required></label>
+          <label>Your admin password<input type="password" name="admin_password" autocomplete="current-password" required></label>
+          <button type="submit" class="btn btn-danger">Reset password</button>
+        </form>
+      </details>
       {% endif %}
     </div>
     {% endfor %}

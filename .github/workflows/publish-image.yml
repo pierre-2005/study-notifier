@@ -43,6 +43,10 @@ jobs:
         run: python tests_v32.py
       - name: Test Studio v3.4 functionality
         run: python tests_v34.py
+      - name: Test account recovery, permissions and session revocation
+        run: python tests_v36_accounts.py
+      - name: Verify destructive-action contrast and responsive layout
+        run: python tests_v36_visual.py
       - name: Test MLO 3.5 calendar integration
         run: python tests_v35_calendar.py
       - name: Test external calendar editing and sidebar positioning
@@ -73,4 +77,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/pierre-2005/study-notifier:v3.5-unified-calendars
+          tags: ghcr.io/pierre-2005/study-notifier:v3.6-account-security

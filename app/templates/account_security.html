@@ -1,0 +1,9 @@
+{% extends 'base.html' %}{% block content %}
+<div class="mlo-page-head"><div><div class="mlo-kicker">YOUR ACCOUNT</div><h1>Account security</h1><p>Manage your sign-in credentials and recovery email.</p></div></div>
+{% if notice %}<div class="mlo-tip" role="status">{{notice}}</div>{% endif %}
+<div class="mlo-account-card"><h2>Recovery email</h2>
+<p class="mlo-subtle">{{user.email or 'No email linked'}} {% if user.email_verified %}· Verified{% elif user.email %}· Verification needed{% endif %}</p>
+<form class="mlo-account-form" method="post" action="/account/email"><label>Email address<input type="email" name="email" value="{{user.email or ''}}" maxlength="254" required autocomplete="email"></label><label>Current password<input type="password" name="current_password" autocomplete="current-password" required></label><button class="btn btn-primary">Save email</button></form>
+{% if user.email and not user.email_verified %}{% if smtp_enabled %}<form method="post" action="/account/email/verify"><button class="btn">Send verification email</button></form>{% else %}<p class="mlo-subtle">Email verification is unavailable until the administrator configures outbound SMTP.</p>{% endif %}{% endif %}
+<div class="mlo-account-divider"></div><h2>Password</h2><p class="mlo-subtle">Changing your password signs out existing sessions on other devices.</p><a class="btn btn-primary" href="/account/password">Change password</a></div>
+{% endblock %}

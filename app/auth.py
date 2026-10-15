@@ -8,6 +8,8 @@ import secrets
 from datetime import datetime, timezone
 
 from app.db import get_conn
+import re
+import json
 
 PBKDF2_ITERATIONS = 310_000
 
@@ -60,6 +62,37 @@ def init_auth_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_users_approval ON users(approved, active, created_at_utc);
             """
         )
+        # Additive migration, preserving all existing users and credentials.
+        existing={r[1] for r in conn.execute("PRAGMA table_info(users)")}
+        columns={"email":"TEXT", "email_verified":"INTEGER NOT NULL DEFAULT 0",
+                 "auth_version":"INTEGER NOT NULL DEFAULT 1", "must_change_password":"INTEGER NOT NULL DEFAULT 0",
+                 "permissions_json":"TEXT NOT NULL DEFAULT '{}'"}
+        for name,ddl in columns.items():
+            if name not in existing:
+                conn.execute(f"ALTER TABLE users ADD COLUMN {name} {ddl}")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(lower(email)) WHERE email IS NOT NULL AND email != ''")
+        conn.executescript("""
+        CREATE TABLE IF NOT EXISTS auth_email_tokens (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          purpose TEXT NOT NULL CHECK(purpose IN ('verify_email','password_reset')),
+          token_hash TEXT NOT NULL UNIQUE,
+          candidate_email TEXT,
+          created_at TEXT NOT NULL,
+          expires_at TEXT NOT NULL,
+          used_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_auth_email_tokens_user ON auth_email_tokens(user_id,purpose,created_at);
+        CREATE TABLE IF NOT EXISTS auth_audit_log (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          actor_id INTEGER,
+          target_id INTEGER,
+          action TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY(actor_id) REFERENCES users(id),
+          FOREIGN KEY(target_id) REFERENCES users(id)
+        );
+        """)
         conn.commit()
 
 
@@ -70,24 +103,9 @@ def ensure_bootstrap_admin(username: str, password: str) -> None:
     with get_conn() as conn:
         row = conn.execute("SELECT id, role, approved, active, password_hash FROM users WHERE username=? COLLATE NOCASE", (username,)).fetchone()
         if row:
-            # Keep the bootstrap administrator controlled by the deployment
-            # credentials. This preserves the pre-1.4 behavior where changing
-            # APP_PASSWORD changes the administrator password after a restart.
-            password_changed = not verify_password(password, row["password_hash"])
-            if row["role"] != "admin" or not row["approved"] or not row["active"] or password_changed:
-                conn.execute(
-                    """
-                    UPDATE users
-                    SET role='admin',
-                        approved=1,
-                        active=1,
-                        approved_at_utc=COALESCE(approved_at_utc, ?),
-                        password_hash=?
-                    WHERE id=?
-                    """,
-                    (_now_iso(), hash_password(password) if password_changed else row["password_hash"], row["id"]),
-                )
-                conn.commit()
+            # APP_PASSWORD is bootstrap-only. Never silently overwrite an administrator's
+            # password or reactivate a disabled account on every deployment.
+            # Existing deployments have already initialized the bootstrap account.
             return
         conn.execute(
             """
@@ -109,7 +127,7 @@ def get_user_by_id(user_id: int):
         return conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
 
 
-def create_pending_user(username: str, display_name: str, password: str) -> tuple[bool, str]:
+def create_pending_user(username: str, display_name: str, password: str, email: str = "") -> tuple[bool, str]:
     username = (username or "").strip()
     display_name = (display_name or "").strip() or username
     if len(username) < 3 or len(username) > 40:
@@ -118,15 +136,20 @@ def create_pending_user(username: str, display_name: str, password: str) -> tupl
         return False, "Username can only contain letters, numbers, periods, underscores, and hyphens."
     if len(password or "") < 8:
         return False, "Password must be at least 8 characters."
+    email=(email or '').strip().lower()
+    if email and (len(email)>254 or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+",email)):
+        return False,"Enter a valid email address."
     with get_conn() as conn:
+        if email and conn.execute("SELECT 1 FROM users WHERE lower(email)=?",(email,)).fetchone():
+            return False,"That email address is already linked to an account."
         if conn.execute("SELECT 1 FROM users WHERE username=? COLLATE NOCASE", (username,)).fetchone():
             return False, "That username is already taken."
         conn.execute(
             """
-            INSERT INTO users(username, display_name, password_hash, role, approved, active, created_at_utc)
-            VALUES(?,?,?,?,0,1,?)
+            INSERT INTO users(username, display_name, password_hash, role, approved, active, created_at_utc, email)
+            VALUES(?,?,?,?,0,1,?,?)
             """,
-            (username, display_name[:80], hash_password(password), "member", _now_iso()),
+            (username, display_name[:80], hash_password(password), "member", _now_iso(), email or None),
         )
         conn.commit()
     return True, "Account created. An administrator must approve it before you can sign in."
@@ -151,4 +174,52 @@ def set_user_approval(user_id: int, approved: bool, admin_id: int) -> None:
 def set_user_active(user_id: int, active: bool) -> None:
     with get_conn() as conn:
         conn.execute("UPDATE users SET active=? WHERE id=? AND role!='admin'", (1 if active else 0, user_id))
+        conn.commit()
+
+# Capabilities are grantable independently of the administrator role.
+# IMPORTANT: Legacy administrator-owned academic/finance tables are NOT exposed
+# through these flags, because they are not fully isolated per user.
+PERMISSION_LABELS = {
+    "projects_create": "Create projects",
+    "projects_share": "Share projects and spaces",
+    "calendar_connect": "Connect external calendars",
+    "files_upload": "Upload project files",
+    "import_tasks": "Import task files",
+    "devices_manage": "Manage notification devices",
+}
+
+def user_capabilities(user):
+    if user["role"]=="admin":
+        return {k:True for k in PERMISSION_LABELS}
+    try:
+        values=json.loads(user["permissions_json"] or '{}')
+    except (ValueError,TypeError):
+        values={}
+    return {k:values.get(k, True) is not False for k in PERMISSION_LABELS}
+
+
+def set_user_capabilities(target_id, values, actor_id):
+    with get_conn() as conn:
+        row=conn.execute("SELECT role FROM users WHERE id=?",(target_id,)).fetchone()
+        if not row or row['role']=='admin': return False
+        prefs={k:bool(values.get(k,False)) for k in PERMISSION_LABELS}
+        conn.execute("UPDATE users SET permissions_json=? WHERE id=?",(json.dumps(prefs),target_id))
+        conn.execute("INSERT INTO auth_audit_log(actor_id,target_id,action,created_at) VALUES(?,?,?,?)",
+                     (actor_id,target_id,'permissions_updated',_now_iso()))
+        conn.commit()
+        return True
+
+
+def update_user_password(target_id,password,actor_id=None,temporary=False):
+    if len(password or '')<12 or len(password)>256:
+        raise ValueError('Use a password of 12 to 256 characters.')
+    with get_conn() as conn:
+        row=conn.execute("SELECT id FROM users WHERE id=?",(target_id,)).fetchone()
+        if not row: raise ValueError('Account not found.')
+        conn.execute("""UPDATE users SET password_hash=?,auth_version=auth_version+1,
+                      must_change_password=? WHERE id=?""",
+                     (hash_password(password),1 if temporary else 0,target_id))
+        conn.execute("UPDATE auth_email_tokens SET used_at=? WHERE user_id=? AND used_at IS NULL",(_now_iso(),target_id))
+        conn.execute("INSERT INTO auth_audit_log(actor_id,target_id,action,created_at) VALUES(?,?,?,?)",
+                     (actor_id,target_id,'password_admin_reset' if temporary else 'password_changed',_now_iso()))
         conn.commit()

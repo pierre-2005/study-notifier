@@ -214,7 +214,7 @@
           <a href="/life/work" data-command-item data-search="work career jobs applications"><span>Work & career</span><small>Career</small></a>
           {% if is_admin %}<a href="/life/money" data-command-item data-search="money finance expenses budgets bills"><span>Money</span><small>Finance</small></a>{% endif %}
           <a href="/life/spaces" data-command-item data-search="spaces sections shared groceries"><span>Spaces</span><small>Collaboration</small></a>
-          <a href="/settings" data-command-item data-search="settings preferences"><span>Settings</span><small>App</small></a>
+          <a href="/account/security" data-command-item data-search="password email account recovery security"><span>Account security</span><small>Account</small></a><a href="/settings" data-command-item data-search="settings preferences"><span>Settings</span><small>App</small></a>
           {% for section in request.state.custom_sections %}<a href="/sections/{{ section['id'] }}" data-command-item data-search="section {{ section['name'] }} {{ section['description'] }}"><span>{{ section['icon'] }} {{ section['name'] }}</span><small>Section</small></a>{% endfor %}
           <div class="command-group-label">Create</div>
           <a href="/life/tasks" data-command-item data-search="new task todo"><span>New task</span><small>Create</small></a>

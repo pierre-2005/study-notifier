@@ -16,12 +16,13 @@ from app.finance.routes import router as finance_router
 from app.finance.db import init_finance_schema
 from app.auth import (
     init_auth_schema, ensure_bootstrap_admin, get_user_by_username, get_user_by_id,
-    verify_password, create_pending_user, list_users, set_user_approval, set_user_active,
+    verify_password, create_pending_user, list_users, set_user_approval, set_user_active, user_capabilities, PERMISSION_LABELS,
 )
 from app.workspace import router as workspace_router, init_workspace_schema, list_sections_for_user
 from app.timers import router as timers_router, init_timer_schema, active_timer_for_user
 
 
+from app.account_security import router as accounts_router, init_account_security_schema
 from app.config import settings
 from app.db import init_db, get_conn
 from app.scheduler import start_scheduler
@@ -32,7 +33,7 @@ from app.lifeos import router as life_router, init_life_schema
 from app.phones import router as phone_router, init_phone_schema
 from app.life_import import router as import_router, init_import_schema
 from app.life_files import router as files_router, init_file_schema
-from app.backup import pre_v3_backup, pre_consolidation_backup, pre_v34_backup
+from app.backup import pre_v3_backup, pre_consolidation_backup, pre_v34_backup, pre_v36_backup
 from app.consolidation import consolidate_todos
 from app.life_hubs import router as hubs_router
 from app.personalize import router as layout_router, init_layout_schema
@@ -47,8 +48,10 @@ async def lifespan(app: FastAPI):
     pre_v3_backup()
     pre_consolidation_backup()
     pre_v34_backup()
+    pre_v36_backup()
     init_db()
     init_auth_schema()
+    init_account_security_schema()
     ensure_bootstrap_admin(APP_USERNAME, APP_PASSWORD)
     init_finance_schema()
     init_workspace_schema()
@@ -104,7 +107,9 @@ async def require_auth(request: Request, call_next):
     path = request.url.path
     if request.method == 'GET' and path in ('/classic/dashboard','/todos','/todos/new','/schedule','/timers'):
         return RedirectResponse('/life/tasks' if path.startswith('/todos') else '/life/calendar' if path == '/schedule' else '/life/focus' if path == '/timers' else '/life',status_code=303)
-    public_paths = {"/", "/privacy", "/termsofservice", "/login", "/signup", "/logout", "/favicon.ico", "/health"}
+    public_paths = {"/", "/privacy", "/termsofservice", "/login", "/signup", "/logout", "/favicon.ico", "/health", "/forgot-password"}
+    if path.startswith(("/password-reset/", "/verify-email/")):
+        return await call_next(request)
     if path.startswith("/static") or path in public_paths:
         return await call_next(request)
 
@@ -121,6 +126,13 @@ async def require_auth(request: Request, call_next):
         next_url = path + (("?" + request.url.query) if request.url.query else "")
         return RedirectResponse(url="/login?next=" + urllib.parse.quote(next_url), status_code=303)
 
+    # Password resets invalidate every existing session. A one-time sign-in
+    # after upgrading is required for sessions created before v3.6.
+    if request.session.get('auth_version') != int(user['auth_version']):
+        request.session.clear()
+        return RedirectResponse('/login?message=Please+sign+in+again',status_code=303)
+    if user['must_change_password'] and path != '/account/password' and path != '/logout':
+        return RedirectResponse('/account/password?required=1',status_code=303)
     request.session["user_id"] = int(user["id"])
     request.session["user"] = user["username"]
     request.session["role"] = user["role"]
@@ -134,10 +146,31 @@ async def require_auth(request: Request, call_next):
         request.state.custom_sections = []
         request.state.active_timer = None
 
+    # Connection authorization itself uses GET redirects. Deny new OAuth
+    # connection attempts when the capability has been revoked.
+    if (user['role']!='admin' and path.startswith('/life/calendars/connect/')
+            and not user_capabilities(user)['calendar_connect']):
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse('Calendar connections are disabled for this account.',status_code=403)
+
+    # Enforce the administrator's per-user capability restrictions on writes.
+    if request.method in ('POST','PUT','PATCH','DELETE') and user['role']!='admin':
+        p=path
+        needed=(
+            'projects_create' if p in ('/life/projects','/life/projects/template') else
+            'projects_share' if (p.startswith('/life/projects/') and ('/invite' in p or '/remove/' in p)) or (p.startswith('/sections/') and '/share' in p) else
+            'calendar_connect' if p.startswith('/life/calendars/') and (p.endswith('/feed') or p.endswith('/delete')) else
+            'files_upload' if p=='/life/files/upload' else
+            'import_tasks' if p.startswith('/life/import/') else
+            'devices_manage' if p.startswith('/life/devices') else None)
+        if needed and not user_capabilities(user)[needed]:
+            from fastapi.responses import PlainTextResponse
+            return PlainTextResponse('Your account does not have permission for this action.',status_code=403)
+
     # Member accounts are collaboration accounts by default. Personal school,
     # finance, job, and expense data remains private to administrators.
     if user["role"] != "admin":
-        member_allowed = ("/life", "/sections", "/timers", "/settings", "/logout")
+        member_allowed = ("/life", "/sections", "/timers", "/settings", "/account", "/logout")
         if path == "/" or not path.startswith(member_allowed):
             return RedirectResponse("/life", status_code=303)
 
@@ -171,7 +204,7 @@ app.add_middleware(GZipMiddleware,minimum_size=1200)
 async def add_security_headers(request: Request, call_next):
     response=await call_next(request)
     response.headers['X-Content-Type-Options']='nosniff'
-    response.headers['Referrer-Policy']='same-origin'
+    response.headers['Referrer-Policy']='no-referrer' if request.url.path.startswith(('/password-reset/','/verify-email/')) else 'same-origin' 
     response.headers['X-Frame-Options']='DENY'
     if request.url.path.startswith('/static/'):
         if request.query_params.get('v') == APP_VERSION:
@@ -2160,6 +2193,7 @@ def login_submit(
             request.session["user_id"] = int(user["id"])
             request.session["user"] = user["username"]
             request.session["role"] = user["role"]
+            request.session["auth_version"] = int(user['auth_version'])
             destination = next if next != "/" else "/life"
             if user["role"] != "admin" and destination == "/":
                 destination = "/life"
@@ -2180,10 +2214,11 @@ def signup_submit(
     display_name: str = Form(""),
     password: str = Form(...),
     password_confirm: str = Form(...),
+    email: str = Form(""),
 ):
     if password != password_confirm:
         return templates.TemplateResponse(request, "signup.html", {"request": request, "error": "Passwords do not match.", "message": ""})
-    ok, message = create_pending_user(username, display_name, password)
+    ok, message = create_pending_user(username, display_name, password, email)
     if not ok:
         return templates.TemplateResponse(request, "signup.html", {"request": request, "error": message, "message": ""})
     return templates.TemplateResponse(request, "signup.html", {"request": request, "error": "", "message": message})
@@ -2199,7 +2234,7 @@ def _require_admin(request: Request):
 @app.get("/admin/users", response_class=HTMLResponse)
 def admin_users(request: Request):
     _require_admin(request)
-    return templates.TemplateResponse(request, "admin_users.html", {"request": request, "users": list_users()})
+    return templates.TemplateResponse(request, "admin_users.html", {"request": request, "users": list_users(), "capability_labels": PERMISSION_LABELS, "user_capabilities": user_capabilities})
 
 
 @app.post("/admin/users/{user_id}/approval")
@@ -2216,6 +2251,7 @@ def admin_user_active(request: Request, user_id: int, active: str = Form("0")):
     return RedirectResponse("/admin/users", status_code=303)
 
 
+app.include_router(accounts_router)
 app.include_router(life_router)
 app.include_router(layout_router)
 app.include_router(calendar_links_router)

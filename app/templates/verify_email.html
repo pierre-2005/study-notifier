@@ -1,0 +1,4 @@
+{% extends 'base.html' %}{% block content %}<section class="card login-card"><div class="login-brand-row"><span class="workspace-icon">M</span><div><div class="eyebrow">Account security</div><h1>Verify email address</h1></div></div>
+{% if success %}<p>Your email address has been verified. You can now use it for account recovery.</p>
+{% elif valid %}<p class="muted">Confirm that this email address belongs to you.</p><form method="post"><button class="btn btn-primary">Verify email</button></form>
+{% else %}<p class="muted">This verification link is invalid or expired. Request another one from Account security.</p>{% endif %}<div class="login-alt"><a href="/login">Return to sign in</a></div></section>{% endblock %}

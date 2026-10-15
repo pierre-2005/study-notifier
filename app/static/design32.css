@@ -122,3 +122,42 @@ body{background:var(--bg)}
 @media(prefers-reduced-motion:reduce){.mlo-widget,.mlo-nav-edit-item{transition:none!important}}
 
 .mlo-experience-compact{margin:14px 0}.mlo-experience-compact label{font-size:12px;font-weight:700;display:flex;align-items:center;gap:12px}.mlo-experience-compact select{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:8px}
+
+/* v3.6 destructive-action contrast: use theme tokens, not pale fixed colors. */
+.mlo-danger-area{--danger-ink:#9f2736;--danger-border:#cb8189;
+  background:var(--panel)!important;
+  color:var(--text)!important;border:1px solid color-mix(in srgb,var(--border) 65%,#c45261)!important;
+  border-radius:16px; padding:20px; margin-top:22px}
+html.dark .mlo-danger-area{--danger-ink:#ff98a1;--danger-border:#a35b67;
+  background:var(--panel)!important}
+.mlo-danger-area summary{color:var(--danger-ink)!important;font-size:14px;font-weight:750;
+  list-style-position:inside; padding:4px 0; line-height:1.5}
+.mlo-danger-area p,.mlo-danger-area label{color:var(--text)!important;line-height:1.7}
+.mlo-danger-area p{margin:14px 0 18px;opacity:.94}
+.mlo-danger-area form{display:grid;gap:16px;padding-top:5px}
+.mlo-danger-area label{font-size:13px;font-weight:600;display:block}
+.mlo-danger-area label strong{color:var(--text);font-weight:800}
+.mlo-danger-area input{box-sizing:border-box;width:100%;min-height:43px;
+ background:var(--panel)!important;color:var(--text)!important;
+ border:1px solid var(--border)!important;padding:11px 13px;font:inherit;
+ margin-top:9px;border-radius:10px}
+.mlo-danger-area input:focus{outline:2px solid var(--danger-border);outline-offset:2px}
+.mlo-danger-area .mlo-danger-btn{background:#a52a3b!important;color:#fff!important;
+ border:1px solid #a52a3b!important;box-shadow:none;border-radius:10px;min-height:43px;
+ font-size:13px;font-weight:750}
+.mlo-danger-area .mlo-danger-btn:hover{background:#882333!important;color:#fff!important}
+.mlo-danger-area .mlo-danger-btn:focus-visible{outline:3px solid var(--danger-border);outline-offset:2px}
+.mlo-danger-area .mlo-danger-btn:disabled{opacity:.55;cursor:not-allowed}
+.mlo-account-card{display:grid;gap:16px;padding:20px;border:1px solid var(--border);border-radius:15px;
+ background:var(--panel);color:var(--text)}
+.mlo-account-card input[type=email],.mlo-account-card input[type=password],
+.mlo-account-card input[type=text]{background:var(--panel2);border:1px solid var(--border);
+ color:var(--text);padding:10px 12px;max-width:100%;border-radius:9px;min-height:42px}
+.mlo-account-card input[type=checkbox]{accent-color:var(--mlo-accent);width:17px;height:17px}
+.mlo-account-card label{color:var(--text)}
+.mlo-account-form{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.mlo-account-form label{display:flex;flex-direction:column;gap:6px;flex:1;min-width:160px}
+.mlo-account-permissions{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 16px}
+.mlo-account-permissions label{display:flex;align-items:center;gap:9px;font-size:13px}
+.mlo-account-divider{height:1px;background:var(--border);margin:2px 0}
+@media(max-width:700px){.mlo-account-card{padding:16px}.mlo-account-form{display:grid}.mlo-account-permissions{grid-template-columns:1fr}}

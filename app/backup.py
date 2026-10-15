@@ -54,3 +54,20 @@ def pre_v34_backup():
         return target
     finally:
         if partial.exists(): partial.unlink()
+
+
+def pre_v36_backup():
+    """One-time SQLite snapshot before additive account-security schema migration."""
+    source=Path(DB_PATH)
+    if not source.is_file() or source.stat().st_size==0: return None
+    target=source.with_name(source.stem+'.pre-mlo-v3.6.sqlite.backup')
+    if target.exists(): return target
+    partial=target.with_name(target.name+'.partial')
+    try:
+        with sqlite3.connect(str(source),timeout=30) as original:
+            with sqlite3.connect(str(partial),timeout=30) as saved:
+                original.backup(saved)
+        os.replace(partial,target)
+        return target
+    finally:
+        if partial.exists(): partial.unlink()

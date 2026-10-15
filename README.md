@@ -1,22 +1,24 @@
-# My Life Organized Studio 3.5
+# My Life Organized Studio v3.6
 
-A complete GitHub-to-Portainer source release built from the v3.4.3 calendar integration, with the earlier event-destination and public legal-page patches incorporated.
+**Account security + interface quality release**, based on the MLO v3.5 source application.
 
-**New:** one New Event form for MLO-only, Google and Outlook; private per-account MLO events; background calendar refresh; improved Windows PWA manifest. Data remains on the existing MLO server.
+The update adds administrator-managed passwords and member capabilities, optional recovery email and verification, one-use password-reset links, session revocation, and a theme-aware project deletion panel. It also preserves MLO's existing projects, tasks, multi-account Google/Outlook calendar integration, background sync, themes and server-backed PWA architecture.
 
-**Start here:**
-1. `docs/V35_RELEASE.md`: what changed and current limitations.
-2. `docs/PORTAINER_ENV.md`: environment variables and safe deployment into your existing stack.
-3. `docs/MICROSOFT_ENTRA_SETUP.md`: register MLO with Entra for Outlook and Microsoft 365 calendars.
-4. `docs/GOOGLE_SEARCH_CONSOLE_SECURITY.md`: investigate the deceptive-pages security issue when Search Console lists no example URLs.
-5. `docs/WINDOWS_SERVER_BACKED_APP.md`: Windows Store PWA plan with shared server data.
-6. `docs/VERIFICATION_V35.md`: local test results and what remains unverified.
+## Read before upgrading
 
-## Deployment safety
-- Do not upload an `.env` containing secrets to GitHub. The `.env.example` file is a sample only.
-- Keep the same existing `study_notifier_data:/data` Docker volume (verify its **actual** Portainer volume name) and port `8001`.
-- Back up database and attached files before upgrading.
-- Wait for GitHub Actions to publish `ghcr.io/pierre-2005/study-notifier:v3.5-unified-calendars` before pulling in Portainer.
-- Test on a disposable Google/Outlook calendar; provider writes have only been verified with simulated API responses here.
+- `docs/DEPLOY_V36.md` - precise GitHub -> GitHub Actions -> Portainer deployment.
+- `docs/MLO_PRODUCT_RELEASE_MASTER_PLAN.md` - **one consolidated review document** covering account security/email, intelligent syllabus and bank-statement imports, and the free Microsoft Store release plan.
+- `docs/VERIFICATION_V36.md` - actual test outcomes, limitations and remaining security work.
 
-Google and Microsoft developer accounts, Google Search Console security review, and Windows Store submission are external processes that require user account authorization and cannot be completed by deploying source files alone.
+## Main changes
+
+- **Admin Users:** approve/revoke; enable/disable; per-user capability controls; administrator password-confirmed temporary password and recovery email management.
+- **Account security:** current-password change, recovery-email entry and verification, optional self-service forgot-password for **verified** email only.
+- **Password safety:** short-lived single-use reset links, session revocation and required password rotation for admin-issued temporary passwords.
+- **Database:** additive schema update, automatic pre-migration SQLite snapshot, existing account/data preservation.
+- **UI:** project deletion surface follows the chosen light/dark theme and colors, with accessible spacing and contrast.
+- **Bootstrap:** `APP_PASSWORD` creates the initial administrator but does **not** reset its password on every restart.
+
+All optional email settings are listed in `.env.production.example`; use Portainer environment variables for production and keep real passwords outside GitHub. Every existing user must sign in again after the new session-version check activates.
+
+**Scope note:** syllabus and bank-statement extraction and Microsoft Store submission are described in the consolidated plan, but are **not** implemented in this release. Live SMTP must be configured and tested before email recovery can deliver messages. Public deployment should wait until remaining tenant isolation and security concerns are addressed.
