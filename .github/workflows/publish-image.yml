@@ -29,6 +29,8 @@ jobs:
 
       - name: Compile Python modules
         run: python -m compileall -q app
+      - name: Verify finance, PWA discovery and private ntfy QR pairing
+        run: python tests_v363_finance_pwa_qr.py
       - name: Verify public PWA installability (manifest, worker, icons)
         run: python tests_pwa_public.py
       - name: Verify public privacy, terms and homepage
@@ -81,4 +83,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/pierre-2005/study-notifier:v3.6.2-pwa-ready
+          tags: ghcr.io/pierre-2005/study-notifier:v3.6.3-finance-pwa-ntfy

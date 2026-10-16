@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+import logging
+import sqlite3
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from app.finance import budget, monthly, service
@@ -14,6 +16,7 @@ TEMPLATES_DIR = Path(__file__).resolve().parents[1] / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 templates.env.globals["APP_VERSION"] = APP_VERSION
 router = APIRouter(prefix="/finance", tags=["finance"])
+log = logging.getLogger(__name__)
 
 
 def template_context(request: Request, **extra):
@@ -146,7 +149,7 @@ def delete_transaction(tx_id: int):
 
 
 @router.get("/budget", response_class=HTMLResponse)
-def budget_page(request: Request):
+def budget_page(request: Request, saved: bool = False):
     data = service.budget_data()
     txs = service.load_transactions(include_excluded=False)
     analysis = budget.analyze_budget(data, txs, service.list_categories())
@@ -157,13 +160,13 @@ def budget_page(request: Request):
     return templates.TemplateResponse(
         request,
         "finance_budget.html",
-        template_context(request, data=data, grouped=grouped, analysis=analysis),
+        template_context(request, data=data, grouped=grouped, analysis=analysis, save_error=None, saved=saved),
     )
 
 
 @router.post("/budget/save")
 async def save_budget(request: Request):
-    form = await request.form()
+    form = await request.form(max_fields=4000)
     rows = []
     for key in form.getlist("row_key"):
         rows.append({
@@ -172,8 +175,25 @@ async def save_budget(request: Request):
             "amount": form.get(f"amount__{key}", "0"),
             "frequency": form.get(f"frequency__{key}", "Monthly"),
         })
-    service.save_budget_rows(str(form.get("name", "")), rows)
-    return RedirectResponse("/finance/budget", status_code=303)
+    try:
+        service.save_budget_rows(str(form.get("name", "")), rows)
+    except (sqlite3.Error, ValueError, OverflowError):
+        log.exception('Unable to save finance budget (database or invalid amount)')
+        if request.headers.get('accept') == 'application/json':
+            return JSONResponse({'ok':False,'detail':'Budget could not be saved. Try again. Your existing budget was not changed.'},status_code=503)
+        # Keep the user in the styled Finance view instead of a bare 500 page.
+        data = service.budget_data()
+        analysis = budget.analyze_budget(data, service.load_transactions(include_excluded=False), service.list_categories())
+        grouped = {}
+        for row in service.budget_rows_for_template(data):
+            grouped.setdefault(row['section_label'], []).append(row)
+        return templates.TemplateResponse(request, 'finance_budget.html',
+            template_context(request, data=data, grouped=grouped, analysis=analysis,
+                save_error='Budget could not be saved. Your existing budget has not been changed. Please retry, or check the server logs.'),
+            status_code=503)
+    if request.headers.get('accept') == 'application/json':
+        return JSONResponse({'ok':True})
+    return RedirectResponse('/finance/budget?saved=1', status_code=303)
 
 
 @router.post("/budget/custom")

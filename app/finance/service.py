@@ -344,17 +344,22 @@ def save_budget_rows(name: str, rows: list[dict]) -> None:
                 continue
             amount = max(0.0, parse_amount(r.get("amount", "0")))
             frequency = budget.normalize_frequency(r.get("frequency", "Monthly"))
-            conn.execute(
-                """
-                INSERT INTO finance_budget_rows(section, name, amount, frequency, created_at_utc, updated_at_utc)
-                VALUES(?,?,?,?,?,?)
-                ON CONFLICT(section, name) DO UPDATE SET
-                  amount=excluded.amount,
-                  frequency=excluded.frequency,
-                  updated_at_utc=excluded.updated_at_utc
-                """,
-                (section, row_name, amount, frequency, ts, ts),
+            # UPDATE-first remains compatible with databases created by older
+            # releases where finance_budget_rows has no composite UNIQUE index.
+            # Do not rely on SQLite ON CONFLICT(section,name) being available.
+            result = conn.execute(
+                """UPDATE finance_budget_rows
+                   SET amount=?, frequency=?, updated_at_utc=?
+                   WHERE section=? AND name=?""",
+                (amount, frequency, ts, section, row_name),
             )
+            if result.rowcount == 0:
+                conn.execute(
+                    """INSERT INTO finance_budget_rows
+                       (section,name,amount,frequency,created_at_utc,updated_at_utc)
+                       VALUES(?,?,?,?,?,?)""",
+                    (section, row_name, amount, frequency, ts, ts),
+                )
         conn.commit()
 
 

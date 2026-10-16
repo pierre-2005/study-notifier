@@ -26,3 +26,7 @@ All optional email settings are listed in `.env.production.example`; use Portain
 ## v3.6.1 notification-device privacy hardening
 
 All phone records are account-owned. This update adds explicit 404 responses for cross-account toggle and delete attempts, disables legacy shared-topic delivery by default, and checks owner-matched notification routing in CI. See `docs/DEVICE_PRIVACY_V361.md` for behavior, caveats, and upgrade instructions.
+
+## v3.6.3: Finance, PWA and ntfy QR fixes
+
+See [docs/RELEASE_V363_FINANCE_PWA_NTFY.md](docs/RELEASE_V363_FINANCE_PWA_NTFY.md) for the finance budget-save repair, persistent tabs, root PWA manifest, and owner-only ntfy QR pairing. Existing Portainer data volume and public MLO domain remain unchanged.

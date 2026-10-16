@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="mlo-legacy-trail"><a href="/life/money">← Money</a><span> / </span><span>Finance</span></div>
+<div class="mlo-legacy-trail"><a href="/finance">Finance overview</a><span> / </span><span>Budget</span></div>
+{% include "finance_nav.html" %}
+
 <div class="finance-back-row"><a class="back-link" href="/finance">← Finance overview</a><a class="back-link" href="/finance/monthly">Monthly comparison</a></div>
 
 <div class="page-heading finance-page-head">
@@ -8,9 +10,7 @@
   <a class="btn" href="/finance">Back to Finance</a>
 </div>
 
-<nav class="subnav" aria-label="Finance sections">
-  <a href="/finance">Overview</a><a href="/finance/transactions">Transactions</a><a class="active" href="/finance/budget">Budget</a><a href="/finance/monthly">Monthly</a><a href="/finance/rules">Rules</a>
-</nav>
+
 
 <div class="budget-step-nav" aria-label="Budget sections">
   <a href="#budget-income"><strong>1</strong> Income</a><a href="#budget-expenses"><strong>2</strong> Expenses</a><a href="#budget-savings"><strong>3</strong> Savings</a><a href="#budget-results"><strong>4</strong> Results</a>
@@ -25,7 +25,10 @@
 
 <div class="budget-layout">
   <section class="card budget-form-card">
-    <form method="post" action="/finance/budget/save" class="card-b">
+    <form method="post" action="/finance/budget/save" class="card-b" data-budget-save-form>
+      {% if saved %}<div class="mlo-budget-feedback" role="status">Budget saved successfully.</div>{% endif %}
+      {% if save_error %}<div class="mlo-budget-feedback" role="alert">{{ save_error }}</div>{% endif %}
+      <div class="mlo-budget-feedback" data-budget-feedback hidden role="status"></div>
       <label class="field"><span class="label">Budget name (optional)</span><input class="input mt-1" name="name" value="{{ data.name or '' }}" placeholder="Pierre's monthly plan"></label>
 
       {% for group_name, rows in grouped.items() %}
@@ -88,4 +91,5 @@
     {% for r in analysis.rows %}{% if r.budget > 0 or r.actual > 0 %}<tr><td style="font-weight:650">{{ r.category }}</td><td>{{ money(r.budget) }}</td><td>{{ money(r.actual) }}</td><td>{{ money(r.difference) }}</td><td>{% if r.budget > 0 %}{{ '%.0f'|format(r.utilization * 100) }}%{% else %}—{% endif %}</td><td><span class="badge">{{ r.status }}</span></td></tr>{% endif %}{% endfor %}
   </tbody></table></div>
 </section>
+<script src="/static/budget-save.js?v={{ APP_VERSION }}" defer></script>
 {% endblock %}

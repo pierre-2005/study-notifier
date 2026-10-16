@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="mlo-legacy-trail"><a href="/life/money">← Money</a><span> / </span><span>Finance</span></div>
+<div class="mlo-legacy-trail"><a href="/finance">Finance overview</a><span> / </span><span>Overview</span></div>
+{% include "finance_nav.html" %}
+
 
 <div class="page-heading">
   <div>
@@ -14,13 +16,7 @@
   </div>
 </div>
 
-<nav class="subnav" aria-label="Finance sections">
-  <a class="active" href="/finance">Overview</a>
-  <a href="/finance/transactions">Transactions</a>
-  <a href="/finance/budget">Budget</a>
-  <a href="/finance/monthly">Monthly</a>
-  <a href="/finance/rules">Rules</a>
-</nav>
+
 
 <div class="metric-grid finance-metric-grid">
   <a class="metric-card" href="/finance/transactions">

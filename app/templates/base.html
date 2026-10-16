@@ -8,7 +8,7 @@
   <title>{{ title if title else "My Life Organized" }}</title>
 
   <link rel="icon" href="/static/favicon.ico">
-  <link rel="manifest" href="/static/manifest.webmanifest">
+  <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 
   <!-- Apply appearance before first paint. -->
@@ -101,7 +101,7 @@
         <div class="mlo-sidebar-customize-row"><span>WORKSPACE</span><button type="button" data-nav-edit aria-label="Edit and reorder navigation">Customize</button></div>
         <nav class="sidebar-nav" data-custom-nav>
           <div class="mlo-nav-group" data-nav-group="core">
-          {% for key,label,path,glyph in [('life-home','Dashboard','/life','⌂'),('life-tasks','My tasks','/life/tasks','☷'),('life-projects','Projects','/life/projects','▦'),('life-calendar','Calendar','/life/calendar','▤'),('life-focus','Focus & time','/life/focus','◷'),('life-notes','Notes','/life/notes','✎'),('life-insights','Insights','/life/insights','▥'),('life-goals','Goals & habits','/life/goals','✧'),('life-search','Search','/life/search','⌕'),('life-devices','Phone reminders','/life/devices','♧'),('life-import','Import tasks','/life/import','⇩'),('life-studio','Study','/life/study','▤'),('life-work','Work & career','/life/work','◇'),('life-money','Money','/life/money','＄'),('life-spaces','Spaces','/life/spaces','▧')] %}
+          {% for key,label,path,glyph in [('life-home','Dashboard','/life','⌂'),('life-tasks','My tasks','/life/tasks','☷'),('life-projects','Projects','/life/projects','▦'),('life-calendar','Calendar','/life/calendar','▤'),('life-focus','Focus & time','/life/focus','◷'),('life-notes','Notes','/life/notes','✎'),('life-insights','Insights','/life/insights','▥'),('life-goals','Goals & habits','/life/goals','✧'),('life-search','Search','/life/search','⌕'),('life-devices','Phone reminders','/life/devices','♧'),('life-import','Import tasks','/life/import','⇩'),('life-studio','Study','/life/study','▤'),('life-work','Work & career','/life/work','◇'),('life-money','Finance','/finance','＄'),('life-spaces','Spaces','/life/spaces','▧')] %}
           {% if key != 'life-money' or is_admin %}
           <a href="{{path}}" class="nav-item {{'active' if p==path or (path!='/life' and p.startswith(path+'/')) or (key=='life-studio' and (p.startswith('/courses') or p.startswith('/items') or p.startswith('/classes'))) or (key=='life-work' and p.startswith('/jobs')) or (key=='life-money' and (p.startswith('/expenses') or p.startswith('/finance'))) or (key=='life-spaces' and p.startswith('/sections')) else ''}}" data-nav-key="{{key}}" data-nav-default="{{label}}" title="{{label}}"><span class="mlo-navglyph">{{glyph}}</span><span data-nav-label>{{label}}</span><span class="mlo-nav-drag" aria-hidden="true">⠿</span></a>
           {% endif %}{% endfor %}
@@ -180,7 +180,7 @@
         <div class="sheet-handle"></div>
         <div class="mobile-more-grid">
           <a href="/life/study">Study</a><a href="/life/work">Work & career</a>
-          {% if is_admin %}<a href="/life/money">Money</a>{% endif %}
+          {% if is_admin %}<a href="/finance">Finance</a>{% endif %}
           <a href="/life/spaces">Spaces</a><a href="/life/calendar">Calendar</a><a href="/life/calendars">Connected calendars</a><a href="/life/notes">Notes</a><a href="/life/insights">Insights</a><a href="/life/goals">Goals & habits</a><a href="/life/devices">Phone reminders</a><a href="/life/import">Import tasks</a><a href="/life/search">Search</a><a href="/settings">Settings</a><a href="/sections/new">New space</a>
         </div>
       </section>
@@ -212,7 +212,7 @@
           <a href="/life/notes" data-command-item data-search="notes knowledge"><span>Notes</span><small>Write</small></a><a href="/life/insights" data-command-item data-search="insights reports stats progress analytics"><span>Insights</span><small>Progress</small></a>
           <a href="/life/study" data-command-item data-search="study courses assignments exams labs class"><span>Study</span><small>Academics</small></a>
           <a href="/life/work" data-command-item data-search="work career jobs applications"><span>Work & career</span><small>Career</small></a>
-          {% if is_admin %}<a href="/life/money" data-command-item data-search="money finance expenses budgets bills"><span>Money</span><small>Finance</small></a>{% endif %}
+          {% if is_admin %}<a href="/finance" data-command-item data-search="money finance expenses budgets bills"><span>Finance</span><small>Finance</small></a>{% endif %}
           <a href="/life/spaces" data-command-item data-search="spaces sections shared groceries"><span>Spaces</span><small>Collaboration</small></a>
           <a href="/account/security" data-command-item data-search="password email account recovery security"><span>Account security</span><small>Account</small></a><a href="/settings" data-command-item data-search="settings preferences"><span>Settings</span><small>App</small></a>
           {% for section in request.state.custom_sections %}<a href="/sections/{{ section['id'] }}" data-command-item data-search="section {{ section['name'] }} {{ section['description'] }}"><span>{{ section['icon'] }} {{ section['name'] }}</span><small>Section</small></a>{% endfor %}

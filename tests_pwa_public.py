@@ -25,10 +25,12 @@ with tempfile.TemporaryDirectory() as tmp:
     with TestClient(app, follow_redirects=False) as client:
         page = client.get('/')
         assert page.status_code == 200, ('public homepage', page.status_code)
-        assert 'rel="manifest" href="/static/manifest.webmanifest"' in page.text
+        assert 'rel="manifest" href="/manifest.webmanifest"' in page.text
         assert "navigator.serviceWorker.register('/service-worker.js'" in page.text
 
-        manifest_resp = client.get('/static/manifest.webmanifest')
+        manifest_resp = client.get('/manifest.webmanifest')
+        assert manifest_resp.headers.get('cache-control','').startswith('public')
+        assert client.get('/static/manifest.webmanifest').status_code == 200
         assert manifest_resp.status_code == 200
         assert 'json' in manifest_resp.headers.get('content-type', '')
         manifest = manifest_resp.json()

@@ -1,10 +1,14 @@
 """Account-scoped ntfy device topics. Never send to another user's topic."""
 from __future__ import annotations
 import secrets
+import io
+from urllib.parse import urlparse, quote
+
+import qrcode
 from datetime import datetime,timezone
 from pathlib import Path
 from fastapi import APIRouter, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from app.db import get_conn
 from app.config import settings
@@ -61,6 +65,29 @@ def add_device(request:Request,name:str=Form('My phone')):
         conn.commit()
     return RedirectResponse('/life/devices',status_code=303)
 
+
+
+@router.get('/{device_id}/qr.png', include_in_schema=False)
+def device_qr(request:Request, device_id:int):
+    """Android ntfy subscribe QR; never show another user's topic."""
+    with get_conn() as conn:
+        row=conn.execute('SELECT topic FROM life_devices WHERE id=? AND owner_id=?',
+                         (device_id,uid(request))).fetchone()
+    if row is None: raise HTTPException(404,'Device not found')
+    host=urlparse(settings.ntfy_base_url)
+    if host.scheme != 'https' or not host.hostname:
+        raise HTTPException(503,'Configure an HTTPS ntfy server to enable QR pairing')
+    # Official ntfy Android deep link syntax subscribes the topic automatically.
+    link=f'ntfy://{host.netloc}/{quote(row["topic"],safe="")}?display=My+Life+Organized'
+    qr=qrcode.QRCode(version=None,error_correction=qrcode.constants.ERROR_CORRECT_M,
+                     box_size=9,border=3)
+    qr.add_data(link);qr.make(fit=True)
+    output=io.BytesIO();qr.make_image(fill_color='black',back_color='white').save(output,format='PNG')
+    return Response(output.getvalue(),media_type='image/png',headers={
+        'Cache-Control':'private, no-store',
+        'X-Content-Type-Options':'nosniff',
+        'Referrer-Policy':'no-referrer',
+    })
 
 @router.post('/{device_id}/toggle')
 def toggle_device(request:Request,device_id:int):

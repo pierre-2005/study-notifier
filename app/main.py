@@ -107,7 +107,7 @@ async def require_auth(request: Request, call_next):
     path = request.url.path
     if request.method == 'GET' and path in ('/classic/dashboard','/todos','/todos/new','/schedule','/timers'):
         return RedirectResponse('/life/tasks' if path.startswith('/todos') else '/life/calendar' if path == '/schedule' else '/life/focus' if path == '/timers' else '/life',status_code=303)
-    public_paths = {"/", "/privacy", "/termsofservice", "/login", "/signup", "/logout", "/favicon.ico", "/health", "/forgot-password", "/service-worker.js"}
+    public_paths = {"/", "/privacy", "/termsofservice", "/login", "/signup", "/logout", "/favicon.ico", "/health", "/forgot-password", "/service-worker.js", "/manifest.webmanifest"}
     if path.startswith(("/password-reset/", "/verify-email/")):
         return await call_next(request)
     if path.startswith("/static") or path in public_paths:
@@ -193,6 +193,14 @@ app.add_middleware(
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
+# Root-level manifest is reliably discoverable by PWA packaging scanners.
+# Static manifest remains available to existing installed clients.
+@app.get('/manifest.webmanifest', include_in_schema=False)
+def root_manifest():
+    return FileResponse(STATIC_DIR / 'manifest.webmanifest',
+                        media_type='application/manifest+json',
+                        headers={'Cache-Control':'public, max-age=300'})
+
 @app.get('/service-worker.js', include_in_schema=False)
 def service_worker():
     return FileResponse(STATIC_DIR / 'sw.js',media_type='application/javascript',
@@ -211,6 +219,8 @@ async def add_security_headers(request: Request, call_next):
             response.headers['Cache-Control']='public, max-age=31536000, immutable'
         else:
             response.headers['Cache-Control']='public, max-age=604800'
+    elif request.url.path == '/manifest.webmanifest':
+        response.headers['Cache-Control']='public, max-age=300'
     elif request.url.path not in ('/health', '/favicon.ico'):
         response.headers['Cache-Control']='private, no-store'
     return response

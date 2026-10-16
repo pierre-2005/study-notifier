@@ -1,0 +1,8 @@
+<nav class="subnav finance-unified-tabs" aria-label="Finance sections">
+  <a href="/finance" class="{{ 'active' if request.url.path == '/finance' else '' }}" {% if request.url.path == '/finance' %}aria-current="page"{% endif %}>Overview</a>
+  <a href="/finance/transactions" class="{{ 'active' if request.url.path.startswith('/finance/transactions') else '' }}" {% if request.url.path.startswith('/finance/transactions') %}aria-current="page"{% endif %}>Transactions</a>
+  <a href="/finance/budget" class="{{ 'active' if request.url.path.startswith('/finance/budget') else '' }}" {% if request.url.path.startswith('/finance/budget') %}aria-current="page"{% endif %}>Budget</a>
+  <a href="/finance/monthly" class="{{ 'active' if request.url.path.startswith('/finance/monthly') else '' }}" {% if request.url.path.startswith('/finance/monthly') %}aria-current="page"{% endif %}>Monthly</a>
+  <a href="/finance/rules" class="{{ 'active' if request.url.path.startswith('/finance/rules') else '' }}" {% if request.url.path.startswith('/finance/rules') %}aria-current="page"{% endif %}>Rules</a>
+  <a href="/finance/import" class="{{ 'active' if request.url.path.startswith('/finance/import') else '' }}" {% if request.url.path.startswith('/finance/import') %}aria-current="page"{% endif %}>Import</a>
+</nav>
