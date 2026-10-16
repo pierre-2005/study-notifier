@@ -53,13 +53,33 @@
     return style;
   }
 
-  function getTheme() { return normalizeTheme(safeGet(THEME_KEY, "system")); }
-  function getPalette() { return normalizePalette(safeGet(PALETTE_KEY, "neutral")); }
-  function getPaletteStyle() { return normalizePaletteStyle(safeGet(PALETTE_STYLE_KEY, "independent")); }
+  function getTheme() { return normalizeTheme(root.dataset.theme || "system"); }
+  function getPalette() { return normalizePalette(root.dataset.palette || "neutral"); }
+  function getPaletteStyle() { return normalizePaletteStyle(root.dataset.paletteStyle || "independent"); }
+
+  // Save sequentially so fast consecutive changes cannot reach the server out of order.
+  // Requests persist across normal navigation; no cross-user localStorage is used.
+  let appearanceSave = Promise.resolve();
+  function persistAppearance() {
+    const values = { theme: getTheme(), palette: getPalette(), palette_style: getPaletteStyle() };
+    const status = document.querySelector("[data-appearance-status]");
+    if (status) status.textContent = "Saving to your account…";
+    appearanceSave = appearanceSave.catch(() => {}).then(() => fetch("/life/layout/appearance", {
+      method: "POST", credentials: "same-origin", keepalive: true,
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify(values)
+    }).then((res) => {
+      if (!res.ok) throw new Error("Appearance could not be saved");
+      if (status) status.textContent = "Saved to your account";
+    }));
+    appearanceSave.catch((error) => {
+      if (status) status.textContent = "Could not save. Please try changing the theme again.";
+      console.warn("MLO appearance preference:", error);
+    });
+  }
 
   function setTheme(mode) {
     mode = applyTheme(mode);
-    safeSet(THEME_KEY, mode);
+    persistAppearance();
     renderAppearanceControls();
     document.dispatchEvent(new CustomEvent("mlo:themechange", { detail: { mode, palette: getPalette() } }));
     return mode;
@@ -67,7 +87,7 @@
 
   function setPalette(palette) {
     palette = applyPalette(palette);
-    safeSet(PALETTE_KEY, palette);
+    persistAppearance();
     renderAppearanceControls();
     document.dispatchEvent(new CustomEvent("mlo:palettechange", { detail: { mode: getTheme(), palette, style: getPaletteStyle() } }));
     return palette;
@@ -75,7 +95,7 @@
 
   function setPaletteStyle(style) {
     style = applyPaletteStyle(style);
-    safeSet(PALETTE_STYLE_KEY, style);
+    persistAppearance();
     renderAppearanceControls();
     document.dispatchEvent(new CustomEvent("mlo:palettestylechange", { detail: { mode: getTheme(), palette: getPalette(), style } }));
     return style;

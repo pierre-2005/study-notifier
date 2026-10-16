@@ -36,7 +36,7 @@ from app.life_files import router as files_router, init_file_schema
 from app.backup import pre_v3_backup, pre_consolidation_backup, pre_v34_backup, pre_v36_backup
 from app.consolidation import consolidate_todos
 from app.life_hubs import router as hubs_router
-from app.personalize import router as layout_router, init_layout_schema
+from app.personalize import router as layout_router, init_layout_schema, appearance_for
 from app.calendar_links import router as calendar_links_router, init_calendar_links_schema, sync_due_calendars, AUTO_SYNC
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
@@ -140,6 +140,7 @@ async def require_auth(request: Request, call_next):
     # POST/JSON endpoints don't render the sidebar: avoid two extra SQL reads.
     needs_shell = request.method == 'GET' and not path.startswith('/life/layout')
     if needs_shell:
+        request.state.appearance = appearance_for(int(user['id']))
         request.state.custom_sections = list_sections_for_user(int(user["id"]), sidebar_only=True)
         request.state.active_timer = active_timer_for_user(int(user["id"]))
     else:

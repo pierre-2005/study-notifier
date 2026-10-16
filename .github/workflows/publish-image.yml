@@ -29,6 +29,8 @@ jobs:
 
       - name: Compile Python modules
         run: python -m compileall -q app
+      - name: Verify per-account theme persistence
+        run: python tests_v365_appearance.py
       - name: Verify iPhone pairing and manifest enhancements
         run: python tests_v364_ios_manifest.py
       - name: Verify finance, PWA discovery and private ntfy QR pairing
@@ -85,4 +87,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/pierre-2005/study-notifier:v3.6.4-store-ios
+          tags: ghcr.io/pierre-2005/study-notifier:v3.6.5-user-themes

@@ -29,6 +29,13 @@ def init_layout_schema():
         columns={row['name'] for row in conn.execute('PRAGMA table_info(life_layouts)').fetchall()}
         if 'widget_sizes' not in columns:
             conn.execute("ALTER TABLE life_layouts ADD COLUMN widget_sizes TEXT NOT NULL DEFAULT '{}'")
+        conn.execute("""CREATE TABLE IF NOT EXISTS life_appearance (
+            user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            theme TEXT NOT NULL DEFAULT 'system',
+            palette TEXT NOT NULL DEFAULT 'neutral',
+            palette_style TEXT NOT NULL DEFAULT 'independent',
+            updated_at TEXT NOT NULL
+        )""")
         conn.commit()
 
 
@@ -106,3 +113,62 @@ async def save_layout(request:Request):
           (uid,json.dumps(nav_order),json.dumps(widgets),json.dumps(labels),json.dumps(nav_hidden),json.dumps(widget_hidden),json.dumps(widget_sizes),datetime.now(timezone.utc).isoformat()))
         conn.commit()
     return {'ok':True}
+
+
+# Private appearance settings are authoritative across Windows PWA and browsers.
+VALID_THEMES = {'system', 'light', 'dark'}
+VALID_PALETTES = {'neutral', 'ocean', 'sage', 'rose', 'amber', 'lavender'}
+VALID_PALETTE_STYLES = {'independent', 'full'}
+DEFAULT_APPEARANCE = {'theme': 'system', 'palette': 'neutral', 'palette_style': 'independent'}
+
+def appearance_for(uid):
+    with get_conn() as conn:
+        row = conn.execute(
+            'SELECT theme, palette, palette_style FROM life_appearance WHERE user_id=?', (uid,)
+        ).fetchone()
+    if not row:
+        return dict(DEFAULT_APPEARANCE)
+    return {
+        'theme': row['theme'] if row['theme'] in VALID_THEMES else 'system',
+        'palette': row['palette'] if row['palette'] in VALID_PALETTES else 'neutral',
+        'palette_style': row['palette_style'] if row['palette_style'] in VALID_PALETTE_STYLES else 'independent',
+    }
+
+@router.get('/appearance')
+def read_appearance(request: Request):
+    return JSONResponse(appearance_for(user_id(request)), headers={'Cache-Control': 'private, no-store'})
+
+@router.post('/appearance')
+async def save_appearance(request: Request):
+    uid = user_id(request)
+    origin = request.headers.get('origin')
+    allowed_hosts = {request.headers.get('host','').lower(), urlparse(os.getenv('MLO_PUBLIC_URL','')).netloc.lower()}
+    if origin and urlparse(origin).netloc.lower() not in allowed_hosts:
+        raise HTTPException(403, 'Cross-origin update rejected')
+    if request.headers.get('sec-fetch-site') == 'cross-site':
+        raise HTTPException(403, 'Cross-site update rejected')
+    if request.headers.get('content-type','').split(';',1)[0] != 'application/json':
+        raise HTTPException(415, 'JSON required')
+    raw = await request.body()
+    if len(raw) > 500:
+        raise HTTPException(413, 'Appearance settings are too large')
+    try:
+        data = json.loads(raw)
+    except (ValueError, TypeError):
+        raise HTTPException(422, 'Invalid JSON')
+    if not isinstance(data, dict) or set(data) != set(DEFAULT_APPEARANCE):
+        raise HTTPException(422, 'Missing or unexpected appearance settings')
+    if (not all(isinstance(data[key], str) for key in DEFAULT_APPEARANCE)
+            or data['theme'] not in VALID_THEMES or data['palette'] not in VALID_PALETTES
+            or data['palette_style'] not in VALID_PALETTE_STYLES):
+        raise HTTPException(422, 'Invalid appearance choice')
+    with get_conn() as conn:
+        conn.execute(
+            '''INSERT INTO life_appearance(user_id, theme, palette, palette_style, updated_at)
+            VALUES (?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET
+              theme=excluded.theme, palette=excluded.palette,
+              palette_style=excluded.palette_style, updated_at=excluded.updated_at''',
+            (uid, data['theme'], data['palette'], data['palette_style'], datetime.now(timezone.utc).isoformat())
+        )
+        conn.commit()
+    return JSONResponse({'ok': True}, headers={'Cache-Control': 'private, no-store'})

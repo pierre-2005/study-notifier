@@ -15,12 +15,15 @@
   <script>
     (function () {
       try {
-        var mode = localStorage.getItem("theme") || "system";
-        if (["system", "light", "dark"].indexOf(mode) === -1) mode = "system";
-        var palette = localStorage.getItem("mlo.palette") || "neutral";
-        if (["neutral","ocean","sage","rose","amber","lavender"].indexOf(palette) === -1) palette = "neutral";
-        var paletteStyle = localStorage.getItem("mlo.palette.style") || "independent";
-        if (["independent","full"].indexOf(paletteStyle) === -1) paletteStyle = "independent";
+        // Preferences are read from the authenticated user's server-side record.
+        // Do not use shared origin-wide localStorage for user appearance.
+        var saved = {{ (request.state.appearance if request.state.appearance is defined else none) | tojson }};
+        var mode = saved && saved.theme || "system";
+        if (!["system", "light", "dark"].includes(mode)) mode = "system";
+        var palette = saved && saved.palette || "neutral";
+        if (!["neutral","ocean","sage","rose","amber","lavender"].includes(palette)) palette = "neutral";
+        var paletteStyle = saved && saved.palette_style || "independent";
+        if (!["independent","full"].includes(paletteStyle)) paletteStyle = "independent";
         var dark = mode === "dark" || (mode === "system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
         document.documentElement.classList.toggle("dark", dark);
         document.documentElement.dataset.theme = mode;
