@@ -44,5 +44,29 @@
       "url": "/life/tasks",
       "description": "Open your tasks"
     }
+  ],
+  "lang": "en-CA",
+  "dir": "ltr",
+  "orientation": "any",
+  "categories": [
+    "productivity",
+    "business",
+    "education"
+  ],
+  "screenshots": [
+    {
+      "src": "/static/dashboard-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "MLO dashboard with planning and calendar widgets"
+    },
+    {
+      "src": "/static/dashboard-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "MLO mobile dashboard"
+    }
   ]
 }

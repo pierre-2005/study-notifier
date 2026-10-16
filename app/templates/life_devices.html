@@ -5,7 +5,13 @@
   <summary>Pair phone with QR code</summary>
   <div class="mlo-pair-card">
     <img src="/life/devices/{{ d.id }}/qr.png" alt="Private ntfy topic QR code for {{ d.name }}" width="224" height="224" loading="lazy" referrerpolicy="no-referrer">
-    <p class="mlo-subtle">Android: install ntfy, then scan this code to open and subscribe in the app. On iPhone, use the topic address above to subscribe manually in ntfy. The ntfy deep link is documented for Android only.</p>
+    <p class="mlo-subtle">Android: scan this QR code to subscribe directly in ntfy. iPhone: scan the separate QR below to securely open a topic-copy page in Safari.</p>
+    <div class="mlo-pair-card" style="margin-top:1rem">
+      <strong>iPhone pairing</strong>
+      <p class="mlo-subtle">Scan with iPhone Camera, sign into your MLO account if prompted, tap Copy topic, then paste it into ntfy's Add subscription screen.</p>
+      <img src="/life/devices/{{ d.id }}/ios-qr.png" alt="iPhone pairing QR code for {{ d.name }}" width="208" height="208" loading="lazy" referrerpolicy="no-referrer">
+      <a class="mlo-btn mlo-secondary" href="/life/devices/{{ d.id }}/pair-iphone">Open iPhone pairing instructions</a>
+    </div>
     <a class="mlo-btn mlo-secondary" href="{{ base_url }}/{{ d.topic }}" target="_blank" rel="noopener noreferrer">Open topic URL</a>
     <button type="button" class="mlo-btn mlo-secondary" data-copy-topic="{{ base_url }}/{{ d.topic }}">Copy address</button>
   </div>

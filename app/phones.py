@@ -2,6 +2,7 @@
 from __future__ import annotations
 import secrets
 import io
+import os
 from urllib.parse import urlparse, quote
 
 import qrcode
@@ -88,6 +89,44 @@ def device_qr(request:Request, device_id:int):
         'X-Content-Type-Options':'nosniff',
         'Referrer-Policy':'no-referrer',
     })
+
+@router.get('/{device_id}/ios-qr.png', include_in_schema=False)
+def iphone_pair_qr(request:Request, device_id:int):
+    """iPhone QR opens an authenticated MLO copy/paste guide, not an Android-only deep link.
+
+    The QR embeds only a URL with an opaque-in-practice device ID. It never embeds the
+    ntfy topic; the signed-in device owner must open the page to see that secret.
+    """
+    with get_conn() as conn:
+        row=conn.execute('SELECT id FROM life_devices WHERE id=? AND owner_id=?',
+                         (device_id,uid(request))).fetchone()
+    if row is None: raise HTTPException(404,'Device not found')
+    public_url=os.getenv('MLO_PUBLIC_URL','').strip().rstrip('/')
+    parsed=urlparse(public_url)
+    if parsed.scheme != 'https' or not parsed.netloc or parsed.username or parsed.password:
+        raise HTTPException(503,'Configure MLO_PUBLIC_URL with your HTTPS website address')
+    link=f'{public_url}/life/devices/{device_id}/pair-iphone'
+    qr=qrcode.QRCode(version=None,error_correction=qrcode.constants.ERROR_CORRECT_M,
+                     box_size=9,border=3)
+    qr.add_data(link);qr.make(fit=True)
+    output=io.BytesIO();qr.make_image(fill_color='black',back_color='white').save(output,format='PNG')
+    return Response(output.getvalue(),media_type='image/png',headers={
+        'Cache-Control':'private, no-store', 'X-Content-Type-Options':'nosniff',
+        'Referrer-Policy':'no-referrer',
+    })
+
+
+@router.get('/{device_id}/pair-iphone',response_class=HTMLResponse,include_in_schema=False)
+def iphone_pair_page(request:Request, device_id:int):
+    """Phone-friendly topic-copy page with strict per-account ownership checks."""
+    with get_conn() as conn:
+        row=conn.execute('SELECT * FROM life_devices WHERE id=? AND owner_id=?',
+                         (device_id,uid(request))).fetchone()
+    if row is None: raise HTTPException(404,'Device not found')
+    return templates.TemplateResponse(request,'life_device_ios_pair.html',{
+        'request':request, 'device':row, 'base_url':settings.ntfy_base_url,
+    },headers={'Cache-Control':'private, no-store','Referrer-Policy':'no-referrer'})
+
 
 @router.post('/{device_id}/toggle')
 def toggle_device(request:Request,device_id:int):

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}{% from 'life_components.html' import top %}
+{% block content %}
+<div class="mlo-space" style="max-width:720px;margin:0 auto">
+{{top('Connect your iPhone','NOTIFICATIONS','Pair this phone with your private ntfy topic.')}}
+<section class="mlo-surface" style="padding:clamp(1rem,4vw,2rem)">
+  <h2>{{device.name}}</h2>
+  <p class="mlo-subtle">This page is only available to the MLO account that owns the device. Keep the topic private.</p>
+  <ol style="display:grid;gap:.9rem;padding-left:1.4rem;line-height:1.55">
+    <li>Install and open <a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank" rel="noopener noreferrer">ntfy for iPhone</a>.</li>
+    <li>Tap <strong>Copy topic</strong> below.</li>
+    <li>In ntfy, tap <strong>Add subscription (+)</strong>, then paste the copied topic. Use your normal ntfy server ({{base_url}}).</li>
+    <li>Allow notifications, then return to MLO and press <strong>Test</strong> for this device.</li>
+  </ol>
+  <label for="iphone-topic"><strong>Your private topic</strong></label>
+  <input id="iphone-topic" type="text" value="{{device.topic}}" readonly autocomplete="off" spellcheck="false" style="width:100%;margin:.5rem 0 1rem;min-height:46px" />
+  <div style="display:flex;flex-wrap:wrap;gap:.75rem">
+    <button id="iphone-copy" class="mlo-btn mlo-primary" type="button">Copy topic</button>
+    <a class="mlo-btn mlo-secondary" href="/life/devices">Back to phones</a>
+  </div>
+  <p class="mlo-subtle" id="iphone-copy-status" role="status" aria-live="polite" style="margin-top:1rem">The Android QR auto-subscribe method is not officially supported on iPhone; copying is the reliable alternative.</p>
+</section></div>
+<script>
+document.getElementById('iphone-copy').addEventListener('click',async()=>{
+ const field=document.getElementById('iphone-topic');const status=document.getElementById('iphone-copy-status');
+ try {await navigator.clipboard.writeText(field.value);status.textContent='Topic copied. Open ntfy, add a subscription and paste it.';}
+ catch(e) {field.focus();field.select();status.textContent='Select Copy from the iPhone selection menu, then paste into ntfy.';}
+});
+</script>
+{% endblock %}

@@ -212,7 +212,7 @@ app.add_middleware(GZipMiddleware,minimum_size=1200)
 async def add_security_headers(request: Request, call_next):
     response=await call_next(request)
     response.headers['X-Content-Type-Options']='nosniff'
-    response.headers['Referrer-Policy']='no-referrer' if request.url.path.startswith(('/password-reset/','/verify-email/')) else 'same-origin' 
+    response.headers['Referrer-Policy']='no-referrer' if request.url.path.startswith(('/password-reset/','/verify-email/','/life/devices/')) else 'same-origin' 
     response.headers['X-Frame-Options']='DENY'
     if request.url.path.startswith('/static/'):
         if request.query_params.get('v') == APP_VERSION:
