@@ -1,0 +1,21 @@
+name: MLO v3.7 branch safety checks
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - run: python -m compileall -q app
+      - run: python tests_v37_workspace.py
+      - run: python tests_smoke.py
+      - run: python tests_v361_device_isolation.py
+      - run: python tests_v365_appearance.py
