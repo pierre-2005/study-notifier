@@ -19,13 +19,21 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-      - name: Install application and regression dependencies
+      - name: Install document extraction tools
+        timeout-minutes: 5
         run: |
-          sudo apt-get update
-          sudo apt-get install -y tesseract-ocr poppler-utils fonts-dejavu-core
-          python -m pip install -r requirements-test.txt
-          python -m playwright install --with-deps chromium
-          npm install --prefix "$RUNNER_TEMP/mlo-qa" --ignore-scripts --no-audit --no-fund axe-core@4.14.0
+          sudo -n apt-get update -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30
+          sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y tesseract-ocr poppler-utils fonts-dejavu-core
+      - name: Install Python regression dependencies
+        timeout-minutes: 5
+        run: python -m pip install --retries 2 --timeout 30 -r requirements-test.txt
+      - name: Install browser and system dependencies
+        timeout-minutes: 5
+        run: python -m playwright install --with-deps chromium
+      - name: Install accessibility audit engine
+        timeout-minutes: 3
+        run: |
+          npm install --prefix "$RUNNER_TEMP/mlo-qa" --ignore-scripts --no-audit --no-fund --fetch-retries=2 --fetch-timeout=30000 axe-core@4.14.0
           echo "MLO_AXE_PATH=$RUNNER_TEMP/mlo-qa/node_modules/axe-core/axe.min.js" >> "$GITHUB_ENV"
       - name: Compile and check patch formatting
         run: |
