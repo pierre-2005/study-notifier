@@ -1,0 +1,197 @@
+{
+  "checked_at": "2026-10-23T15:06:23.955000+00:00",
+  "version": "3.7.0",
+  "environment": "Python 3.12, pinned tzdata 2026.5 / IANA 2026e, Linux, Chrome Headless Shell 156.0.8078.47",
+  "scope": "Synthetic isolated fixtures and mocked provider calls. No production database or live provider credentials.",
+  "scripts": [
+    {
+      "script": "tests_calendar_destination.py",
+      "status": "passed",
+      "seconds": 2.57
+    },
+    {
+      "script": "tests_consolidation.py",
+      "status": "passed",
+      "seconds": 3.24
+    },
+    {
+      "script": "tests_migration.py",
+      "status": "passed",
+      "seconds": 1.97
+    },
+    {
+      "script": "tests_new_features.py",
+      "status": "passed",
+      "seconds": 2.73
+    },
+    {
+      "script": "tests_public_legal.py",
+      "status": "passed",
+      "seconds": 1.67
+    },
+    {
+      "script": "tests_pwa_public.py",
+      "status": "passed",
+      "seconds": 2.58
+    },
+    {
+      "script": "tests_smoke.py",
+      "status": "passed",
+      "seconds": 3.68
+    },
+    {
+      "script": "tests_v32.py",
+      "status": "passed",
+      "seconds": 2.82
+    },
+    {
+      "script": "tests_v33_browser.py",
+      "status": "passed",
+      "seconds": 13.27
+    },
+    {
+      "script": "tests_v34.py",
+      "status": "passed",
+      "seconds": 3.49
+    },
+    {
+      "script": "tests_v341_contrast.py",
+      "status": "passed",
+      "seconds": 6.63
+    },
+    {
+      "script": "tests_v342_layout.py",
+      "status": "passed",
+      "seconds": 18.18
+    },
+    {
+      "script": "tests_v343_calendar.py",
+      "status": "passed",
+      "seconds": 2.62
+    },
+    {
+      "script": "tests_v34_browser.py",
+      "status": "passed",
+      "seconds": 6.34
+    },
+    {
+      "script": "tests_v34_perf.py",
+      "status": "passed",
+      "seconds": 3.12
+    },
+    {
+      "script": "tests_v35_calendar.py",
+      "status": "passed",
+      "seconds": 2.58
+    },
+    {
+      "script": "tests_v361_device_isolation.py",
+      "status": "passed",
+      "seconds": 2.37
+    },
+    {
+      "script": "tests_v363_finance_pwa_qr.py",
+      "status": "passed",
+      "seconds": 2.53
+    },
+    {
+      "script": "tests_v364_ios_manifest.py",
+      "status": "passed",
+      "seconds": 2.43
+    },
+    {
+      "script": "tests_v365_appearance.py",
+      "status": "passed",
+      "seconds": 3.25
+    },
+    {
+      "script": "tests_v36_accounts.py",
+      "status": "passed",
+      "seconds": 3.14
+    },
+    {
+      "script": "tests_v36_visual.py",
+      "status": "passed",
+      "seconds": 4.99
+    },
+    {
+      "script": "tests_v37_browser.py",
+      "status": "passed",
+      "seconds": 34.15
+    },
+    {
+      "script": "tests_v37_calendar_time.py",
+      "status": "passed",
+      "seconds": 0.97
+    },
+    {
+      "script": "tests_v37_documents.py",
+      "status": "passed",
+      "seconds": 2.53
+    },
+    {
+      "script": "tests_v37_planner.py",
+      "status": "passed",
+      "seconds": 3.78
+    },
+    {
+      "script": "tests_v37_release.py",
+      "status": "passed",
+      "seconds": 10.83
+    },
+    {
+      "script": "tests_v37_staging.py",
+      "status": "passed",
+      "seconds": 3.08
+    },
+    {
+      "script": "tests_v37_timezone.py",
+      "status": "passed",
+      "seconds": 1.98
+    },
+    {
+      "script": "tests_v37_upgrade.py",
+      "status": "passed",
+      "seconds": 3.74
+    },
+    {
+      "script": "tests_v37_workspace.py",
+      "status": "passed",
+      "seconds": 0.52
+    }
+  ],
+  "passed": 31,
+  "failed": 0,
+  "accessibility": {
+    "engine": "axe-core 4.14.0",
+    "scans": 47,
+    "violations": 0
+  },
+  "staging": {
+    "legacy_tables_preserved": 10,
+    "legacy_staging_tables": 67,
+    "pre_v37_main_tables_preserved": 49,
+    "pre_v37_main_staging_tables": 66,
+    "fixture_main_sha": "ba3aba3f932753de1dc9014c52558768b84f0b38",
+    "source_read_only": true,
+    "wal_preserved": true,
+    "migrated_twice": true,
+    "restored_baseline": true,
+    "actual_production_copy_tested": false
+  },
+  "source_checks": {
+    "jinja_templates": 82,
+    "javascript_files": 11,
+    "pip_check": "passed",
+    "compileall": "passed",
+    "git_diff_check": "passed"
+  },
+  "ci_history": [
+    {
+      "run": 39942943938,
+      "commit": "a718bd80c47805306ac2ab524be9ed5cb5160476",
+      "result": "26 of 27 scripts passed; fixed UTC fixture assumed obsolete Edmonton rules",
+      "resolution": "Pin packaged IANA rules, derive fixture UTC from user timezone, add four dedicated timezone tests; all 28 scripts pass locally."
+    }
+  ]
+}

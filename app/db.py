@@ -121,10 +121,18 @@ CREATE TABLE IF NOT EXISTS events (
 """
 
 
+class ClosingConnection(sqlite3.Connection):
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            return super().__exit__(exc_type, exc_value, traceback)
+        finally:
+            self.close()
+
+
 def get_conn():
     # Be resilient when the scheduler and a web request write at the same time.
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, timeout=10.0)
+    conn = sqlite3.connect(DB_PATH, timeout=10.0, factory=ClosingConnection)
     conn.row_factory = sqlite3.Row
     # Make sure FK constraints actually enforce
     conn.execute("PRAGMA foreign_keys=ON;")

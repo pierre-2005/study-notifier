@@ -106,25 +106,25 @@ def init_finance_schema() -> None:
             conn.execute(
                 """
                 INSERT OR IGNORE INTO finance_budget_rows(section, name, amount, frequency, created_at_utc, updated_at_utc)
-                VALUES('income', ?, 0, ?, ?, ?)
+                SELECT 'income', ?, 0, ?, ?, ? WHERE NOT EXISTS(SELECT 1 FROM finance_budget_rows WHERE section='income' AND name=?)
                 """,
-                (name, "Annually" if "employment" in name.lower() else "Monthly", ts, ts),
+                (name, "Annually" if "employment" in name.lower() else "Monthly", ts, ts, name),
             )
         for category in STANDARD_CATEGORIES:
             conn.execute(
                 """
                 INSERT OR IGNORE INTO finance_budget_rows(section, name, amount, frequency, created_at_utc, updated_at_utc)
-                VALUES('expenses', ?, 0, 'Monthly', ?, ?)
+                SELECT 'expenses', ?, 0, 'Monthly', ?, ? WHERE NOT EXISTS(SELECT 1 FROM finance_budget_rows WHERE section='expenses' AND name=?)
                 """,
-                (category, ts, ts),
+                (category, ts, ts, category),
             )
         for name in SAVINGS_ROWS:
             conn.execute(
                 """
                 INSERT OR IGNORE INTO finance_budget_rows(section, name, amount, frequency, created_at_utc, updated_at_utc)
-                VALUES('savings', ?, 0, 'Monthly', ?, ?)
+                SELECT 'savings', ?, 0, 'Monthly', ?, ? WHERE NOT EXISTS(SELECT 1 FROM finance_budget_rows WHERE section='savings' AND name=?)
                 """,
-                (name, ts, ts),
+                (name, ts, ts, name),
             )
 
         conn.commit()

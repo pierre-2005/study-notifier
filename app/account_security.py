@@ -15,7 +15,7 @@ from datetime import datetime, timezone, timedelta
 from email.message import EmailMessage
 from pathlib import Path
 
-from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi import APIRouter, Form, HTTPException, Request, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -96,7 +96,7 @@ def _get_token(token,purpose):
     with get_conn() as conn:
         return conn.execute('''SELECT t.*,u.username,u.email,u.email_verified,u.active FROM auth_email_tokens t
             JOIN users u ON u.id=t.user_id WHERE token_hash=? AND purpose=? AND used_at IS NULL
-            AND expires_at>?''',(token_hash,purpose,now())).fetchone()
+            AND expires_at>? AND u.active=1 AND (?!='password_reset' OR (u.email_verified=1 AND u.approved=1))''',(token_hash,purpose,now(),purpose)).fetchone()
 
 def _mark_token(token_id):
     with get_conn() as conn:
@@ -111,24 +111,63 @@ def forgot_page(request:Request):
     return _view(request,'forgot_password.html',message='',error='',smtp_enabled=_email_configured())
 
 @router.post('/forgot-password',response_class=HTMLResponse)
-def forgot_submit(request:Request,identity:str=Form(...)):
-    # Do not disclose account existence or verified-email status.
-    generic='If a verified email matches an account, a recovery link will be sent.'
+def forgot_submit(request:Request,background_tasks:BackgroundTasks,identity:str=Form(...)):
+    from app.auth_delivery import allow,issue_reset_code,deliver_mail
+    generic='If a verified email matches an account, a reset code will be sent.'
     identity=identity.strip().lower()[:254]
+    address=request.client.host if request.client else 'unknown'
+    allowed=allow('reset-ip:'+address,20,15) and allow('reset:'+identity,3,15)
     with get_conn() as conn:
         user=conn.execute('''SELECT id,email FROM users WHERE active=1 AND approved=1 AND email_verified=1
             AND (lower(email)=? OR lower(username)=?)''',(identity,identity)).fetchone()
-    if user and user['email'] and _email_configured():
-        token=_issue_token(user['id'],'password_reset')
-        if token:
-            url=os.getenv('MLO_PUBLIC_URL','').rstrip('/')+'/password-reset/'+token
-            try:
-                _send_email(user['email'],'MLO password reset',
-                    'A password reset was requested for your MLO account.\n\n'+url+
-                    '\n\nThis link expires in 30 minutes. If you did not request it, ignore this message.')
-            except Exception:
-                logging.getLogger(__name__).exception('Password-reset email delivery failed')
+    if allowed and user and user['email'] and _email_configured():
+        issue_reset_code(user['id'],user['email'])
+        background_tasks.add_task(deliver_mail)
     return _view(request,'forgot_password.html',message=generic,error='',smtp_enabled=_email_configured())
+
+
+@router.get('/reset-code',response_class=HTMLResponse)
+def reset_code_page(request:Request):
+    return _view(request,'reset_code.html',error='')
+
+
+@router.post('/reset-code',response_class=HTMLResponse)
+def reset_code_submit(request:Request,email:str=Form(...),code:str=Form(...),password:str=Form(...),confirm:str=Form(...)):
+    from app.auth_delivery import allow,consume_reset_code
+    if not allow('code-ip:'+str(request.client.host if request.client else 'unknown'),30,15):
+        return _view(request,'reset_code.html',error='Too many attempts. Try again in 15 minutes.')
+    if password!=confirm or not 12<=len(password)<=256:
+        return _view(request,'reset_code.html',error='Use matching passwords with 12 to 256 characters.')
+    with get_conn() as conn:
+        conn.execute('BEGIN IMMEDIATE')
+        ok=consume_reset_code(conn,email[:254],code[:20],password)
+        conn.commit()  # Persist failed-attempt count as well.
+    if not ok:
+        return _view(request,'reset_code.html',error='The code is invalid, expired or has already been used.')
+    request.session.clear()
+    return RedirectResponse('/login?message=Password+updated.+Sign+in+again.',status_code=303)
+
+
+@router.get('/verify-email/resend',response_class=HTMLResponse)
+def resend_page(request:Request):
+    return _view(request,'resend_verification.html',message='')
+
+
+@router.post('/verify-email/resend',response_class=HTMLResponse)
+def resend_verification(request:Request,background_tasks:BackgroundTasks,email:str=Form(...)):
+    from app.auth_delivery import allow,queue_email,deliver_mail
+    address=request.client.host if request.client else 'unknown'
+    if allow('verify-ip:'+address,10,30) and allow('verify:'+email.lower()[:254],3,30):
+        with get_conn() as conn:
+            user=conn.execute('SELECT * FROM users WHERE lower(email)=? AND active=1 AND email_verified=0',(email.lower().strip()[:254],)).fetchone()
+        if user and _email_configured():
+            token=_issue_token(user['id'],'verify_email',candidate_email=user['email'],minutes=60)
+            if token:
+                queue_email(user['id'],user['email'],'Verify your MLO email address',
+                    'Confirm your email address:\n\n'+os.getenv('MLO_PUBLIC_URL','').rstrip('/')+'/verify-email/'+token+'\n\nThis link expires in one hour.')
+                background_tasks.add_task(deliver_mail)
+    return _view(request,'resend_verification.html',message='If an unverified account matches, a verification email will be sent.')
+
 
 @router.get('/password-reset/{token}',response_class=HTMLResponse)
 def reset_page(request:Request,token:str):
@@ -140,13 +179,19 @@ def reset_submit(request:Request,token:str,password:str=Form(...),confirm:str=Fo
     if not entry: return _view(request,'reset_password.html',token=token,valid=False,error='This link is invalid or expired.',success='')
     if password!=confirm or not 12<=len(password)<=256:
         return _view(request,'reset_password.html',token=token,valid=True,error='Passwords must match and contain 12–256 characters.',success='')
-    # Consume the token atomically before updating the password. Reject replays.
+    from app.auth import hash_password
     with get_conn() as conn:
-        result=conn.execute('UPDATE auth_email_tokens SET used_at=? WHERE id=? AND used_at IS NULL',
-                            (now(),entry['id']))
+        conn.execute('BEGIN IMMEDIATE')
+        result=conn.execute('UPDATE auth_email_tokens SET used_at=? WHERE id=? AND used_at IS NULL AND expires_at>?',
+                            (now(),entry['id'],now()))
+        if result.rowcount!=1: raise HTTPException(400,'Link already used or expired.')
+        conn.execute('UPDATE users SET password_hash=?,auth_version=auth_version+1,must_change_password=0 WHERE id=?',
+                     (hash_password(password),entry['user_id']))
+        conn.execute('UPDATE auth_email_tokens SET used_at=? WHERE user_id=? AND used_at IS NULL',(now(),entry['user_id']))
+        conn.execute('UPDATE auth_reset_codes SET used_at=? WHERE user_id=? AND used_at IS NULL',(now(),entry['user_id']))
+        conn.execute('DELETE FROM auth_mail_outbox WHERE user_id=?',(entry['user_id'],))
+        conn.execute('UPDATE auth_reset_codes SET used_at=? WHERE user_id=? AND used_at IS NULL',(now(),entry['user_id']))
         conn.commit()
-        if result.rowcount!=1: raise HTTPException(400,'Link already used.')
-    update_user_password(int(entry['user_id']),password,temporary=False)
     return RedirectResponse('/login?message=Password+updated.+Please+sign+in.',status_code=303)
 
 @router.get('/verify-email/{token}',response_class=HTMLResponse)
@@ -158,10 +203,13 @@ def verify_submit(request:Request,token:str):
     entry=_get_token(token,'verify_email')
     if not entry: return _view(request,'verify_email.html',token=token,valid=False,success=False)
     with get_conn() as conn:
-        result=conn.execute('UPDATE auth_email_tokens SET used_at=? WHERE id=? AND used_at IS NULL',(now(),entry['id']))
+        result=conn.execute('UPDATE auth_email_tokens SET used_at=? WHERE id=? AND used_at IS NULL AND expires_at>?',(now(),entry['id'],now()))
         if result.rowcount!=1: raise HTTPException(400,'Link already used.')
-        conn.execute('''UPDATE users SET email_verified=1 WHERE id=? AND lower(email)=?''',
+        updated=conn.execute('''UPDATE users SET email_verified=1 WHERE id=? AND lower(email)=? AND active=1''',
                      (entry['user_id'],(entry['candidate_email'] or '').lower()))
+        if updated.rowcount!=1:
+            conn.rollback()
+            return _view(request,'verify_email.html',token='',valid=False,success=False)
         conn.commit()
     return _view(request,'verify_email.html',token='',valid=False,success=True)
 
@@ -183,25 +231,26 @@ def account_email(request:Request,email:str=Form(...),current_password:str=Form(
         existing=conn.execute('SELECT id FROM users WHERE lower(email)=? AND id!=?',(email,user['id'])).fetchone()
         if existing: raise HTTPException(409,'Email already registered.')
         conn.execute('UPDATE users SET email=?,email_verified=0 WHERE id=?',(email,user['id']))
-        conn.execute('UPDATE auth_email_tokens SET used_at=? WHERE user_id=? AND purpose=? AND used_at IS NULL',
-                     (now(),user['id'],'verify_email'))
+        conn.execute('UPDATE auth_email_tokens SET used_at=? WHERE user_id=? AND used_at IS NULL',(now(),user['id']))
+        conn.execute('UPDATE auth_reset_codes SET used_at=? WHERE user_id=? AND used_at IS NULL',(now(),user['id']))
+        conn.execute('DELETE FROM auth_mail_outbox WHERE user_id=?',(user['id'],))
         conn.commit()
     return RedirectResponse('/account/security?message=Email+saved.+Verify+it+to+enable+recovery.',status_code=303)
 
 @router.post('/account/email/verify')
-def request_email_verify(request:Request):
+def request_email_verify(request:Request,background_tasks:BackgroundTasks):
+    from app.auth_delivery import queue_email,deliver_mail
     user=_current(request)
     if not _email_configured() or not user['email'] or user['email_verified']:
         return RedirectResponse('/account/security',status_code=303)
     token=_issue_token(user['id'],'verify_email',candidate_email=user['email'],minutes=60)
     if token:
         url=os.getenv('MLO_PUBLIC_URL','').rstrip('/')+'/verify-email/'+token
-        try:
-            _send_email(user['email'],'Verify your MLO email address',
-                'Confirm your email address using this link:\n\n'+url+'\n\nThis link expires in one hour.')
-        except Exception:
-            logging.getLogger(__name__).exception('Verification email delivery failed')
-    return RedirectResponse('/account/security?message=If+mail+delivery+is+configured,+check+your+inbox.',status_code=303)
+        queue_email(user['id'],user['email'],'Verify your MLO email address',
+                    'Confirm your email address:\n\n'+url+'\n\nThis link expires in one hour.')
+        background_tasks.add_task(deliver_mail)
+    return RedirectResponse('/account/security?message=Check+your+inbox+for+verification+instructions.',status_code=303)
+
 
 @router.get('/account/password',response_class=HTMLResponse)
 def change_page(request:Request,required:str=''):
@@ -220,17 +269,19 @@ def change_submit(request:Request,current_password:str=Form(...),password:str=Fo
     return RedirectResponse('/login?message=Password+updated.+Sign+in+again.',status_code=303)
 
 @router.post('/admin/users/{target_id}/reset-password')
-def admin_reset(request:Request,target_id:int,new_password:str=Form(...),confirm_password:str=Form(...),admin_password:str=Form(...)):
+def admin_reset(request:Request,background_tasks:BackgroundTasks,target_id:int,admin_password:str=Form(...)):
+    from app.auth_delivery import issue_reset_code,deliver_mail
     admin=_admin(request)
     if not verify_password(admin_password,admin['password_hash']):
         raise HTTPException(403,'Your administrator password is incorrect.')
-    if new_password!=confirm_password: raise HTTPException(422,'Passwords do not match.')
-    if int(admin['id'])==target_id: raise HTTPException(400,'Use Account security to change your own password.')
     target=get_user_by_id(target_id)
-    if not target or target['role']=='admin': raise HTTPException(403,'Administrator passwords must be changed by their owners.')
-    try: update_user_password(target_id,new_password,actor_id=int(admin['id']),temporary=True)
-    except ValueError as exc: raise HTTPException(422,str(exc)) from exc
-    return RedirectResponse('/admin/users?notice=Password+reset.+Existing+sessions+revoked.',status_code=303)
+    if not target or target['role']=='admin': raise HTTPException(403,'Use your own account recovery page.')
+    if not target['email_verified'] or not target['email'] or not _email_configured():
+        raise HTTPException(409,'The account owner needs a verified recovery email and email delivery must be configured.')
+    issue_reset_code(target_id,target['email'])
+    background_tasks.add_task(deliver_mail)
+    return RedirectResponse('/admin/users?notice=Recovery+instructions+sent+to+the+account+owner.',status_code=303)
+
 
 @router.post('/admin/users/{target_id}/permissions')
 async def admin_permissions(request:Request,target_id:int):
@@ -241,20 +292,6 @@ async def admin_permissions(request:Request,target_id:int):
     return RedirectResponse('/admin/users?notice=Permissions+saved.',status_code=303)
 
 @router.post('/admin/users/{target_id}/email')
-def admin_email(request:Request,target_id:int,email:str=Form(''),admin_password:str=Form(...)):
-    admin=_admin(request)
-    if not verify_password(admin_password,admin['password_hash']): raise HTTPException(403,'Admin password incorrect.')
-    email=email.strip().lower()
-    if email and ('@' not in email or len(email)>254 or '.' not in email.split('@')[-1]):
-        raise HTTPException(422,'Invalid email.')
-    with get_conn() as conn:
-        if not conn.execute('SELECT id FROM users WHERE id=? AND role!=?',(target_id,'admin')).fetchone():
-            raise HTTPException(404,'Member not found.')
-        if email and conn.execute('SELECT id FROM users WHERE lower(email)=? AND id!=?',(email,target_id)).fetchone():
-            raise HTTPException(409,'Email already in use.')
-        conn.execute('UPDATE users SET email=?,email_verified=0 WHERE id=?',(email or None,target_id))
-        conn.execute('UPDATE auth_email_tokens SET used_at=? WHERE user_id=? AND used_at IS NULL',(now(),target_id))
-        conn.execute('INSERT INTO auth_audit_log(actor_id,target_id,action,created_at) VALUES(?,?,?,?)',
-                     (admin['id'],target_id,'email_updated',now()))
-        conn.commit()
-    return RedirectResponse('/admin/users?notice=Email+saved.+Verification+required.',status_code=303)
+def admin_email(request:Request,target_id:int):
+    _admin(request)
+    raise HTTPException(403,'Only the account owner can change a recovery email. Use the recovery email already verified by the owner.')

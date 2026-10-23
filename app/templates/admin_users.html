@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-heading">
-  <div><div class="eyebrow">Administration</div><h1>Users</h1><p>Approve new accounts and control access. Member accounts can use sections shared with them, create their own sections, and use timers; your personal school, finance, jobs, and expenses stay private.</p></div>
+  <div><div class="eyebrow">Administration</div><h1>Users</h1><p>Approve accounts and manage access.</p></div>
 </div>
 
 {% if request.query_params.get("notice") %}<div class="mlo-tip" role="status">{{request.query_params.get("notice")}}</div>{% endif %}
@@ -35,14 +35,10 @@
           {% set caps=user_capabilities(u) %}{% for key,label in capability_labels.items() %}<label><input type="checkbox" name="{{key}}" {{'checked' if caps[key] else ''}}> {{label}}</label>{% endfor %}
         </div><button type="submit" class="btn btn-primary" style="margin-top:12px">Save permissions</button></form>
         <div class="mlo-account-divider"></div>
-        <h3>Recovery email</h3><form method="post" action="/admin/users/{{u['id']}}/email" class="mlo-account-form"><label>Email (unverified until user confirms)<input type="email" name="email" value="{{u['email'] or ''}}" maxlength="254"></label><label>Your admin password<input type="password" name="admin_password" required autocomplete="current-password"></label><button class="btn">Update email</button></form>
-        <div class="mlo-account-divider"></div>
-        <h3>Reset password</h3><p class="muted">Set a temporary password (12+ characters). Existing sessions will be revoked. The user must change it at next sign-in.</p>
-        <form method="post" action="/admin/users/{{u['id']}}/reset-password" class="mlo-account-form" onsubmit="return confirm('Reset this user password and revoke their existing sessions?')">
-          <label>Temporary password<input type="password" name="new_password" minlength="12" maxlength="256" autocomplete="new-password" required></label>
-          <label>Confirm temporary password<input type="password" name="confirm_password" minlength="12" maxlength="256" autocomplete="new-password" required></label>
+        <h3>Account recovery</h3><p class="muted">Send a one-time code to the owner's verified email.</p>
+        <form method="post" action="/admin/users/{{u['id']}}/reset-password" class="mlo-account-form">
           <label>Your admin password<input type="password" name="admin_password" autocomplete="current-password" required></label>
-          <button type="submit" class="btn btn-danger">Reset password</button>
+          <button type="submit" class="btn">Send recovery code</button>
         </form>
       </details>
       {% endif %}

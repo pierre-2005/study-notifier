@@ -1,8 +1,8 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 import os
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.db import get_conn
 from app.timeutil import now_utc
@@ -188,11 +188,12 @@ def process_life_reminders() -> None:
     day = local.date().isoformat()
     with get_conn() as conn:
         rows=conn.execute("""SELECT t.id AS task_id, t.title, d.id AS device_id, d.topic
-            FROM life_tasks t JOIN life_devices d ON d.owner_id=t.owner_id AND d.enabled=1
+            FROM life_tasks t JOIN users u ON u.id=t.owner_id AND u.active=1 AND u.approved=1 JOIN life_devices d ON d.owner_id=t.owner_id AND d.enabled=1
             LEFT JOIN life_projects p ON p.id=t.project_id
             LEFT JOIN life_project_members m ON m.project_id=p.id AND m.user_id=t.owner_id
             LEFT JOIN life_task_notification_log l ON l.task_id=t.id AND l.device_id=d.id AND l.due_day=t.due_on
             WHERE t.due_on=? AND t.status!='done' AND l.task_id IS NULL
+              AND NOT EXISTS(SELECT 1 FROM v37_workspace_preferences v WHERE v.user_id=t.owner_id AND v.onboarding_completed=1)
               AND (t.project_id IS NULL OR p.owner_id=t.owner_id OR m.user_id IS NOT NULL) LIMIT 100""",(day,)).fetchall()
     for row in rows:
         ok=_safe_send(NtfyNotifier(settings.ntfy_base_url,row['topic']), 'Task due today',row['title'])
@@ -203,7 +204,18 @@ def process_life_reminders() -> None:
                 conn.commit()
 
 
+def process_v37_task_reminders():
+    # Compatibility name for existing operator scripts.
+    from app.reminders import process_personal_reminders
+    return process_personal_reminders()
+
+
 def start_scheduler(timezone_name: str) -> BackgroundScheduler:
+    if os.getenv('MLO_SCHEDULER_ENABLED','true').lower() not in ('true','1','yes','on'):
+        class DisabledScheduler:
+            def add_job(self,*args,**kwargs): pass
+            def shutdown(self,wait=False): pass
+        return DisabledScheduler()
     sched = BackgroundScheduler(timezone=timezone_name)
 
     sched.add_job(
@@ -222,5 +234,10 @@ def start_scheduler(timezone_name: str) -> BackgroundScheduler:
     )
 
     sched.add_job(process_life_reminders, trigger=IntervalTrigger(minutes=10), id='life_due', replace_existing=True)
+    sched.add_job(process_v37_task_reminders, trigger=IntervalTrigger(seconds=60), id='v37_task_reminders', replace_existing=True)
+    from app.auth_delivery import deliver_mail
+    sched.add_job(deliver_mail, trigger=IntervalTrigger(seconds=60), id="account_mail", replace_existing=True, max_instances=1, coalesce=True)
+    from app.study_planner import process_study_plans
+    sched.add_job(process_study_plans, trigger=IntervalTrigger(seconds=60), id='study_planner', replace_existing=True, max_instances=1, coalesce=True)
     sched.start()
     return sched

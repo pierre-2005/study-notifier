@@ -1,0 +1,34 @@
+{% extends "base.html" %}{% block content %}
+<link rel="stylesheet" href="/static/v37-onboarding.css?v={{APP_VERSION}}">
+{% if message %}<section class="card login-card"><h1>Account created</h1><p class="login-success" role="status">{{message}}</p><a class="btn btn-primary" href="/login">Sign in</a><a href="/verify-email/resend">Resend verification</a></section>{% else %}
+<section class="v37-wizard" id="v37-wizard" data-mode="{{mode|default('profile')}}">
+<header><span class="v37-brand">MLO • My Life Organized</span><span id="v37-count">Step 1 of 5</span></header>
+<progress id="v37-progress" value="1" max="5"></progress>
+<form id="v37-form" method="post" action="{{'/signup' if mode=='signup' else '#'}}">
+<section class="v37-step" data-step="0"><h1>Welcome to your workspace</h1><p>Set up your account and decide how MLO should work for you.</p>
+{% if mode=='signup' %}
+<label>Name<input name="display_name" value="{{form_values.display_name if form_values is defined else ''}}" autocomplete="name" required maxlength="80"></label>
+<label>Username<input name="username" value="{{form_values.username if form_values is defined else ''}}" autocomplete="username" required minlength="3" maxlength="40"></label>
+<label>Email<input name="email" value="{{form_values.email if form_values is defined else ''}}" type="email" autocomplete="email" required maxlength="254"></label>
+<label>Password<input name="password" type="password" autocomplete="new-password" required minlength="12" maxlength="256"></label>
+<label>Confirm password<input name="password_confirm" type="password" autocomplete="new-password" required minlength="12" maxlength="256"></label>
+{% else %}
+<p>Personalize your workspace, reminders and appearance.</p>
+{% endif %}
+</section>
+<section class="v37-step" data-step="1" hidden><h1>What will you organize?</h1><p>Choose modules. You can change these later in Settings.</p>
+<div class="v37-options">{% for key,label in [('tasks','Tasks'),('projects','Projects'),('calendar','Calendar'),('study','Study'),('work','Work'),('money','Money'),('notes','Notes'),('focus','Focus')] %}{% if key!='money' or request.state.legacy_owner|default(false) %}<label class="v37-option"><input type="checkbox" name="modules" value="{{key}}" {{'checked' if key in ['tasks','projects','calendar'] else ''}}>{{label}}</label>{% endif %}{% endfor %}</div></section>
+<section class="v37-step" data-step="2" hidden><h1>Personal reminders</h1><p>Add up to ten reminder times per module. Remove all reminders to mute a module.</p><div id="v37-reminder-groups"></div></section>
+<section class="v37-step" data-step="3" hidden><h1>When should MLO notify you?</h1><label>Time zone<select name="timezone"><option value="America/Edmonton">Mountain (Calgary / Edmonton)</option><option value="America/Vancouver">Pacific</option><option value="America/Toronto">Eastern</option><option value="UTC">UTC</option></select></label><label>Date-only reminders<input type="time" name="day_time" value="09:00" required><small>Time used for deadlines without an exact time.</small></label><div class="v37-times"><label>Quiet hours start<input type="time" name="quiet_start" value="22:00" required></label><label>Quiet hours end<input type="time" name="quiet_end" value="07:00" required></label></div></section>
+<section class="v37-step" data-step="4" hidden><h1>Preview your workspace</h1><p>Change any setting to see a sample of your chosen appearance and layout.</p>
+<div class="v37-preview-layout"><div class="v37-controls"><label>Theme<select name="theme"><option value="system">Follow device</option><option value="dark">Dark</option><option value="light">Light</option></select></label><label>Accent<select name="palette"><option value="neutral">Neutral</option><option value="ocean">Ocean blue</option><option value="lavender">Lavender</option><option value="sage">Sage</option><option value="rose">Rose</option><option value="amber">Amber</option></select></label><label>Palette style<select name="palette_style"><option value="independent">Accent only</option><option value="full">Tint workspace</option></select></label><label>Default view<select name="preferred_view"><option value="board">Board</option><option value="list">List</option><option value="table">Table</option><option value="calendar">Calendar</option></select></label><label>Density<select name="density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label></div>
+<div id="v37-preview" class="v37-preview" data-theme="dark"><div class="v37-preview-head">MLO <span>Today • My workspace</span></div><div class="v37-preview-body"><aside id="v37-preview-nav"></aside><div><h3>My workspace</h3><div id="v37-preview-content"></div></div></div></div></div>
+<p id="v37-summary"></p>
+</section>
+<p id="v37-error" role="alert">{{error|default('')}}</p><div class="v37-actions"><button type="button" id="v37-back">Back</button><button type="button" id="v37-next">Continue →</button></div>
+<input type="hidden" name="v37_setup" id="v37-setup"><noscript><button class="mlo-btn mlo-primary" type="submit">Create account</button></noscript>
+</form><p class="v37-legal">By continuing, you agree to the <a href="/termsofservice">Terms of Service</a> and acknowledge the <a href="/privacy">Privacy Policy</a>.</p></section>
+<script id="v37-initial" type="application/json">{{initial_setup|default({})|tojson}}</script>
+<script src="/static/v37-onboarding.js?v={{APP_VERSION}}" defer></script>
+{% endif %}
+{% endblock %}

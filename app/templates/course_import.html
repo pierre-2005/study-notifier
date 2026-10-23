@@ -1,0 +1,18 @@
+{% extends 'base.html' %}{% block content %}
+<div class="mlo-space import-space">
+  <a class="mlo-back" href="/life/study">← Study</a>
+  <div class="mlo-page-head"><div><h1>Import a course outline</h1><p>Review assessments and dates before adding them to your workspace.</p></div></div>
+  <section class="mlo-surface import-upload">
+    <form method="post" enctype="multipart/form-data" class="mlo-form" data-outline-upload>
+      <label class="upload-zone"><span class="upload-symbol" aria-hidden="true">↥</span><strong>Choose your course outline</strong><span>PDF, Word, PNG, JPG or text · Up to 10 MB</span><input type="file" name="file" accept=".pdf,.docx,.png,.jpg,.jpeg,.txt" required></label>
+      <label>Term year<input type="number" name="term_year" min="2000" max="2100" value="{{year}}" required><small>Used only when a date omits its year.</small></label>
+      {% if ai_enabled %}<label class="import-ai-option"><input type="checkbox" name="use_ai" value="true"> Use AI extraction</label><p class="mlo-subtle">When selected, extracted text is sent to OpenAI for processing. Local extraction keeps the document on this server.</p>{% endif %}
+      {% if error %}<p class="login-error" role="alert">{{error}}</p>{% endif %}
+      <div class="mlo-form-footer"><a href="/life/study">Cancel</a><button type="submit" class="mlo-btn mlo-primary" data-upload-submit>Review outline <span aria-hidden="true">→</span></button></div>
+      <p role="status" aria-live="polite" data-upload-status></p>
+    </form>
+  </section>
+  <div class="import-steps" aria-label="Import process"><span><b>1</b> Upload</span><span><b>2</b> Review dates and evidence</span><span><b>3</b> Add to Study</span></div>
+</div>
+<script src="/static/course-import.js?v={{APP_VERSION}}" defer></script>
+{% endblock %}

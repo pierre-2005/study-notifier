@@ -27,3 +27,10 @@ cryptography>=44,<48
 icalendar>=6,<8
 
 qrcode[pil]>=8.0,<9
+
+defusedxml>=0.7.1,<1
+
+# Keep calendar/reminder rules reproducible across hosts. IANA 2026e.
+tzdata==2026.5
+
+python-dateutil>=2.9,<3

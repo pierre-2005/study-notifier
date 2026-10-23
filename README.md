@@ -1,3 +1,9 @@
+# My Life Organized v3.7
+
+A redesigned shared workspace with nested tasks, touch/keyboard boards, private reminders, reviewed course-outline imports, optional AI extraction, calendar-aware study planning, email verification and password-reset codes. Existing accounts, permissions, data, calendars and the GitHub Actions to Portainer workflow are retained.
+
+Start with the [setup report](docs/V37_SETUP_REPORT.md), [verification](docs/V37_VERIFICATION.md), [fix review](docs/V37_REVIEW_AND_FIXES.md), [Macro-focused product research](docs/V37_PRODUCT_RESEARCH.md), [email walkthrough](docs/V37_EMAIL_SETUP.md) and [deployment/rollback](docs/V37_DEPLOYMENT.md). Historical release notes follow; current account behavior is described in the v3.7 reports.
+
 # MLO Studio v3.6.4 Update
 
 See [the v3.6.4 release notes](docs/RELEASE_V364.md) and [Windows/iPhone guide](docs/PWABUILDER_WINDOWS_AND_IPHONE_V364.md). All previous features and backend data are retained.

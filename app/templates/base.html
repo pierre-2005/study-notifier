@@ -1,3 +1,4 @@
+{% from "icons.html" import icon %}
 <!doctype html>
 <html lang="en" data-palette="neutral" data-palette-style="independent">
 <head>
@@ -44,22 +45,27 @@
   <link rel="stylesheet" href="/static/flow34.css?v={{ APP_VERSION }}">
   <link rel="stylesheet" href="/static/polish342.css?v={{ APP_VERSION }}">
   <link rel="stylesheet" href="/static/polish343.css?v={{ APP_VERSION }}">
+  <link rel="stylesheet" href="/static/v37-board.css?v={{ APP_VERSION }}">
+  <link rel="stylesheet" href="/static/workspace37.css?v={{ APP_VERSION }}">
+  <link rel="stylesheet" href="/static/product37.css?v={{ APP_VERSION }}">
   <script src="/static/theme.js?v={{ APP_VERSION }}" defer></script>
   <script src="/static/life.js?v={{ APP_VERSION }}" defer></script>
   <script src="/static/customize.js?v={{ APP_VERSION }}" defer></script>
   <script src="/static/flow34.js?v={{ APP_VERSION }}" defer></script>
+  <script src="/static/task-inspector.js?v={{ APP_VERSION }}" defer></script>
 </head>
 
-<body>
+<body data-density="{{request.state.workspace_density|default('comfortable')}}">
   <a class="skip-link" href="#main-content">Skip to content</a>
 
-  {% set logged_in = request.session.get("user") if request.url.path not in ["/login", "/signup"] else none %}
+  {% set logged_in = request.session.get("user") if request.url.path not in ["/login", "/signup", "/forgot-password", "/reset-code"] and not request.url.path.startswith(("/password-reset/","/verify-email/")) else none %}
   {% set is_admin = request.session.get("role") == "admin" %}
+  {% set legacy_owner = request.state.legacy_owner|default(false) %}
   {% set p = request.url.path %}
 
   {% if logged_in %}
     <div class="app-layout" data-app-layout>
-      <aside class="app-sidebar" id="app-sidebar" aria-label="Primary navigation">
+      <aside class="app-sidebar" id="app-sidebar" aria-label="Primary navigation"><button class="mobile-sidebar-close icon-btn" type="button" data-mobile-menu-close aria-label="Close navigation">×</button>
         <div class="sidebar-head">
           <a class="workspace-mark" href="/life" aria-label="My Life Organized home">
             <span class="workspace-icon" aria-hidden="true">M</span>
@@ -78,7 +84,7 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
             <span>Quick switcher</span><kbd>Ctrl K</kbd>
           </button>
-          <button class="sidebar-tool" type="button" data-global-capture-open title="Add task anywhere (N)"><span aria-hidden="true">✓</span><span>Quick task</span><kbd>N</kbd></button><div class="quick-add-wrap">
+          <button class="sidebar-tool" type="button" data-global-capture-open title="Add task anywhere (N)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Add task</span><kbd>N</kbd></button><div class="quick-add-wrap">
             <button class="sidebar-tool" type="button" data-quick-add-toggle aria-expanded="false">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
               <span>New</span>
@@ -86,13 +92,13 @@
             </button>
             <div class="quick-add-menu" data-quick-add-menu hidden>
               <a href="/life/projects"><span>▦</span> Project</a>
-              <a href="/life/tasks"><span>✓</span> Task</a>
               <a href="/life/notes"><span>✎</span> Note</a>
               <a href="/sections/new"><span>＋</span> Space</a>
               <a href="/life/focus"><span>◷</span> Focus timer</a>
-              {% if is_admin %}
+              <a href="/life/calendars/new">{{icon('calendar')}} Calendar event</a>
+              <a href="/life/study/import">{{icon('book')}} Course outline</a>
+              {% if legacy_owner %}
               <a href="/items/new"><span>▤</span> Academic deadline</a>
-              <a href="/life/calendars/new"><span>▣</span> Calendar event</a>
               <a href="/expenses/new"><span>$</span> Expense</a>
               <a href="/jobs/new"><span>◇</span> Job application</a>
               <a href="/courses/new"><span>▤</span> Course</a>
@@ -104,9 +110,9 @@
         <div class="mlo-sidebar-customize-row"><span>WORKSPACE</span><button type="button" data-nav-edit aria-label="Edit and reorder navigation">Customize</button></div>
         <nav class="sidebar-nav" data-custom-nav>
           <div class="mlo-nav-group" data-nav-group="core">
-          {% for key,label,path,glyph in [('life-home','Dashboard','/life','⌂'),('life-tasks','My tasks','/life/tasks','☷'),('life-projects','Projects','/life/projects','▦'),('life-calendar','Calendar','/life/calendar','▤'),('life-focus','Focus & time','/life/focus','◷'),('life-notes','Notes','/life/notes','✎'),('life-insights','Insights','/life/insights','▥'),('life-goals','Goals & habits','/life/goals','✧'),('life-search','Search','/life/search','⌕'),('life-devices','Phone reminders','/life/devices','♧'),('life-import','Import tasks','/life/import','⇩'),('life-studio','Study','/life/study','▤'),('life-work','Work & career','/life/work','◇'),('life-money','Finance','/finance','＄'),('life-spaces','Spaces','/life/spaces','▧')] %}
-          {% if key != 'life-money' or is_admin %}
-          <a href="{{path}}" class="nav-item {{'active' if p==path or (path!='/life' and p.startswith(path+'/')) or (key=='life-studio' and (p.startswith('/courses') or p.startswith('/items') or p.startswith('/classes'))) or (key=='life-work' and p.startswith('/jobs')) or (key=='life-money' and (p.startswith('/expenses') or p.startswith('/finance'))) or (key=='life-spaces' and p.startswith('/sections')) else ''}}" data-nav-key="{{key}}" data-nav-default="{{label}}" title="{{label}}"><span class="mlo-navglyph">{{glyph}}</span><span data-nav-label>{{label}}</span><span class="mlo-nav-drag" aria-hidden="true">⠿</span></a>
+          {% for key,label,path,glyph in [('life-home','Today','/life','home'),('life-tasks','My tasks','/life/tasks','tasks'),('life-projects','Projects','/life/projects','projects'),('life-calendar','Calendar','/life/calendar','calendar'),('life-focus','Focus & time','/life/focus','clock'),('life-notes','Notes','/life/notes','note'),('life-insights','Insights','/life/insights','chart'),('life-goals','Goals & habits','/life/goals','goal'),('life-search','Search','/life/search','search'),('life-devices','Phone reminders','/life/devices','bell'),('life-import','Import','/life/import','import'),('life-studio','Study','/life/study','book'),('life-work','Work & career','/life/work','work'),('life-money','Finance','/finance','money'),('life-spaces','Spaces','/life/spaces','spaces')] %}
+          {% if key != 'life-money' or legacy_owner %}
+          <a href="{{path}}" class="nav-item {{'active' if p==path or (path!='/life' and p.startswith(path+'/')) or (key=='life-studio' and (p.startswith('/courses') or p.startswith('/items') or p.startswith('/classes'))) or (key=='life-work' and p.startswith('/jobs')) or (key=='life-money' and (p.startswith('/expenses') or p.startswith('/finance'))) or (key=='life-spaces' and p.startswith('/sections')) else ''}}" data-nav-key="{{key}}" data-nav-default="{{label}}" title="{{label}}"><span class="mlo-navglyph">{{icon(glyph)}}</span><span data-nav-label>{{label}}</span><span class="mlo-nav-drag" aria-hidden="true">⠿</span></a>
           {% endif %}{% endfor %}
           </div>
           <div class="mlo-sidebar-section-title"><span>MY SPACES</span><a href="/sections/new" aria-label="Add space">＋</a></div>
@@ -136,7 +142,7 @@
 
           <div class="sidebar-account">
             <div class="account-avatar" aria-hidden="true">{{ request.session.get("user", "U")[:1] | upper }}</div>
-            <div class="account-copy"><strong>{{ request.session.get("user") }}</strong><span>{{ request.session.get('role')|title }} · v{{ APP_VERSION }}</span></div>
+            <div class="account-copy"><strong>{{ request.session.get("user") }}</strong><span>Personal workspace</span></div>
             <form method="post" action="/logout" class="account-logout"><button class="icon-btn" type="submit" aria-label="Log out" title="Log out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/></svg></button></form>
           </div>
         </div>
@@ -145,7 +151,7 @@
       <div class="sidebar-overlay" data-sidebar-overlay hidden></div>
 
       <main class="app-main" id="main-content">
-        <div class="desktop-history-bar" aria-label="Page history">
+        <div class="desktop-history-bar" aria-label="Page history"><span class="workspace-breadcrumb">My workspace <span aria-hidden="true">/</span> {{request.state.page_title|default('Workspace')}}</span>
           <button class="icon-btn global-back-btn" type="button" data-global-back data-back-fallback="/life" aria-label="Go back" title="Back">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
@@ -167,24 +173,24 @@
           {% block content %}{% endblock %}
 
   {% if logged_in %}
-          <footer class="app-footer">My Life Organized · v{{ APP_VERSION }} <span aria-hidden="true">·</span> <a href="/privacy">Privacy</a> <span aria-hidden="true">·</span> <a href="/termsofservice">Terms</a></footer>
+          <footer class="app-footer"><a href="/privacy">Privacy</a> <span aria-hidden="true">·</span> <a href="/termsofservice">Terms</a></footer>
         </div>
       </main>
 
       <nav class="mobile-dock" aria-label="Mobile navigation">
-        <a class="mobile-dock-item {{'active' if p=='/life' else ''}}" href="/life"><span class="mlo-dockglyph">⌂</span><span>Today</span></a>
-        <a class="mobile-dock-item {{'active' if p.startswith('/life/tasks') else ''}}" href="/life/tasks"><span class="mlo-dockglyph">☷</span><span>Tasks</span></a>
-        <a class="mobile-dock-item {{'active' if p.startswith('/life/projects') else ''}}" href="/life/projects"><span class="mlo-dockglyph">▦</span><span>Projects</span></a>
-        <a class="mobile-dock-item {{'active' if p.startswith('/life/focus') else ''}}" href="/life/focus"><span class="mlo-dockglyph">◷</span><span>Focus</span></a>
-        <button class="mobile-dock-item" type="button" data-mobile-more aria-expanded="false" aria-controls="mobile-more-sheet"><span class="mlo-dockglyph">⋯</span><span>More</span></button>
+        <a class="mobile-dock-item {{'active' if p=='/life' else ''}}" href="/life"><span class="mlo-dockglyph">{{icon('home')}}</span><span>Today</span></a>
+        <a class="mobile-dock-item {{'active' if p.startswith('/life/tasks') else ''}}" href="/life/tasks"><span class="mlo-dockglyph">{{icon('tasks')}}</span><span>Tasks</span></a>
+        <a class="mobile-dock-item {{'active' if p.startswith('/life/projects') else ''}}" href="/life/projects"><span class="mlo-dockglyph">{{icon('projects')}}</span><span>Projects</span></a>
+        <a class="mobile-dock-item {{'active' if p.startswith('/life/focus') else ''}}" href="/life/focus"><span class="mlo-dockglyph">{{icon('clock')}}</span><span>Focus</span></a>
+        <button class="mobile-dock-item" type="button" data-mobile-more aria-expanded="false" aria-controls="mobile-more-sheet"><span class="mlo-dockglyph">{{icon('more')}}</span><span>More</span></button>
       </nav>
 
       <section class="mobile-more-sheet" id="mobile-more-sheet" data-mobile-more-sheet aria-label="More navigation" hidden>
         <div class="sheet-handle"></div>
         <div class="mobile-more-grid">
           <a href="/life/study">Study</a><a href="/life/work">Work & career</a>
-          {% if is_admin %}<a href="/finance">Finance</a>{% endif %}
-          <a href="/life/spaces">Spaces</a><a href="/life/calendar">Calendar</a><a href="/life/calendars">Connected calendars</a><a href="/life/notes">Notes</a><a href="/life/insights">Insights</a><a href="/life/goals">Goals & habits</a><a href="/life/devices">Phone reminders</a><a href="/life/import">Import tasks</a><a href="/life/search">Search</a><a href="/settings">Settings</a><a href="/sections/new">New space</a>
+          {% if legacy_owner %}<a href="/finance">Finance</a>{% endif %}
+          <a href="/life/spaces">Spaces</a><a href="/life/calendar">Calendar</a><a href="/life/calendars">Connected calendars</a><a href="/life/notes">Notes</a><a href="/life/insights">Insights</a><a href="/life/goals">Goals & habits</a><a href="/life/devices">Phone reminders</a><a href="/life/import">Import tasks</a><a href="/life/study/import">Import course outline</a><a href="/life/study/planner">Study planner</a><a href="/life/search">Search</a><a href="/settings">Settings</a><a href="/sections/new">New space</a>
         </div>
       </section>
     </div>
@@ -213,9 +219,10 @@
           <a href="/life/calendar" data-command-item data-search="calendar events schedule deadline"><span>Calendar</span><small>Schedule</small></a>
           <a href="/life/focus" data-command-item data-search="focus timers countdown pomodoro"><span>Focus & timers</span><small>Time</small></a>
           <a href="/life/notes" data-command-item data-search="notes knowledge"><span>Notes</span><small>Write</small></a><a href="/life/insights" data-command-item data-search="insights reports stats progress analytics"><span>Insights</span><small>Progress</small></a>
+          <a href="/life/study/planner" data-command-item data-search="study planner automatic schedule blocks availability"><span>Study planner</span><small>Schedule</small></a>
           <a href="/life/study" data-command-item data-search="study courses assignments exams labs class"><span>Study</span><small>Academics</small></a>
           <a href="/life/work" data-command-item data-search="work career jobs applications"><span>Work & career</span><small>Career</small></a>
-          {% if is_admin %}<a href="/finance" data-command-item data-search="money finance expenses budgets bills"><span>Finance</span><small>Finance</small></a>{% endif %}
+          {% if legacy_owner %}<a href="/finance" data-command-item data-search="money finance expenses budgets bills"><span>Finance</span><small>Finance</small></a>{% endif %}
           <a href="/life/spaces" data-command-item data-search="spaces sections shared groceries"><span>Spaces</span><small>Collaboration</small></a>
           <a href="/account/security" data-command-item data-search="password email account recovery security"><span>Account security</span><small>Account</small></a><a href="/settings" data-command-item data-search="settings preferences"><span>Settings</span><small>App</small></a>
           {% for section in request.state.custom_sections %}<a href="/sections/{{ section['id'] }}" data-command-item data-search="section {{ section['name'] }} {{ section['description'] }}"><span>{{ section['icon'] }} {{ section['name'] }}</span><small>Section</small></a>{% endfor %}

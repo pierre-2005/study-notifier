@@ -1,0 +1,190 @@
+[
+  {
+    "screen": "board-desktop",
+    "violations": []
+  },
+  {
+    "screen": "board-light-neutral",
+    "violations": []
+  },
+  {
+    "screen": "board-light-ocean",
+    "violations": []
+  },
+  {
+    "screen": "board-light-sage",
+    "violations": []
+  },
+  {
+    "screen": "board-light-rose",
+    "violations": []
+  },
+  {
+    "screen": "board-light-amber",
+    "violations": []
+  },
+  {
+    "screen": "board-light-lavender",
+    "violations": []
+  },
+  {
+    "screen": "board-dark-neutral",
+    "violations": []
+  },
+  {
+    "screen": "board-dark-ocean",
+    "violations": []
+  },
+  {
+    "screen": "board-dark-sage",
+    "violations": []
+  },
+  {
+    "screen": "board-dark-rose",
+    "violations": []
+  },
+  {
+    "screen": "board-dark-amber",
+    "violations": []
+  },
+  {
+    "screen": "board-dark-lavender",
+    "violations": []
+  },
+  {
+    "screen": "task-inspector",
+    "violations": []
+  },
+  {
+    "screen": "/life",
+    "violations": []
+  },
+  {
+    "screen": "/life/tasks",
+    "violations": []
+  },
+  {
+    "screen": "/life/projects",
+    "violations": []
+  },
+  {
+    "screen": "/life/notes",
+    "violations": []
+  },
+  {
+    "screen": "/life/calendar",
+    "violations": []
+  },
+  {
+    "screen": "/life/focus",
+    "violations": []
+  },
+  {
+    "screen": "/life/goals",
+    "violations": []
+  },
+  {
+    "screen": "/life/insights",
+    "violations": []
+  },
+  {
+    "screen": "/life/study",
+    "violations": []
+  },
+  {
+    "screen": "/life/study/planner",
+    "violations": []
+  },
+  {
+    "screen": "/life/study/import",
+    "violations": []
+  },
+  {
+    "screen": "/life/work",
+    "violations": []
+  },
+  {
+    "screen": "/finance",
+    "violations": []
+  },
+  {
+    "screen": "/life/calendars",
+    "violations": []
+  },
+  {
+    "screen": "/life/devices",
+    "violations": []
+  },
+  {
+    "screen": "/settings",
+    "violations": []
+  },
+  {
+    "screen": "/admin/users",
+    "violations": []
+  },
+  {
+    "screen": "board-mobile",
+    "violations": []
+  },
+  {
+    "screen": "outline-review",
+    "violations": []
+  },
+  {
+    "screen": "planner-light-neutral",
+    "violations": []
+  },
+  {
+    "screen": "planner-light-ocean",
+    "violations": []
+  },
+  {
+    "screen": "planner-light-sage",
+    "violations": []
+  },
+  {
+    "screen": "planner-light-rose",
+    "violations": []
+  },
+  {
+    "screen": "planner-light-amber",
+    "violations": []
+  },
+  {
+    "screen": "planner-light-lavender",
+    "violations": []
+  },
+  {
+    "screen": "planner-dark-neutral",
+    "violations": []
+  },
+  {
+    "screen": "planner-dark-ocean",
+    "violations": []
+  },
+  {
+    "screen": "planner-dark-sage",
+    "violations": []
+  },
+  {
+    "screen": "planner-dark-rose",
+    "violations": []
+  },
+  {
+    "screen": "planner-dark-amber",
+    "violations": []
+  },
+  {
+    "screen": "planner-dark-lavender",
+    "violations": []
+  },
+  {
+    "screen": "planner-mobile",
+    "violations": []
+  },
+  {
+    "screen": "signup-mobile",
+    "violations": []
+  }
+]

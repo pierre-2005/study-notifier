@@ -11,3 +11,13 @@ docs/
 tests*.py
 visual_check.py
 .DS_Store
+*.db
+*.db-*
+*.sqlite.backup
+*.partial
+test-results/
+node_modules/
+mlo_uploads/
+.venv/
+
+tests/

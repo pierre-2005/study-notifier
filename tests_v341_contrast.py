@@ -74,7 +74,7 @@ with tempfile.TemporaryDirectory() as d:
         soup.head.append(style)
         html=str(soup)
         with sync_playwright() as pw:
-            browser=pw.chromium.launch(headless=True, args=['--no-sandbox'], **({'executable_path':shutil.which('chromium')} if shutil.which('chromium') else {}))
+            browser=pw.chromium.launch(headless=True, args=['--no-sandbox'], **({'executable_path':(os.environ.get('MLO_BROWSER') or shutil.which('chromium'))} if (os.environ.get('MLO_BROWSER') or shutil.which('chromium')) else {}))
             page=browser.new_page(viewport={'width':1440,'height':900})
             page.set_content(html,wait_until='load')
             failures=[]

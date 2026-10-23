@@ -22,7 +22,7 @@ with tempfile.TemporaryDirectory() as tmp:
         for name in ['Prepare report','Review drawings','Complete proposal']:
             client.post('/life/tasks',data={'title':name})
         with sync_playwright() as p:
-            browser=p.chromium.launch(headless=True,args=['--no-sandbox'], **({'executable_path':shutil.which('chromium')} if shutil.which('chromium') else {}))
+            browser=p.chromium.launch(headless=True,args=['--no-sandbox'], **({'executable_path':(os.environ.get('MLO_BROWSER') or shutil.which('chromium'))} if (os.environ.get('MLO_BROWSER') or shutil.which('chromium')) else {}))
             errors=[]
             def render(page,path):
                 html=client.get(path).text

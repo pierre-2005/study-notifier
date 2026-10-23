@@ -21,7 +21,7 @@ with tempfile.TemporaryDirectory() as d:
   style=soup.new_tag('style');style.string='\n'.join((Path('app/static')/f).read_text() for f in ('theme.css','life.css','design32.css','design33.css','flow34.css','polish342.css','polish343.css'))
   soup.head.append(style)
   with sync_playwright() as pw:
-   browser=pw.chromium.launch(headless=True,args=['--no-sandbox'],**({'executable_path':shutil.which('chromium')} if shutil.which('chromium') else {}))
+   browser=pw.chromium.launch(headless=True,args=['--no-sandbox'],**({'executable_path':(os.environ.get('MLO_BROWSER') or shutil.which('chromium'))} if (os.environ.get('MLO_BROWSER') or shutil.which('chromium')) else {}))
    page=browser.new_page(viewport={'width':1400,'height':900})
    page.set_content(str(soup),wait_until='load')
    card=page.locator('.mlo-danger-area').first

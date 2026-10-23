@@ -214,12 +214,16 @@ def update_user_password(target_id,password,actor_id=None,temporary=False):
     if len(password or '')<12 or len(password)>256:
         raise ValueError('Use a password of 12 to 256 characters.')
     with get_conn() as conn:
+        conn.execute('BEGIN IMMEDIATE')
         row=conn.execute("SELECT id FROM users WHERE id=?",(target_id,)).fetchone()
         if not row: raise ValueError('Account not found.')
         conn.execute("""UPDATE users SET password_hash=?,auth_version=auth_version+1,
                       must_change_password=? WHERE id=?""",
                      (hash_password(password),1 if temporary else 0,target_id))
         conn.execute("UPDATE auth_email_tokens SET used_at=? WHERE user_id=? AND used_at IS NULL",(_now_iso(),target_id))
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE name='auth_reset_codes'").fetchone():
+            conn.execute('UPDATE auth_reset_codes SET used_at=? WHERE user_id=? AND used_at IS NULL',(_now_iso(),target_id))
+            conn.execute('DELETE FROM auth_mail_outbox WHERE user_id=?',(target_id,))
         conn.execute("INSERT INTO auth_audit_log(actor_id,target_id,action,created_at) VALUES(?,?,?,?)",
                      (actor_id,target_id,'password_admin_reset' if temporary else 'password_changed',_now_iso()))
         conn.commit()
