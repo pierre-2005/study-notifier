@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 from app.config import settings
 from app.db import get_conn
+from app.calendar_time import reminder_date
 from app.legacy_access import owns_legacy_data
 from app.notifier.ntfy import NtfyNotifier
 from app.v37 import read_user_setup, MODULE_KIND
@@ -52,9 +53,9 @@ def sources(db, uid, modules):
                 LEFT JOIN life_study_blocks b ON b.event_id=e.id AND b.user_id=e.user_id
                 LEFT JOIN life_tasks t ON t.id=b.task_id WHERE e.user_id=? AND (t.status IS NULL OR t.status!='done')''', (uid,)):
             yield 'local_event', str(r['id']), 'event', r['title'], r['start_at_utc']
-        for r in db.execute('''SELECT e.* FROM life_external_events e
+        for r in db.execute('''SELECT e.*,c.provider FROM life_external_events e
                 JOIN life_calendar_connections c ON c.id=e.connection_id WHERE c.user_id=?''', (uid,)):
-            yield 'external_event', f"{r['connection_id']}:{r['uid']}", 'event', r['title'], r['starts_at'] or r['starts_on']
+            yield 'external_event', f"{r['connection_id']}:{r['uid']}", 'event', r['title'], reminder_date(r)
     if 'notes' in kinds:
         for r in db.execute('''SELECT r.note_id,r.remind_at_utc,n.title FROM life_note_reminders r
                 JOIN life_notes n ON n.id=r.note_id LEFT JOIN life_projects p ON p.id=n.project_id

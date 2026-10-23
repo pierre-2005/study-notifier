@@ -1,4 +1,4 @@
-# My Life Organized v3.7
+# My Life Organized v3.7.1
 
 A redesigned shared workspace with nested tasks, touch/keyboard boards, private reminders, reviewed course-outline imports, optional AI extraction, calendar-aware study planning, email verification and password-reset codes. Existing accounts, permissions, data, calendars and the GitHub Actions to Portainer workflow are retained.
 

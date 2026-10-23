@@ -443,10 +443,12 @@ def home(request: Request):
     with get_conn() as conn:
         for row in conn.execute("SELECT due_on FROM life_tasks WHERE owner_id=? AND due_on>=? AND due_on<? AND status!='done'",(uid,month_start.isoformat(),month_end.isoformat())):
             if row['due_on']:event_dates.add(row['due_on'])
-        for row in conn.execute('SELECT start_at_utc FROM life_local_events WHERE user_id=? AND start_at_utc>=? AND start_at_utc<?',(uid,month_start.isoformat(),month_end.isoformat())):
+        for row in conn.execute('SELECT start_at_utc FROM life_local_events WHERE user_id=? AND start_at_utc>=? AND start_at_utc<?',(uid,(month_start-timedelta(days=1)).isoformat(),(month_end+timedelta(days=1)).isoformat())):
             if row['start_at_utc']:event_dates.add(datetime.fromisoformat(row['start_at_utc'].replace('Z','+00:00')).astimezone(zone).date().isoformat())
-        for row in conn.execute('SELECT e.starts_on FROM life_external_events e JOIN life_calendar_connections c ON e.connection_id=c.id WHERE c.user_id=? AND e.starts_on>=? AND e.starts_on<? LIMIT 150',(uid,month_start.isoformat(),month_end.isoformat())):
-            event_dates.add(row['starts_on'])
+        from app.calendar_time import cached_start
+        for row in conn.execute('SELECT e.*,c.provider FROM life_external_events e JOIN life_calendar_connections c ON e.connection_id=c.id WHERE c.user_id=? AND e.starts_on>=? AND e.starts_on<? LIMIT 500',(uid,(month_start-timedelta(days=1)).isoformat(),(month_end+timedelta(days=1)).isoformat())):
+            instant=cached_start(row,zone)
+            if instant:event_dates.add(instant.date().isoformat())
     from app.agenda import agenda_for
     with get_conn() as conn:agenda=agenda_for(conn,uid,local_today,zone)
     hour=datetime.now(zone).hour
@@ -935,11 +937,13 @@ def calendar_page(request:Request, month:str=''):
             d=local_day(x['start_at_utc'])
             if d:add(d,x['title'],f'/life/calendars/local/{x["id"]}/edit','event')
         # User-specific, previously synchronized external events. No HTTP during page loads.
-        for x in conn.execute("""SELECT e.title,e.starts_on,e.starts_at,e.href,e.uid,e.connection_id,c.provider,c.label FROM life_external_events e
+        for x in conn.execute("""SELECT e.title,e.starts_on,e.starts_at,e.is_all_day,e.href,e.uid,e.connection_id,c.provider,c.label FROM life_external_events e
                       JOIN life_calendar_connections c ON c.id=e.connection_id
                       WHERE c.user_id=? AND e.starts_on>=? AND e.starts_on<? ORDER BY e.starts_on LIMIT 500""",
                       (uid,(first-timedelta(days=1)).isoformat(),(last+timedelta(days=1)).isoformat())):
-            d=local_day(x['starts_at']) if x['starts_at'] else date.fromisoformat(x['starts_on'])
+            from app.calendar_time import cached_start
+            instant=cached_start(x,zone)
+            d=instant.date() if instant else None
             if d:add(d, x['title'], (f"/life/calendars/{x['connection_id']}/events/{urllib.parse.quote(x['uid'],safe='')}/edit" if x['provider'] in ('google','microsoft') else (x['href'] if x['href'] and x['href'].startswith('https://') else '/life/calendars')), 'external')
     for values in grouped.values():
         values.sort(key=lambda x: {'class':0,'exam':1,'assignment':2,'lab':2,'event':3,'task':4,'job':5,'bill':6}.get(x['kind'],9))
