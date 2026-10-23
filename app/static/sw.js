@@ -1,6 +1,6 @@
 /* Offline installation shell caches static resources only; private data is never cached. */
-const CACHE='mlo-static-v3.6.4';
-const ASSETS=['/static/theme.css?v=3.6.4','/static/life.css?v=3.6.4','/static/design32.css?v=3.6.4','/static/design33.css?v=3.6.4','/static/flow34.css?v=3.6.4','/static/flow34.js?v=3.6.4','/static/theme.js?v=3.6.4','/static/life.js?v=3.6.4','/static/customize.js?v=3.6.4','/static/apple-touch-icon.png','/static/icon-192.png','/static/icon-512.png'];
+const CACHE='mlo-static-v3.7.0-rc1';
+const ASSETS=['/static/task-inspector.js?v=3.7.0-rc1','/static/workspace37.css?v=3.7.0-rc1','/static/v37-board.css?v=3.7.0-rc1','/static/v37-board.js?v=3.7.0-rc1','/static/v37-onboarding.css?v=3.7.0-rc1','/static/v37-onboarding.js?v=3.7.0-rc1','/static/course-import.js?v=3.7.0-rc1','/static/theme.css?v=3.7.0-rc1','/static/life.css?v=3.7.0-rc1','/static/design32.css?v=3.7.0-rc1','/static/design33.css?v=3.7.0-rc1','/static/flow34.css?v=3.7.0-rc1','/static/flow34.js?v=3.7.0-rc1','/static/theme.js?v=3.7.0-rc1','/static/life.js?v=3.7.0-rc1','/static/customize.js?v=3.7.0-rc1','/static/apple-touch-icon.png','/static/icon-192.png','/static/icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS))));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key))))));
 self.addEventListener('fetch',event=>{

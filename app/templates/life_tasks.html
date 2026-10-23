@@ -1,6 +1,6 @@
-{% extends 'base.html' %}{% from 'life_components.html' import task_row,quick_task,top %}
+{% extends 'base.html' %}{% from 'life_components.html' import task_row,quick_task,top,task_tree %}
 {% block content %}<div class="mlo-space mlo-enhanced-tasks">
-<div class="mlo-page-head"><div><span class="mlo-kicker">YOUR WORK</span><h1>Tasks</h1><p>One place for everything that needs doing.</p></div><div class="mlo-toolbar-actions"><a href="/life/insights" class="mlo-btn mlo-secondary">Insights ↗</a><a href="/life/calendar" class="mlo-btn mlo-secondary">Calendar ↗</a></div></div>
+<div class="mlo-page-head"><div><span class="mlo-kicker">YOUR WORK</span><h1>Tasks</h1></div><div class="mlo-toolbar-actions"><a href="/life/insights" class="mlo-btn mlo-secondary">Insights ↗</a><a href="/life/calendar" class="mlo-btn mlo-secondary">Calendar ↗</a></div></div>
 {{ quick_task('/life/tasks?view=' ~ view) }}
 <div class="mlo-tabbar">{% for key,label in [('open','Open'),('inbox','Inbox'),('today','Today'),('upcoming','Upcoming'),('overdue','Overdue'),('done','Completed'),('all','All')] %}<a class="{{ 'active' if view==key else '' }}" href="/life/tasks?view={{key}}">{{ label }}</a>{% endfor %}</div>
 <details class="mlo-saved-filters" {{'open' if saved_views else ''}}><summary>Saved filters <span class="mlo-count">{{saved_views|length}}</span></summary>
@@ -25,8 +25,7 @@
     <button type="submit" class="mlo-btn mlo-secondary" data-bulk-submit disabled>Apply to <span data-selected-count>0</span></button>
   </form>
   <div class="mlo-bulk-list" data-bulk-list>
-  {% for t in tasks %}<div class="mlo-bulk-task"><label class="mlo-bulk-checkbox"><input type="checkbox" name="ids" value="{{t.id}}" form="mlo-task-batch" data-task-select aria-label="Select {{t.title}}" {{'disabled' if not t.can_edit else ''}}></label><div class="mlo-bulk-content">{{task_row(t,'/life/tasks?' ~ query_string ~ '&page=' ~ page|string)}}</div></div>
-  {% else %}<div class="mlo-empty"><strong>No matching tasks</strong><p>Try removing a filter, or add a new task.</p></div>{% endfor %}
+  {% if task_nodes %}{{task_tree(task_nodes,'/life/tasks?' ~ query_string ~ '&page=' ~ page|string,true)}}{% else %}<div class="mlo-empty"><strong>No matching tasks</strong><p>Try removing a filter, or add a new task.</p></div>{% endif %}
   </div>
   <nav class="mlo-pagination" aria-label="Task pages">{% if page>1 %}<a class="mlo-btn mlo-secondary" href="/life/tasks?{{query_string}}&page={{page-1}}">← Previous</a>{% endif %}<span>{{total}} results</span>{% if page<pages %}<a class="mlo-btn mlo-secondary" href="/life/tasks?{{query_string}}&page={{page+1}}">Next →</a>{% endif %}</nav>
 </section>

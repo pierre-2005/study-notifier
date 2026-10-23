@@ -1,3 +1,7 @@
+# MLO v3.7 release candidate
+
+The feature branch contains the reviewed workspace, personalized reminders, course-outline import and account email flows. It remains a draft release candidate. Start with [verification and remaining gates](docs/V37_VERIFICATION.md), [fix review](docs/V37_REVIEW_AND_FIXES.md), [product research](docs/V37_PRODUCT_RESEARCH.md), [email setup](docs/V37_EMAIL_SETUP.md), and [deployment/rollback](docs/V37_DEPLOYMENT.md). Historical release notes follow.
+
 # MLO Studio v3.6.4 Update
 
 See [the v3.6.4 release notes](docs/RELEASE_V364.md) and [Windows/iPhone guide](docs/PWABUILDER_WINDOWS_AND_IPHONE_V364.md). All previous features and backend data are retained.

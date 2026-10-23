@@ -30,7 +30,7 @@ with tempfile.TemporaryDirectory() as d:
             r=client.request(**kwargs)
             return {'ok':r.is_success,'status':r.status_code,'text':r.text}
         with sync_playwright() as pw:
-            browser=pw.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
+            browser=pw.chromium.launch(headless=True,executable_path=os.environ.get('MLO_BROWSER') or __import__('shutil').which('chromium'),args=['--no-sandbox'])
             page=browser.new_page(viewport={'width':1440,'height':900})
             page.expose_function('mloBackend',backend)
             page.evaluate("""window.fetch=async (path,options={})=>{

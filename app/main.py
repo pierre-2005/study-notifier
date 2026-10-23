@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Form, HTTPException
+from fastapi import FastAPI, Request, Form, HTTPException, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
@@ -38,6 +38,8 @@ from app.consolidation import consolidate_todos
 from app.life_hubs import router as hubs_router
 from app.personalize import router as layout_router, init_layout_schema, appearance_for
 from app.calendar_links import router as calendar_links_router, init_calendar_links_schema, sync_due_calendars, AUTO_SYNC
+from app.course_import import router as course_router, init_course_schema
+from app.note_reminders import router as note_reminder_router
 from app.v37 import router as v37_router, init_v37_schema, save_user_setup, _validate_preferences, _validate_reminders
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
@@ -46,25 +48,8 @@ templates.env.globals["APP_VERSION"] = APP_VERSION
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    pre_v3_backup()
-    pre_consolidation_backup()
-    pre_v34_backup()
-    pre_v36_backup()
-    init_db()
-    init_auth_schema()
-    init_account_security_schema()
-    ensure_bootstrap_admin(APP_USERNAME, APP_PASSWORD)
-    init_finance_schema()
-    init_workspace_schema()
-    init_timer_schema()
-    init_life_schema()
-    init_layout_schema()
-    init_v37_schema()
-    init_calendar_links_schema()
-    consolidate_todos()
-    init_phone_schema()
-    init_import_schema()
-    init_file_schema()
+    from app.bootstrap import initialize_database
+    initialize_database(APP_USERNAME,APP_PASSWORD)
     sched = start_scheduler(settings.timezone)
     if AUTO_SYNC and hasattr(sched, "add_job"):
         sched.add_job(sync_due_calendars,trigger='interval',seconds=60,id='calendar_auto_sync',
@@ -109,7 +94,7 @@ async def require_auth(request: Request, call_next):
     path = request.url.path
     if request.method == 'GET' and path in ('/classic/dashboard','/todos','/todos/new','/schedule','/timers'):
         return RedirectResponse('/life/tasks' if path.startswith('/todos') else '/life/calendar' if path == '/schedule' else '/life/focus' if path == '/timers' else '/life',status_code=303)
-    public_paths = {"/", "/privacy", "/termsofservice", "/login", "/signup", "/logout", "/favicon.ico", "/health", "/forgot-password", "/service-worker.js", "/manifest.webmanifest"}
+    public_paths = {"/", "/privacy", "/termsofservice", "/login", "/signup", "/logout", "/favicon.ico", "/health", "/forgot-password", "/reset-code", "/verify-email/resend", "/service-worker.js", "/manifest.webmanifest"}
     if path.startswith(("/password-reset/", "/verify-email/")):
         return await call_next(request)
     if path.startswith("/static") or path in public_paths:
@@ -125,6 +110,9 @@ async def require_auth(request: Request, call_next):
 
     if not user or not user["approved"] or not user["active"]:
         request.session.clear()
+        if path.startswith('/api/'):
+            from fastapi.responses import JSONResponse
+            return JSONResponse({'detail':'Sign in required'},status_code=401)
         next_url = path + (("?" + request.url.query) if request.url.query else "")
         return RedirectResponse(url="/login?next=" + urllib.parse.quote(next_url), status_code=303)
 
@@ -133,15 +121,32 @@ async def require_auth(request: Request, call_next):
     if request.session.get('auth_version') != int(user['auth_version']):
         request.session.clear()
         return RedirectResponse('/login?message=Please+sign+in+again',status_code=303)
+    if user['requires_email_verification'] and not user['email_verified']:
+        request.session.clear()
+        return RedirectResponse('/login?message=Verify+your+email+to+sign+in.',status_code=303)
     if user['must_change_password'] and path != '/account/password' and path != '/logout':
         return RedirectResponse('/account/password?required=1',status_code=303)
     request.session["user_id"] = int(user["id"])
     request.session["user"] = user["username"]
     request.session["role"] = user["role"]
     request.state.current_user = user
+    from app.legacy_access import owns_legacy_data
+    with get_conn() as conn:
+        request.state.legacy_owner = owns_legacy_data(conn,int(user['id']))
+    legacy_paths=('/courses','/items','/classes','/events','/expenses','/jobs','/todos','/finance','/classic')
+    if path.startswith(legacy_paths) and user['role']=='admin' and not request.state.legacy_owner:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({'detail':'This historical record belongs to a different account.'},status_code=403)
     # POST/JSON endpoints don't render the sidebar: avoid two extra SQL reads.
-    needs_shell = request.method == 'GET' and not path.startswith('/life/layout')
+    needs_shell = request.method == 'GET' and not path.startswith(('/life/layout','/api/'))
     if needs_shell:
+        titles={'/life':'Today','/life/tasks':'Tasks','/life/projects':'Projects','/life/study':'Study','/life/calendar':'Calendar',
+                '/life/calendars':'Connected calendars','/life/notes':'Notes','/life/focus':'Focus','/life/insights':'Insights',
+                '/life/goals':'Goals & habits','/life/work':'Work','/life/spaces':'Spaces','/life/import':'Import',
+                '/life/search':'Search','/life/devices':'Notifications','/settings':'Settings','/account':'Account','/finance':'Finance','/admin':'Administration'}
+        request.state.page_title=next((label for prefix,label in sorted(titles.items(),key=lambda item:-len(item[0])) if path==prefix or path.startswith(prefix+'/')),'Workspace')
+        with get_conn() as conn:
+            request.state.workspace_density=(conn.execute('SELECT density FROM v37_workspace_preferences WHERE user_id=?',(user['id'],)).fetchone() or {'density':'comfortable'})['density']
         request.state.appearance = appearance_for(int(user['id']))
         request.state.custom_sections = list_sections_for_user(int(user["id"]), sidebar_only=True)
         request.state.active_timer = active_timer_for_user(int(user["id"]))
@@ -164,7 +169,7 @@ async def require_auth(request: Request, call_next):
             'projects_share' if (p.startswith('/life/projects/') and ('/invite' in p or '/remove/' in p)) or (p.startswith('/sections/') and '/share' in p) else
             'calendar_connect' if p.startswith('/life/calendars/') and (p.endswith('/feed') or p.endswith('/delete')) else
             'files_upload' if p=='/life/files/upload' else
-            'import_tasks' if p.startswith('/life/import/') else
+            'import_tasks' if p.startswith(('/life/import/','/life/study/import')) else
             'devices_manage' if p.startswith('/life/devices') else None)
         if needed and not user_capabilities(user)[needed]:
             from fastapi.responses import PlainTextResponse
@@ -173,7 +178,7 @@ async def require_auth(request: Request, call_next):
     # Member accounts are collaboration accounts by default. Personal school,
     # finance, job, and expense data remains private to administrators.
     if user["role"] != "admin":
-        member_allowed = ("/life", "/sections", "/timers", "/settings", "/account", "/logout")
+        member_allowed = ("/life", "/api/v37/", "/sections", "/timers", "/settings", "/account", "/logout")
         if path == "/" or not path.startswith(member_allowed):
             return RedirectResponse("/life", status_code=303)
 
@@ -2143,7 +2148,7 @@ def settings_page(request: Request):
             "quiet_start": _get_setting(conn, "quiet_start", "23:00"),
             "quiet_end": _get_setting(conn, "quiet_end", "07:00"),
         }
-    return templates.TemplateResponse(request,"settings.html", {"request": request, "s": data, "tz": settings.timezone})
+    return templates.TemplateResponse(request,"settings.html", {"request": request, "s": data, "tz": settings.timezone, "legacy_notifications":getattr(request.state,"legacy_owner",False) and os.getenv("MLO_ENABLE_LEGACY_GLOBAL_NTFY","false").lower() in ("true","1","yes","on")})
 
 
 @app.post("/settings/save")
@@ -2195,11 +2200,17 @@ def login_submit(
     next: str = Form("/life"),
 ):
     next = _safe_next_url(next)
+    from app.auth_delivery import allow
+    address=request.client.host if request.client else 'unknown'
+    if len(password)>256 or not allow('login-ip:'+address,60,15) or not allow('login:'+username.strip().lower(),15,15):
+        return templates.TemplateResponse(request,'login.html',{'request':request,'next':next,'error':'Too many attempts. Try again in 15 minutes.','message':''},status_code=429)
     user = get_user_by_username(username)
     error = "Invalid username or password."
     if user and verify_password(password, user["password_hash"]):
         if not user["active"]:
             error = "This account has been disabled by an administrator."
+        elif user['requires_email_verification'] and not user['email_verified']:
+            error = 'Verify your email before signing in. Use Resend verification if you need a new link.'
         elif not user["approved"]:
             error = "Your account is waiting for administrator approval."
         else:
@@ -2222,47 +2233,59 @@ def signup_page(request: Request):
 
 
 @app.post("/signup", response_class=HTMLResponse)
-def signup_submit(
-    request: Request,
-    username: str = Form(...),
-    display_name: str = Form(""),
-    password: str = Form(...),
-    password_confirm: str = Form(...),
-    email: str = Form(""),
-    v37_setup: str = Form(""),
-):
-    import json
-    from app.auth import get_user_by_username
-    context={"request":request,"error":"","message":"","mode":"signup"}
-    if password != password_confirm:
-        context["error"]="Passwords do not match."
-        return templates.TemplateResponse(request,"v37_onboarding.html",context)
-    if not email.strip():
-        context["error"]="Email is required."
-        return templates.TemplateResponse(request,"v37_onboarding.html",context)
+def signup_submit(request:Request,background_tasks:BackgroundTasks,username:str=Form(...),
+                  display_name:str=Form(""),password:str=Form(...),password_confirm:str=Form(...),
+                  email:str=Form(""),v37_setup:str=Form("")):
+    import json, re, sqlite3, hashlib
+    from app.auth import hash_password
+    from app.auth_delivery import allow,queue_email,deliver_mail
+    context={'request':request,'error':'','message':'','mode':'signup',
+             'form_values':{'username':username[:40],'display_name':display_name[:80],'email':email[:254]}}
+    data={}
+    def fail(message):
+        context['error']=message
+        context['initial_setup']=data
+        return templates.TemplateResponse(request,'v37_onboarding.html',context,status_code=422)
     try:
-        if len(v37_setup)>5000:
-            raise ValueError("Setup too large")
-        data=json.loads(v37_setup)
+        if len(v37_setup)>6000: raise ValueError()
+        data=json.loads(v37_setup) if v37_setup else {}
         _validate_preferences(data)
-        _validate_reminders(data.get("reminders",{}))
-        if data.get("theme") not in ("light","dark","system") or data.get("accent_color") not in ("blue","violet","teal","coral"):
-            raise ValueError("Invalid appearance")
+        _validate_reminders(data.get('reminders',{}))
+        if data.get('theme','system') not in ('light','dark','system'): raise ValueError()
     except (ValueError,TypeError,KeyError,HTTPException):
-        context["error"]="Please complete your setup preferences."
-        return templates.TemplateResponse(request,"v37_onboarding.html",context)
-    ok,message=create_pending_user(username,display_name,password,email)
-    if not ok:
-        context["error"]=message
-        return templates.TemplateResponse(request,"v37_onboarding.html",context)
-    # Pending accounts store only verified server-validated preferences, never the password.
-    user=get_user_by_username(username)
-    if user:
+        data={}
+        return fail('Check your workspace preferences and try again.')
+    if password!=password_confirm or not 12<=len(password)<=256:
+        return fail('Use matching passwords with 12 to 256 characters.')
+    username=username.strip(); email=email.strip().lower()
+    if not re.fullmatch(r'[A-Za-z0-9._-]{3,40}',username):
+        return fail('Use 3 to 40 letters, numbers, periods, underscores or hyphens for your username.')
+    if not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',email) or len(email)>254:
+        return fail('Enter a valid email address.')
+    if not allow('signup:'+str(request.client.host if request.client else 'unknown'),10,60):
+        return fail('Too many signup attempts. Please try again later.')
+    # Account, preferences and outgoing verification email commit together.
+    at=datetime.now(timezone.utc)
+    token=secrets.token_urlsafe(36)
+    try:
         with get_conn() as conn:
-            save_user_setup(conn,int(user["id"]),data)
+            conn.execute('BEGIN IMMEDIATE')
+            user=conn.execute('''INSERT INTO users(username,display_name,password_hash,role,approved,active,
+                created_at_utc,email,requires_email_verification) VALUES(?,?,?,'member',0,1,?,?,1)''',
+                (username,display_name.strip()[:80] or username,hash_password(password),at.isoformat(),email))
+            uid=user.lastrowid
+            save_user_setup(conn,uid,data)
+            conn.execute('''INSERT INTO auth_email_tokens(user_id,purpose,token_hash,candidate_email,created_at,expires_at)
+                VALUES(?,'verify_email',?,?,?,?)''',(uid,hashlib.sha256(token.encode()).hexdigest(),email,at.isoformat(),(at+timedelta(hours=1)).isoformat()))
+            url=os.getenv('MLO_PUBLIC_URL','').rstrip('/')+'/verify-email/'+token
+            queue_email(uid,email,'Verify your MLO account',
+                'Confirm your email address:\n\n'+url+'\n\nThis link expires in one hour. Administrator approval is also required.',db=conn)
             conn.commit()
-    context["message"]=message
-    return templates.TemplateResponse(request,"v37_onboarding.html",context)
+    except sqlite3.IntegrityError:
+        return fail('That username or email is already registered. Sign in or recover your account.')
+    background_tasks.add_task(deliver_mail)
+    context['message']='Account created. Verify your email using the link in your inbox. Administrator approval is also required. If no email arrives, request a new link or contact the administrator.'
+    return templates.TemplateResponse(request,'v37_onboarding.html',context,status_code=201)
 
 
 @app.get("/life/onboarding",response_class=HTMLResponse)
@@ -2309,6 +2332,8 @@ app.include_router(finance_router)
 app.include_router(workspace_router)
 app.include_router(timers_router)
 app.include_router(v37_router)
+app.include_router(course_router)
+app.include_router(note_reminder_router)
 
 @app.post("/logout")
 def logout(request: Request):

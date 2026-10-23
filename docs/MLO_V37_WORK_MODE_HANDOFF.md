@@ -1,3 +1,5 @@
+> **Continuation update, October 23, 2026:** This file describes the original first pass. See [V37_VERIFICATION.md](V37_VERIFICATION.md), [V37_REVIEW_AND_FIXES.md](V37_REVIEW_AND_FIXES.md) and [V37_DEPLOYMENT.md](V37_DEPLOYMENT.md) for the current candidate, evidence and remaining gates. Keep this PR draft until those gates pass.
+
 # MLO v3.7 Work Mode continuation and technical handoff
 **Prepared:** 2026-10-22  
 **Repository:** https://github.com/pierre-2005/study-notifier  

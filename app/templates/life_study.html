@@ -1,7 +1,7 @@
 {% extends 'base.html' %}{% from 'life_components.html' import top,task_row %}
 {% block content %}<div class="mlo-space mlo-area-page">
 {{ top('Study','YOUR ACADEMIC SPACE','Courses, deadlines, study tasks, and class times in one organized space.','Calendar ↗','/life/calendar') }}
-<div class="mlo-area-intro"><div><strong>Study, without the busywork.</strong><p>Create a study task in Tasks. Manage coursework and class meetings here. Both appear on your Today and Calendar views.</p></div></div>
+<div class="mlo-study-import-banner"><div><strong>Your term, organized.</strong><p>Bring assessments and deadlines in from your course outline.</p></div><a href="/life/study/import" class="mlo-btn mlo-primary">Import course outline ↗</a></div>
 <form method="post" action="/life/tasks" class="mlo-capture mlo-area-capture"><span class="mlo-capture-icon">＋</span><input required maxlength="240" name="title" placeholder="Add a study task…" aria-label="New study task"><input type="hidden" name="area" value="Study"><input type="hidden" name="next_page" value="/life/study"><button type="submit" class="mlo-btn mlo-primary">Add task ↗</button></form>
 <div class="mlo-area-actions">
  {% if legacy %}<a href="/courses/new">＋ New course</a><a href="/items/new">＋ Assignment / exam</a><a href="/classes/new">＋ Class meeting</a><a href="/life/calendars/new">＋ Event</a>{% endif %}
@@ -12,7 +12,8 @@
  {% for x in items %}<a class="mlo-area-row" href="/items/{{x.id}}"><div><strong>{{x.title}}</strong><small>{{x.course_name}} · {{x.type|title}}</small></div><span>{{x.due_at_utc[:10]}}</span></a>{% else %}<div class="mlo-empty small"><p>No outstanding assignments or exams.</p></div>{% endfor %}
  </section>
  <section class="mlo-surface"><div class="mlo-section-top"><div><div class="mlo-kicker">COURSES</div><h2>Your courses</h2></div>{% if legacy %}<a href="/courses">Manage ↗</a>{% endif %}</div>
- {% for x in courses %}<a class="mlo-area-row" href="/courses/{{x.id}}"><div><strong>{{x.name}}</strong><small>{{x.term or 'Current term'}}</small></div><span>{{x.open_count}} open</span></a>{% else %}<div class="mlo-empty small"><p>No courses yet. Academic features are available to the administrator of this installation.</p></div>{% endfor %}
+ {% for x in private_courses %}<a class="mlo-area-row" href="/life/study/courses/{{x.id}}"><div><strong>{{x.name}}</strong><small>{{x.code}} · {{x.term}}</small></div><span>↗</span></a>{% endfor %}
+ {% for x in courses %}<a class="mlo-area-row" href="/courses/{{x.id}}"><div><strong>{{x.name}}</strong><small>{{x.term or 'Current term'}}</small></div><span>{{x.open_count}} open</span></a>{% else %}{% if not private_courses %}<div class="mlo-empty small"><p>Import a course outline to get started.</p></div>{% endif %}{% endfor %}
  </section>
  <section class="mlo-surface"><div class="mlo-section-top"><h2>Study tasks</h2><a href="/life/tasks">All tasks ↗</a></div>{% for t in tasks %}{{task_row(t,'/life/study')}}{% else %}<div class="mlo-empty small"><p>No open study tasks. Create a task and set its area to Study.</p></div>{% endfor %}</section>
  <section class="mlo-surface"><div class="mlo-section-top"><h2>Study projects</h2><a href="/life/projects">Projects ↗</a></div>{% for x in projects %}<a href="/life/projects/{{x.id}}" class="mlo-area-row"><strong>{{x.name}}</strong><span>{{x.done_count}}/{{x.task_count}} tasks</span></a>{% else %}<div class="mlo-empty small"><p>No study projects yet.</p></div>{% endfor %}

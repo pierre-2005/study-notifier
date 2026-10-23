@@ -10,3 +10,8 @@ __pycache__/
 .mypy_cache/
 .DS_Store
 mlo_uploads/
+
+test-results/
+node_modules/
+*.sqlite.backup
+*.partial

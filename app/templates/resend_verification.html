@@ -1,0 +1,12 @@
+{% extends 'base.html' %}{% block content %}
+<section class="card login-card">
+  <h1>Verify your email</h1>
+  <p class="muted">Request a new verification link.</p>
+  <form method="post" class="login-form">
+    <label class="field">Email<input class="input" type="email" name="email" autocomplete="email" required maxlength="254"></label>
+    <button class="btn btn-primary" type="submit">Resend verification</button>
+  </form>
+  {% if message %}<p role="status" class="login-success">{{message}}</p>{% endif %}
+  <div class="login-alt"><a href="/login">Back to sign in</a></div>
+</section>
+{% endblock %}

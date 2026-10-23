@@ -1,0 +1,39 @@
+# PR #1 review and v3.7 fixes
+
+The attached complete handoff and the entire repository handoff were read before edits. Every file changed by the original PR at `b87a49d65046d1f1c64564616bb754a05d2d1cea` was reviewed against main `ba3aba3f932753de1dc9014c52558768b84f0b38`. The implementation uses the real `life_tasks.parent_id` and `doing` status. The incompatible prototype migration is not applied.
+
+## Original changed-file review
+
+| File | Finding and resolution |
+| --- | --- |
+| `.github/workflows/v37-validation.yml` | Only a subset ran. Now runs every standalone regression, real browser acceptance, OCR and migration restoration; artifacts retained. |
+| `app/main.py` | The member allowlist blocked `/api/v37`; signup lacked verification delivery and legal-link coverage. Fixed member API access, authentication responses, atomic signup/preferences/mail, verification gate for new accounts, rate limits, and shared initialization. |
+| `app/scheduler.py` | Personalized delivery covered only tasks and did not reliably handle failures. Delegates to the all-module worker, retains compatibility entry point, separates legacy opt-in delivery and supports scheduler-disabled staging. |
+| `app/static/v37-board.css` | Nested cards and phone interaction needed a coherent layout. Rebuilt board/child controls, contained scrolling, task menus and mobile navigation tabs. |
+| `app/static/v37-board.js` | Nested tasks could be duplicated in columns; editing diverged from legacy rules. Rebuilt from one tree with real API mutations, revision checks, parent selection, child creation/status, keyboard moves, mouse drag and touch edge scrolling. |
+| `app/static/v37-onboarding.css` | Retained the existing animated wizard structure; shared final styles add contrast, responsive controls and reduced-motion treatment. |
+| `app/static/v37-onboarding.js` | Defaults could replace explicit mute rules; appearance was only partly connected. Reworked hydration, validation, retained subtype overrides, saved per-user appearance/layout and live preview. |
+| `app/templates/life_project_detail.html` | Server fallbacks and alternative views were flat and viewer controls too permissive. Uses a shared task tree/table and permission-aware controls; board remains progressively enhanced. |
+| `app/templates/settings.html` | Personal settings were separate from active reminder delivery and exposed irrelevant global controls. Connects the personal preference flow; legacy notification controls require explicit opt-in and original ownership. |
+| `app/templates/v37_onboarding.html` | Signup lost legal links and form state. Restored links, safe non-secret retention, success state, date-only time, palette/layout controls and accessible progress. |
+| `app/v37.py` | Shared task rules, depth/cycle validation, empty reminders and actual task ordering were incomplete. Added strict payloads, shared transition service, bounded tree handling, write transactions, stale-edit conflicts, layout synchronization and task inspector APIs. |
+| `docs/MLO_V37_WORK_MODE_HANDOFF.md` | Preserved as historical first-pass context with a prominent link to the new continuation report. |
+| `tests_v37_workspace.py` | Retained the existing preference tests; added separate integration, document, browser and staging suites rather than substituting implementation-shaped assertions. |
+
+## Additional integration fixes
+
+- `app/task_service.py` centralizes status transitions across board, inspector, full edit, inline completion and batch operations. Prerequisites cannot be bypassed through another endpoint. Recurring completion creates one successor even after reopening/completing again. Parent validation covers the complete moved subtree, same-project membership, depth and cycles. Corrupt legacy cycles render safely instead of disappearing or recursing forever.
+- `app/lifeos.py` renders nested context in Tasks, Today and project views, including paginated ancestors and correct descendant totals. Shared-project viewers see read-only controls. Calendar dates use the viewing user's timezone and timed external cache values; page rendering does not call providers.
+- `app/reminders.py` handles owned tasks, projects, local/external events, legacy assignments/exams/labs, work tasks/follow-ups, legacy unpaid bills, personal note-review dates and focus ends. It uses selected modules, explicit mutes, subtype fallback, timezone/date-only time, quiet hours, deadline-aware coalescing and retry leases. Only active, approved and appropriately verified accounts' own devices are eligible. The original finance/academic source owner is explicitly bound, not inferred from user count.
+- `app/auth_delivery.py`, `app/account_security.py` and `app/auth.py` implement encrypted queued verification/recovery mail, one-use expiring HMAC reset codes, rate/attempt limits and session revocation. Password changes invalidate outstanding reset tokens/codes and queued recovery mail. Administrators cannot redirect recovery or set a password known to them. Existing account role/capability data and bootstrap password hashes are preserved.
+- `app/course_import.py`, `outline_parse.py`, `outline_ai.py` and related templates/JS add private PDF/DOCX/PNG/JPG/TXT extraction with OCR, bounded parsing, editable source review, unknown-date handling and transactional duplicate-safe task creation. Optional AI uses explicit per-upload consent and a strict schema, carries no tools/calendar credentials and starts with all suggestions unselected. Local extraction remains available without API credentials. Imported assessment pages display current task titles/status/dates rather than a second editable task copy.
+- `app/legacy_access.py` and `consolidation.py` bind historical global records to their existing bootstrap owner. Other administrators do not gain access to another user's legacy private data. Member Finance access has not been expanded. Original finance budgets and initialization avoid duplicate seeds on older schemas without unique constraints.
+- `app/bootstrap.py`, `backup.py`, `db.py` and `scripts/rehearse_v37.py` share additive initialization, add a checked online pre-upgrade backup, close SQLite context connections and support a read-only-source migration/restoration rehearsal. Existing secrets, volume, ports and callback routes are preserved.
+- `workspace37.css`, `task-inspector.js`, base/components and public privacy disclosures establish the shared interface, contextual task editing, readable controls, mobile focus behavior and clear import/email data handling. Relevant tests were updated for deliberate UI wording and the owner-delivered recovery contract. Browser selection is portable rather than hardcoded to `/usr/bin/chromium`.
+- Docker adds OCR tools. Compose passes optional scheduler/AI settings with AI disabled by default. The publishing workflow keeps its normal main trigger and AMD64/ARM64 targets and prepares a distinct candidate tag; no image was published.
+
+## Retained product boundaries
+
+There is one task state across board, list, table, Today and Calendar. Course records retain assessment provenance/weights while linking actual tasks. Legacy academic records and Finance remain in their existing systems. The user can intentionally show a record through more than one view; this does not create another task.
+
+The importer currently extracts assessments and deadlines, not arbitrary lecture recurrences, office hours, LMS content or a complete executable course model. Dates, OCR and AI output require review. New imported deadlines appear in MLO Calendar; they are not silently bulk-written to Google/Microsoft. Existing explicit calendar destination/create/edit flows remain available. A complete v4 editor/information-architecture rewrite, generalized graph links and automatic study-block scheduler remain major follow-up work. No feature parity or performance multiplier relative to competitors is claimed.

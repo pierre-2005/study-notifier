@@ -20,7 +20,7 @@
 
 {% macro quick_task(next_page='/life/tasks', project_id='',placeholder='Add a task, anything on your mind…') %}
 <form action="/life/tasks" method="post" class="mlo-capture" data-quick-form>
-  <span class="mlo-capture-icon" aria-hidden="true">＋</span>
+  <span class="mlo-capture-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5v14M5 12h14"/></svg></span>
   <input type="text" required name="title" maxlength="240" placeholder="{{ placeholder }}" aria-label="New task title" autocomplete="off">
   {% if project_id %}<input type="hidden" name="project_id" value="{{ project_id }}">{% endif %}
   <input type="hidden" name="next_page" value="{{ next_page }}">
@@ -30,7 +30,15 @@
 
 {% macro top(title,eyebrow,description,action='',action_href='') %}
 <div class="mlo-page-head">
- <div><div class="mlo-kicker">{{ eyebrow }}</div><h1>{{ title }}</h1><p>{{ description }}</p></div>
+ <div><h1>{{ title }}</h1></div>
  {% if action %}<a class="mlo-btn mlo-secondary" href="{{ action_href }}">{{ action }}</a>{% endif %}
 </div>
 {% endmacro %}
+
+{% macro task_tree(nodes,next_page='/life/tasks',bulk=false) %}
+<ul class="v37-task-tree">{% for t in nodes %}<li>
+{% if bulk %}<div class="mlo-bulk-task"><label class="mlo-bulk-checkbox"><input type="checkbox" name="ids" value="{{t.id}}" form="mlo-task-batch" data-task-select aria-label="Select {{t.title}}" {{'disabled' if not t.can_edit or t.is_context else ''}}></label><div class="mlo-bulk-content">{{task_row(t,next_page)}}</div></div>{% else %}{{task_row(t,next_page)}}{% endif %}
+{% if t.children %}<details class="v37-tree-children" open><summary>{{t.subtask_done}} of {{t.subtask_total}} subtasks complete</summary>{{task_tree(t.children,next_page,bulk)}}</details>{% endif %}
+</li>{% endfor %}</ul>
+{% endmacro %}
+{% macro task_table(nodes,depth=0) %}{% for t in nodes %}<tr><td style="padding-left:{{8+depth*14}}px"><a href="/life/tasks/{{t.id}}">{{t.title}}</a></td><td>{{t.status|replace('doing','In progress')|title}}</td><td>{{t.priority|title}}</td><td>{{t.due_on or 'No date'}}</td></tr>{% if t.children %}{{task_table(t.children,depth+1)}}{% endif %}{% endfor %}{% endmacro %}

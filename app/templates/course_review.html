@@ -1,0 +1,19 @@
+{% extends 'base.html' %}{% block content %}
+<div class="mlo-space import-space" data-outline-review data-import-id="{{record.id}}">
+  <a class="mlo-back" href="/life/study/import">← Import outline</a>
+  <div class="mlo-page-head"><div><h1>Review your outline</h1><p>{{record.filename}}</p></div><span class="mlo-count">{{record.parser|upper}}</span></div>
+  {% if record.committed_at %}<section class="mlo-surface"><h2>Outline imported</h2><p>Your assessments are in Study, Tasks and Calendar.</p><a class="mlo-btn mlo-primary" href="/life/study/courses/{{record.course_id}}">Open course</a></section>
+  {% else %}
+  <form id="outline-review-form">
+    <section class="mlo-surface course-fields"><label>Course name<input name="course_name" maxlength="160" required value="{{preview.course_name}}" placeholder="Mechanics of Solids II"></label><label>Course code<input name="course_code" maxlength="40" required value="{{preview.course_code}}" placeholder="ENME 341"></label><label>Term<input name="term" maxlength="80" required value="{{preview.term}}" placeholder="Fall 2026"></label></section>
+    <div class="import-review-layout">
+      <section class="mlo-surface"><div class="mlo-section-top"><h2>Assessments</h2><button type="button" class="mlo-btn mlo-secondary" data-add-assessment>Add row</button></div><p class="mlo-subtle">Select the rows to add. Dates and weights remain editable. A row without a date becomes an unscheduled task.</p><div data-assessment-rows></div><p data-weight-summary role="status"></p></section>
+      <aside class="mlo-surface source-evidence" aria-label="Source evidence"><h2>Source</h2><label>Source {{'section' if record.filename.lower().endswith('.docx') else 'page'}}<select data-source-page>{% for p in pages %}<option value="{{p.page}}">{{p.page}}</option>{% endfor %}</select></label>{% for p in pages %}<pre class="source-page" data-page="{{p.page}}" {{'hidden' if not loop.first else ''}}>{{p.text}}</pre>{% endfor %}</aside>
+    </div>
+    <div class="import-save-bar"><p data-import-status role="status" aria-live="polite"></p><button type="submit" class="mlo-btn mlo-primary">Add selected assessments</button></div>
+  </form>
+  <script id="outline-data" type="application/json">{{preview|tojson}}</script>
+  {% endif %}
+  <form action="/life/study/import/{{record.id}}/delete" method="post" class="import-delete"><button type="submit" class="mlo-btn mlo-secondary">Delete uploaded outline text</button></form>
+</div><script src="/static/course-import.js?v={{APP_VERSION}}" defer></script>
+{% endblock %}

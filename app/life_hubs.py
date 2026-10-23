@@ -19,7 +19,7 @@ templates.env.globals['APP_VERSION'] = APP_VERSION
 templates.env.globals['current_day'] = lambda: date.today().isoformat()
 
 def admin(request):
-    return request.state.current_user['role'] == 'admin'
+    return getattr(request.state,'legacy_owner',False)
 
 def render(request, template, **kwargs):
     return templates.TemplateResponse(request, template, {'request':request,**kwargs})
@@ -30,6 +30,7 @@ def study(request:Request):
     with get_conn() as conn:
         tasks=[dict(x) for x in data_for(conn,uid,'open',limit=8,area='Study')]
         projects=[dict(x) for x in projects_for(conn,uid) if x['area']=='Study'][:6]
+        private_courses=conn.execute('SELECT * FROM life_courses WHERE user_id=? ORDER BY created_at DESC',(uid,)).fetchall()
         courses=[];items=[];classes=[]
         if admin(request):
             courses=conn.execute('''SELECT c.id,c.name,c.term,c.color,COUNT(i.id) AS open_count FROM courses c
@@ -40,7 +41,7 @@ def study(request:Request):
                 WHERE i.status!='done' ORDER BY i.due_at_utc LIMIT 12''').fetchall()
             classes=conn.execute('''SELECT id,title,weekday,start_time_local,location FROM class_meetings
                 WHERE active=1 ORDER BY weekday,start_time_local LIMIT 12''').fetchall()
-    return render(request,'life_study.html',tasks=tasks,projects=projects,courses=courses,items=items,classes=classes,legacy=admin(request))
+    return render(request,'life_study.html',tasks=tasks,projects=projects,courses=courses,private_courses=private_courses,items=items,classes=classes,legacy=admin(request))
 
 @router.get('/work',response_class=HTMLResponse)
 def work(request:Request):

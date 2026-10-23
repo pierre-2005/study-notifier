@@ -27,3 +27,5 @@ cryptography>=44,<48
 icalendar>=6,<8
 
 qrcode[pil]>=8.0,<9
+
+defusedxml>=0.7.1,<1

@@ -56,12 +56,12 @@
   </section>
 
   <section class="card settings-card settings-card-wide">
-    <div class="card-h"><div><h2 class="h2">My reminders and onboarding</h2><p class="muted">Every account can personalize its own reminder offsets and workspace options.</p></div></div>
-    <div class="card-b"><a class="btn btn-primary" href="/life/onboarding">Open my setup wizard</a></div>
+    <div class="card-h"><div><h2 class="h2">Personal reminders</h2><p class="muted">Choose reminder timing, quiet hours and workspace preferences.</p></div></div>
+    <div class="card-b"><a class="btn btn-primary" href="/life/onboarding">Edit preferences</a></div>
   </section>
-  {% if is_admin %}
+  {% if is_admin and legacy_notifications %}
   <section class="card settings-card settings-card-wide">
-    <div class="card-h"><div><h2 class="h2">Legacy system reminder templates</h2><p class="muted mt-1">Comma-separated minutes before a due time. Existing reminders are not deleted.</p></div></div>
+    <div class="card-h"><div><h2 class="h2">Shared notification templates</h2><p class="muted mt-1">Comma-separated minutes before a due time. Existing reminders are not deleted.</p></div></div>
     <form method="post" action="/settings/save" class="card-b settings-form-grid">
       <label class="field settings-wide"><span class="label">Assignment reminder template</span><input class="input" name="assignment_template_minutes" value="{{ s.assignment_template_minutes }}" inputmode="numeric" pattern="[0-9, ]+" required><small class="field-help">Example: <span class="kbd">10080,4320,1440,180</span> = 7d, 3d, 24h, 3h before.</small></label>
       <label class="field settings-wide"><span class="label">Exam reminder template</span><input class="input" name="exam_template_minutes" value="{{ s.exam_template_minutes }}" inputmode="numeric" pattern="[0-9, ]+" required><small class="field-help">Example: <span class="kbd">10080,4320,1440,120,30</span> = 7d, 3d, 24h, 2h, 30m.</small></label>

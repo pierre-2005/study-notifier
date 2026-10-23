@@ -17,7 +17,7 @@ with tempfile.TemporaryDirectory() as tmp:
   client.post('/life/projects',data={'name':'Release Design Test','area':'Work','template':'blank'})
   client.post('/life/tasks',data={'title':'Test the new dashboard','next_page':'/life'})
   with sync_playwright() as pw:
-   browser=pw.chromium.launch(headless=True, executable_path='/usr/bin/chromium',args=['--no-sandbox'])
+   browser=pw.chromium.launch(headless=True, executable_path=os.environ.get('MLO_BROWSER') or __import__('shutil').which('chromium'),args=['--no-sandbox'])
    from bs4 import BeautifulSoup
    page=browser.new_page(viewport={'width':1440,'height':900})
    errors=[]
@@ -96,7 +96,7 @@ with tempfile.TemporaryDirectory() as tmp:
    page.wait_for_timeout(600)
    assert client.get('/life/layout').json()['widget_sizes']['projects']==8
    assert page.locator('[data-widget="projects"]').get_attribute('data-widget-width')=='8'
-   page.get_by_role('checkbox',name='Show Money').uncheck()
+   page.get_by_role('checkbox',name='Show Finance').uncheck()
    page.wait_for_timeout(650)
    assert 'money' in client.get('/life/layout').json()['widget_hidden']
    page.get_by_role('button',name='Done').click()

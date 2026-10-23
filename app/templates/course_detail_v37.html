@@ -1,0 +1,5 @@
+{% extends 'base.html' %}{% block content %}<div class="mlo-space">
+<a class="mlo-back" href="/life/study">← Study</a><div class="mlo-page-head"><div><div class="mlo-kicker">{{course.code}} · {{course.term}}</div><h1>{{course.name}}</h1></div><a class="mlo-btn mlo-primary" href="/life/projects/{{course.project_id}}">Open project</a></div>
+<section class="mlo-surface"><div class="mlo-section-top"><h2>Assessments</h2><a href="/life/calendar">Calendar ↗</a></div>
+{% for a in assessments %}<div class="course-assessment"><div><strong>{% if a.task_id %}<a href="/life/tasks/{{a.task_id}}">{{a.task_title}}</a>{% else %}{{a.title}}{% endif %}</strong><small>{{a.kind|title}} · {{(a.task_due_on if a.task_id else a.due_on) or 'Unscheduled'}} · {{a.status or 'Task removed'}}{% if a.weight is not none %} · {{a.weight}}%{% endif %}</small></div>{% if a.evidence %}<details><summary>Source {{a.source_page or ''}}</summary><p>{{a.evidence}}</p></details>{% endif %}</div>{% else %}<p class="mlo-empty">No assessments yet. Add a task in the course project.</p>{% endfor %}
+</section></div>{% endblock %}

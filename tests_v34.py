@@ -19,7 +19,7 @@ with TestClient(app,follow_redirects=False) as c:
     assert c.get('/life/tasks').status_code==200
     assert c.get('/life/insights').status_code==200
     assert c.get('/life/tasks?project=').status_code==200, 'Empty project selection must not error'
-    assert 'Quick task' in c.get('/life').text
+    assert 'Add task' in c.get('/life').text
     assert 'flow34.js' in c.get('/life').text
     assert 'max-age=31536000' in c.get(f'/static/flow34.css?v={APP_VERSION}').headers['cache-control']
     tasks=[(1, None,None,f'Backlog {i:03}', '', 'todo','normal','Personal',None, f'2026-10-10T12:00:00',f'2026-10-10T12:00:00') for i in range(127)]

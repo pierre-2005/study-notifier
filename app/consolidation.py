@@ -14,7 +14,7 @@ def consolidate_todos():
             todo_id INTEGER PRIMARY KEY,
             task_id INTEGER UNIQUE REFERENCES life_tasks(id) ON DELETE SET NULL,
             imported_at TEXT NOT NULL)''')
-        admin = conn.execute("SELECT id FROM users WHERE role='admin' ORDER BY id LIMIT 1").fetchone()
+        admin = conn.execute("SELECT id FROM users WHERE id=(SELECT value FROM app_settings WHERE key='legacy_owner_id')").fetchone()
         if not admin:
             conn.commit()
             return 0

@@ -4,6 +4,28 @@ import sqlite3
 import os
 from app.db import DB_PATH
 
+
+def pre_v37_backup():
+    """Fail closed if the pre-migration online backup cannot be created."""
+    source=Path(DB_PATH)
+    if not source.is_file() or not source.stat().st_size:
+        return None
+    target=source.with_name(source.stem+'.pre-mlo-v3.7.sqlite.backup')
+    if target.exists():
+        with sqlite3.connect(f'file:{target}?mode=ro',uri=True) as saved:
+            if saved.execute('PRAGMA quick_check').fetchone()[0]!='ok':
+                raise RuntimeError('The v3.7 migration backup failed its integrity check.')
+        return target
+    partial=target.with_name(target.name+'.partial')
+    with sqlite3.connect(f'file:{source}?mode=ro',uri=True,timeout=30) as original:
+        with sqlite3.connect(partial) as saved:
+            original.backup(saved)
+            if saved.execute('PRAGMA quick_check').fetchone()[0]!='ok':
+                raise RuntimeError('The v3.7 migration backup failed its integrity check.')
+    os.chmod(partial,0o600)
+    os.replace(partial,target)
+    return target
+
 def pre_v3_backup():
     source=Path(DB_PATH)
     if not source.is_file() or source.stat().st_size==0:

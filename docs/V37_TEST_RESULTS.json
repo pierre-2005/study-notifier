@@ -1,0 +1,153 @@
+{
+  "checked_at": "2026-10-23T10:53:29.948974+00:00",
+  "environment": "Python 3.12, Linux, Chrome Headless Shell 156.0.8078.47",
+  "scope": "Synthetic isolated fixtures. No production database or real provider credentials.",
+  "summary": {
+    "scripts": 27,
+    "passed": 27,
+    "failed": 0,
+    "accessibility_scans": 33,
+    "accessibility_violations": 0
+  },
+  "scripts": [
+    {
+      "script": "tests_calendar_destination.py",
+      "status": "passed",
+      "seconds": 1.32
+    },
+    {
+      "script": "tests_consolidation.py",
+      "status": "passed",
+      "seconds": 1.62
+    },
+    {
+      "script": "tests_migration.py",
+      "status": "passed",
+      "seconds": 0.82
+    },
+    {
+      "script": "tests_new_features.py",
+      "status": "passed",
+      "seconds": 1.57
+    },
+    {
+      "script": "tests_public_legal.py",
+      "status": "passed",
+      "seconds": 1.07
+    },
+    {
+      "script": "tests_pwa_public.py",
+      "status": "passed",
+      "seconds": 0.82
+    },
+    {
+      "script": "tests_smoke.py",
+      "status": "passed",
+      "seconds": 2.02
+    },
+    {
+      "script": "tests_v32.py",
+      "status": "passed",
+      "seconds": 1.62
+    },
+    {
+      "script": "tests_v33_browser.py",
+      "status": "passed",
+      "seconds": 11.1
+    },
+    {
+      "script": "tests_v34.py",
+      "status": "passed",
+      "seconds": 1.62
+    },
+    {
+      "script": "tests_v341_contrast.py",
+      "status": "passed",
+      "seconds": 5.04
+    },
+    {
+      "script": "tests_v342_layout.py",
+      "status": "passed",
+      "seconds": 12.76
+    },
+    {
+      "script": "tests_v343_calendar.py",
+      "status": "passed",
+      "seconds": 1.37
+    },
+    {
+      "script": "tests_v34_browser.py",
+      "status": "passed",
+      "seconds": 4.08
+    },
+    {
+      "script": "tests_v34_perf.py",
+      "status": "passed",
+      "seconds": 2.07
+    },
+    {
+      "script": "tests_v35_calendar.py",
+      "status": "passed",
+      "seconds": 1.37
+    },
+    {
+      "script": "tests_v361_device_isolation.py",
+      "status": "passed",
+      "seconds": 1.47
+    },
+    {
+      "script": "tests_v363_finance_pwa_qr.py",
+      "status": "passed",
+      "seconds": 1.42
+    },
+    {
+      "script": "tests_v364_ios_manifest.py",
+      "status": "passed",
+      "seconds": 1.22
+    },
+    {
+      "script": "tests_v365_appearance.py",
+      "status": "passed",
+      "seconds": 1.22
+    },
+    {
+      "script": "tests_v36_accounts.py",
+      "status": "passed",
+      "seconds": 1.72
+    },
+    {
+      "script": "tests_v36_visual.py",
+      "status": "passed",
+      "seconds": 3.62
+    },
+    {
+      "script": "tests_v37_browser.py",
+      "status": "passed",
+      "seconds": 15.63
+    },
+    {
+      "script": "tests_v37_documents.py",
+      "status": "passed",
+      "seconds": 1.52
+    },
+    {
+      "script": "tests_v37_release.py",
+      "status": "passed",
+      "seconds": 3.22
+    },
+    {
+      "script": "tests_v37_staging.py",
+      "status": "passed",
+      "seconds": 0.82
+    },
+    {
+      "script": "tests_v37_workspace.py",
+      "status": "passed",
+      "seconds": 0.37
+    }
+  ],
+  "followup_checks": [
+    "Browser acceptance and all 33 axe scans rerun after final mobile-column navigation changes: passed",
+    "PWA public suite rerun after precaching task inspector: passed"
+  ]
+}

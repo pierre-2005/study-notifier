@@ -3,7 +3,7 @@
 # IMPORTANT: Keep the original stack name and DB volume mapping unchanged.
 services:
   mlo:
-    image: ghcr.io/pierre-2005/study-notifier:v3.6.5-user-themes
+    image: ghcr.io/pierre-2005/study-notifier:v3.7.0-rc1
     pull_policy: always
     ports:
       - "127.0.0.1:8001:8000"
@@ -23,6 +23,10 @@ services:
       MLO_GOOGLE_CLIENT_SECRET: ${MLO_GOOGLE_CLIENT_SECRET:-}
       MLO_MS_CLIENT_ID: ${MLO_MS_CLIENT_ID:-}
       MLO_MS_CLIENT_SECRET: ${MLO_MS_CLIENT_SECRET:-}
+      MLO_SCHEDULER_ENABLED: ${MLO_SCHEDULER_ENABLED:-true}
+      MLO_OUTLINE_AI_ENABLED: ${MLO_OUTLINE_AI_ENABLED:-false}
+      MLO_OUTLINE_AI_MODEL: ${MLO_OUTLINE_AI_MODEL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       MLO_CALENDAR_AUTO_SYNC: ${MLO_CALENDAR_AUTO_SYNC:-true}
       MLO_CALENDAR_SYNC_MINUTES: ${MLO_CALENDAR_SYNC_MINUTES:-10}
       MLO_CALENDAR_SYNC_BATCH_SIZE: ${MLO_CALENDAR_SYNC_BATCH_SIZE:-3}
