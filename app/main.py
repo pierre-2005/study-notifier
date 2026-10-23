@@ -38,6 +38,7 @@ from app.consolidation import consolidate_todos
 from app.life_hubs import router as hubs_router
 from app.personalize import router as layout_router, init_layout_schema, appearance_for
 from app.calendar_links import router as calendar_links_router, init_calendar_links_schema, sync_due_calendars, AUTO_SYNC
+from app.v37 import router as v37_router, init_v37_schema
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -58,6 +59,7 @@ async def lifespan(app: FastAPI):
     init_timer_schema()
     init_life_schema()
     init_layout_schema()
+    init_v37_schema()
     init_calendar_links_schema()
     consolidate_todos()
     init_phone_schema()
@@ -2274,6 +2276,7 @@ app.include_router(files_router)
 app.include_router(finance_router)
 app.include_router(workspace_router)
 app.include_router(timers_router)
+app.include_router(v37_router)
 
 @app.post("/logout")
 def logout(request: Request):
