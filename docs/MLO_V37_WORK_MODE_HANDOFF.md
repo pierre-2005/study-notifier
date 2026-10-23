@@ -5,6 +5,9 @@
 **Production branch:** `main` (deliberately unchanged)  
 **Working domain:** https://organizer.overvault.ca
 
+## 0.1 Latest CI result (October 22, 2026)
+**PASS:** GitHub Actions run [39909456901](https://github.com/pierre-2005/study-notifier/actions/runs/39909456901) on commit `df0353a1b2c7ecc1c9556c406c14b4377c5570e7` completed successfully. It ran Python compileall, four new v3.7 unit tests, and the selected existing smoke, device isolation and appearance tests. A server-rendered fallback was restored after smoke regression exposed asynchronous-board-only HTML. This is not proof of production readiness: remaining full regression suite, real browser/touch, per-category reminder delivery, and staging DB backup/restore tests are still required.
+
 ## 1. IMPORTANT: Truthful status and action needed
 A first-pass **source integration has been committed to a separate GitHub feature branch**. This is NOT yet a production-ready or deployed v3.7 release. The author of this handoff had authenticated read/write access to GitHub and inspected repository paths, but could not clone the repository into the local execution container because external Git DNS was unavailable. Repository-wide tests and an actual running browser environment were therefore not available locally. A new PR-specific CI workflow was added. Review the PR check results, inspect the code, run a staging migration and verify live behavior before merging into `main`.
 
