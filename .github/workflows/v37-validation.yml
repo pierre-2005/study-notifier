@@ -11,6 +11,7 @@ jobs:
     timeout-minutes: 25
     env:
       MLO_SCHEDULER_ENABLED: 'false'
+      PYTHONTZPATH: ''
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6

@@ -8,6 +8,7 @@ import sqlite3
 import tempfile
 import unittest
 from datetime import datetime,timedelta,timezone
+from zoneinfo import ZoneInfo
 from unittest.mock import patch
 import zipfile
 
@@ -58,7 +59,7 @@ class ReleaseTests(unittest.TestCase):
             save_user_setup(db,self.ids[name],{'selected_modules':modules,'reminders':rules,
                 'timezone':'America/Edmonton','quiet_start':'00:00','quiet_end':'00:00','onboarding_completed':True,**extra});db.commit()
     def test_all_supported_module_sources_route_only_to_owner_devices(self):
-        uid=self.ids['admin'];at=datetime(2026,12,10,16,0,tzinfo=timezone.utc);stamp=at.isoformat()
+        uid=self.ids['admin'];at=datetime(2026,12,10,9,0,tzinfo=ZoneInfo('America/Edmonton')).astimezone(timezone.utc);stamp=at.isoformat()
         with get_conn() as db:
             save_user_setup(db,uid,{'selected_modules':['tasks','projects','calendar','study','work','money','notes','focus'],
                 'reminders':{k:[0] for k in ('task','project','event','study','work','bill','notes','focus')},
@@ -249,7 +250,7 @@ class ReleaseTests(unittest.TestCase):
                 db.execute('INSERT INTO life_devices(owner_id,name,topic,enabled,created_at) VALUES(?,?,?,1,?)',(self.ids[name],name,name+'-private-topic','2026-10-23'))
             db.commit()
         deliveries=[]
-        at=datetime(2026,11,2,15,0,tzinfo=timezone.utc) # 08:00 after DST ends, 1h before 09:00.
+        at=datetime(2026,11,2,8,0,tzinfo=ZoneInfo('America/Edmonton')).astimezone(timezone.utc) # One hour before the user's 09:00 deadline.
         self.assertEqual(process_personal_reminders(at,lambda *args:False),0)
         self.assertEqual(process_personal_reminders(at+timedelta(minutes=3),lambda *args:deliveries.append(args) or True),1)
         self.assertEqual(deliveries[0][0],'alice-private-topic')

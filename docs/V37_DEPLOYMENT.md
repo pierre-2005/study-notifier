@@ -12,17 +12,17 @@ The existing main-triggered, multi-architecture GHCR build workflow remains the 
 
 1. The operator should make a consistent SQLite online backup of the installation and a separate backup of attachments and the current stack settings. Keep these private. A raw copy of a live `.db` can omit WAL transactions; use SQLite's backup API or a stopped application snapshot.
 2. Bring a copy to an isolated staging host. Keep outbound networking disabled for the initial rehearsal. Do not point the test process at the live database or mount the live volume.
-3. Install the candidate dependencies, including Poppler and Tesseract. From the candidate checkout run:
+3. Install the candidate dependencies, including Poppler, Tesseract and pinned `tzdata==2026.5`. For non-Docker processes set `PYTHONTZPATH=""` before starting Python so the operating system cannot silently substitute stale timezone rules. From the candidate checkout run:
 
    ```sh
-   python -m scripts.rehearse_v37 \
+   PYTHONTZPATH='' python -m scripts.rehearse_v37 \
      --source /private/backups/mlo.sqlite \
      --work-dir /private/staging/v37-rehearsal \
      --legacy-owner-username ORIGINAL_BOOTSTRAP_USERNAME
    ```
 
    The work directory must be empty. The source opens read-only; the script creates an online baseline backup, a migrated staging copy and a restored copy. It checks integrity, foreign keys, repeated initialization, preservation of every original column and restoration equality. It disables the scheduler and calendar auto-sync before importing application modules. Review `report.json`; failures require investigation on a copy. This was verified with representative legacy fixtures, not your actual database.
-4. Start staging against `staging.sqlite` with `MLO_SCHEDULER_ENABLED=false` and `MLO_CALENDAR_AUTO_SYNC=false`. Keep private credentials and queued mail inaccessible to unintended recipients. Test account approvals, private records, shared viewers/editors, Finance, exports, uploads and layout preferences. Do not reuse production notification destinations for acceptance traffic.
+4. Start staging against `staging.sqlite` with `MLO_SCHEDULER_ENABLED=false`, `MLO_CALENDAR_AUTO_SYNC=false` and `PYTHONTZPATH=""` (the Docker default). Keep private credentials and queued mail inaccessible to unintended recipients. Test account approvals, private records, shared viewers/editors, Finance, exports, uploads and layout preferences. Do not reuse production notification destinations for acceptance traffic.
 5. After offline acceptance, use controlled test accounts/mailboxes/calendars to verify real SMTP, Google and Microsoft connect/refresh/read/create/edit/delete, ICS imports and ntfy delivery. Preserve existing OAuth callback entries; add a separate staging callback only through the normal provider administration process. Check multiple accounts and disconnect behavior. Document actual provider results separately from mocks.
 6. Run all regressions using `python -m pip install -r requirements-test.txt`, `python -m playwright install chromium`, then `python scripts/run_regression.py`. Install `axe-core@4.14.0` as a test dependency and set `MLO_AXE_PATH` to its `axe.min.js` for accessibility checks. `MLO_BROWSER` optionally selects an existing Chromium executable. Do not skip failures because another version passed.
 
@@ -30,7 +30,7 @@ The existing main-triggered, multi-architecture GHCR build workflow remains the 
 
 Review the candidate screenshots and remaining gates in [V37_VERIFICATION.md](V37_VERIFICATION.md). Obtain approval of the tested commit and deployment window. Only then merge through the normal workflow, wait for the image build, verify its immutable digest and ARM64/AMD64 manifests, and update the existing Portainer stack to that digest/tag. Retain the existing volume and all environment values. Startup creates and checks a pre-v3.7 online snapshot before additive initialization; that automatic snapshot supplements the operator backup.
 
-Monitor `/health`, application logs, login, one legacy record, one ordinary member, calendar connections and controlled reminder delivery. New mail configuration is described in [V37_EMAIL_SETUP.md](V37_EMAIL_SETUP.md). AI extraction remains disabled unless explicitly configured with a model and API key; local extraction works without it. Run one application/scheduler worker per database. Notifications use leases and successful-delivery records, but a provider accepting a request just before a crash can still produce an at-least-once retry.
+Monitor `/health`, application logs, login, one legacy record, one ordinary member, calendar connections and controlled reminder delivery. New mail configuration is described in [V37_EMAIL_SETUP.md](V37_EMAIL_SETUP.md). AI extraction remains disabled unless explicitly configured with a model and API key; local extraction works without it. The Docker image pins IANA 2026e through the first-party Python timezone package and selects it with `PYTHONTZPATH=""`; keep that setting for non-Docker runs and deliberately refresh/test the pin as timezone rules change. This updates rule interpretation without renaming user zones or rewriting existing UTC timestamps. Run one application/scheduler worker per database. Notifications use leases and successful-delivery records, but a provider accepting a request just before a crash can still produce an at-least-once retry.
 
 ## Rollback
 

@@ -23,11 +23,13 @@ def main():
         try:
             with (output/(path.stem+'.log')).open('w') as log:
                 proc=subprocess.run([sys.executable,str(path)],cwd=root,stdout=log,stderr=subprocess.STDOUT,
-                                    env={**os.environ,'MLO_SCHEDULER_ENABLED':'false'},timeout=360)
+                                    env={**os.environ,'MLO_SCHEDULER_ENABLED':'false','PYTHONTZPATH':''},timeout=360)
             status='passed' if proc.returncode==0 else 'failed'
         except subprocess.TimeoutExpired:status='timed_out'
         results.append({'script':path.name,'status':status,'seconds':round(time.monotonic()-start,2)})
         print(status.upper()+': '+path.name,flush=True)
+        if status=='failed':
+            print((output/(path.stem+'.log')).read_text()[-8000:],flush=True)
     (output/'summary.json').write_text(json.dumps(results,indent=2)+'\n')
     return int(any(r['status']!='passed' for r in results))
 
