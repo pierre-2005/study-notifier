@@ -79,6 +79,9 @@ def init_calendar_links_schema():
         columns={r[1] for r in db.execute('PRAGMA table_info(life_calendar_connections)')}
         if 'last_sync_attempt_at' not in columns:
             db.execute('ALTER TABLE life_calendar_connections ADD COLUMN last_sync_attempt_at TEXT')
+        event_columns={r[1] for r in db.execute('PRAGMA table_info(life_external_events)')}
+        for name,definition in (('ends_at','TEXT'),('is_all_day','INTEGER NOT NULL DEFAULT 0'),('is_busy','INTEGER NOT NULL DEFAULT 1')):
+            if name not in event_columns:db.execute(f'ALTER TABLE life_external_events ADD COLUMN {name} {definition}')
         db.commit()
 
 def _safe_ics_url(url):
@@ -225,48 +228,59 @@ def _get_events(provider, token, connection_id):
     start=(date.today()-timedelta(days=35)).isoformat()+'T00:00:00Z'
     end=(date.today()+timedelta(days=185)).isoformat()+'T23:59:59Z'
     result=[]
+    def pages(url,params,key,headers):
+        for _ in range(40):
+            data=_request('GET',url,headers=headers,params=params).json()
+            yield data.get(key,[])
+            token=data.get('nextPageToken') if provider=='google' else data.get('@odata.nextLink')
+            if not token:return
+            if provider=='google':params={**params,'pageToken':token}
+            else:
+                target=urllib.parse.urlsplit(token)
+                if target.scheme!='https' or target.netloc!='graph.microsoft.com':raise RuntimeError('Invalid calendar pagination URL')
+                url=token;params={}
+        raise RuntimeError('Calendar has too many pages to synchronize safely')
     if provider=='google':
-        lists=_request('GET','https://www.googleapis.com/calendar/v3/users/me/calendarList',headers=head,params={'maxResults':80}).json().get('items',[])
-        for cal in lists[:30]:
-            calid=cal.get('id')
-            if not calid:continue
-            url='https://www.googleapis.com/calendar/v3/calendars/'+urllib.parse.quote(calid,safe='')+'/events'
-            items=_request('GET',url,headers=head,params={'timeMin':start,'timeMax':end,'maxResults':250,'singleEvents':'true','orderBy':'startTime'}).json().get('items',[])
-            for x in items:
-                d=x.get('start',{})
-                stamp=d.get('dateTime') or d.get('date')
-                if stamp:result.append((str(calid)+':'+x['id'],x.get('summary','Untitled event')[:220],_date(stamp),stamp,x.get('htmlLink',''),cal.get('summary','Calendar')[:90]))
+        lists=pages('https://www.googleapis.com/calendar/v3/users/me/calendarList',{'maxResults':80},'items',head)
     else:
-        lists=_request('GET','https://graph.microsoft.com/v1.0/me/calendars',headers=head,params={'$top':60}).json().get('value',[])
-        for cal in lists[:30]:
+        lists=pages('https://graph.microsoft.com/v1.0/me/calendars',{'$top':60},'value',head)
+    count=0
+    for group in lists:
+        for cal in group:
             calid=cal.get('id')
             if not calid:continue
-            url='https://graph.microsoft.com/v1.0/me/calendars/'+urllib.parse.quote(calid,safe='')+'/calendarView'
-            items=_request('GET',url,headers={**head,'Prefer':'outlook.timezone="UTC"'},params={'startDateTime':start,'endDateTime':end,'$top':200}).json().get('value',[])
-            for x in items:
-                stamp=x.get('start',{}).get('dateTime','')
-                if stamp:result.append((str(calid)+':'+x['id'],x.get('subject','Untitled event')[:220],_date(stamp),stamp,x.get('webLink',''),cal.get('name','Calendar')[:90]))
+            count+=1
+            if count>60:raise RuntimeError('Connect an account with at most 60 calendars')
+            if provider=='google':
+                url='https://www.googleapis.com/calendar/v3/calendars/'+urllib.parse.quote(calid,safe='')+'/events'
+                batches=pages(url,{'timeMin':start,'timeMax':end,'maxResults':250,'singleEvents':'true','orderBy':'startTime'},'items',head)
+            else:
+                url='https://graph.microsoft.com/v1.0/me/calendars/'+urllib.parse.quote(calid,safe='')+'/calendarView'
+                batches=pages(url,{'startDateTime':start,'endDateTime':end,'$top':200},'value',{**head,'Prefer':'outlook.timezone="UTC"'})
+            for batch in batches:
+                for x in batch:
+                    if x.get('status')=='cancelled' or x.get('isCancelled'):continue
+                    d=x.get('start',{});finish=x.get('end',{});all_day=False
+                    if provider=='google':
+                        stamp=d.get('dateTime') or d.get('date');end_stamp=finish.get('dateTime') or finish.get('date')
+                        all_day='date' in d;busy=x.get('transparency')!='transparent'
+                    else:
+                        stamp=d.get('dateTime','');end_stamp=finish.get('dateTime');all_day=bool(x.get('isAllDay'));busy=x.get('showAs')!='free'
+                        # Graph returns UTC as requested, commonly without a suffix.
+                        if stamp and datetime.fromisoformat(stamp.replace('Z','+00:00')).tzinfo is None:stamp+='Z'
+                        if end_stamp and datetime.fromisoformat(end_stamp.replace('Z','+00:00')).tzinfo is None:end_stamp+='Z'
+                    if stamp:result.append((str(calid)+':'+x['id'],x.get('summary',x.get('subject','Untitled event'))[:220],_date(stamp),stamp,x.get('htmlLink',x.get('webLink','')),cal.get('summary',cal.get('name','Calendar'))[:90],end_stamp,int(all_day),int(busy)))
+                    if len(result)>10000:raise RuntimeError('Too many calendar events to synchronize safely')
     return result
 
 def _get_ics_events(encrypted):
     from icalendar import Calendar
+    from app.calendar_recurrence import expand_feed
     info=json_load(_decrypt(encrypted))
     url=_safe_ics_url(info['url'])
-    resp=_request('GET',url,headers={'User-Agent':'MLO Calendar/3.2','Accept':'text/calendar'})
+    resp=_request('GET',url,headers={'User-Agent':'MLO Calendar/3.7','Accept':'text/calendar'})
     if len(resp.content)>3_000_000:raise RuntimeError('Calendar feed is too large')
-    cal=Calendar.from_ical(resp.content)
-    result=[]
-    for component in cal.walk('VEVENT'):
-        event_id=str(component.get('UID',secrets.token_hex(8)))
-        raw=component.get('DTSTART')
-        if raw is None:continue
-        dt=raw.dt
-        stamp=dt.isoformat()
-        day=_date(stamp)
-        if day:
-            result.append((event_id,str(component.get('SUMMARY','Untitled event'))[:220],day,stamp,'','Subscribed calendar'))
-        if len(result)>=1000:break
-    return result
+    return expand_feed(Calendar.from_ical(resp.content),datetime.now(timezone.utc))
 
 def sync_one_connection(connection_id:int):
     # Refresh credentials privately without deleting valid cached events on failure.
@@ -286,8 +300,8 @@ def sync_one_connection(connection_id:int):
             # A user can disconnect an account while the API call is in progress.
             if not db.execute('SELECT id FROM life_calendar_connections WHERE id=?',(connection_id,)).fetchone():return False
             db.execute('DELETE FROM life_external_events WHERE connection_id=?',(connection_id,))
-            db.executemany('INSERT INTO life_external_events(connection_id,uid,title,starts_on,starts_at,href,calendar_name) VALUES(?,?,?,?,?,?,?)',
-                           ((connection_id,*e) for e in events if e[2]))
+            db.executemany('INSERT INTO life_external_events(connection_id,uid,title,starts_on,starts_at,href,calendar_name,ends_at,is_all_day,is_busy) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                           ((connection_id,*e,*( (None,0,1) if len(e)==6 else () )) for e in events if e[2]))
             db.execute('UPDATE life_calendar_connections SET last_synced_at=?,last_error=NULL WHERE id=?',
                        (datetime.now(timezone.utc).isoformat(),connection_id))
             db.commit()
@@ -363,15 +377,27 @@ def _available_calendars(connection):
     return [{'id':c['id'],'name':c.get('name','Calendar')} for c in calendars
             if c.get('id') and c.get('canEdit',True)]
 
-def _validate_event(title,start,end):
+def _user_zone(uid):
+    with get_conn() as db:
+        prefs=db.execute('SELECT timezone FROM v37_workspace_preferences WHERE user_id=?',(uid,)).fetchone()
+    from app.config import settings
+    return ZoneInfo(prefs['timezone'] if prefs else settings.timezone)
+
+
+def _validate_event(title,start,end,zone=None):
     title=title.strip()
     if not title or len(title)>220:raise HTTPException(422,'Enter a title (up to 220 characters)')
     try:
-        zone=ZoneInfo(os.environ.get('TIMEZONE','UTC'))
+        zone=zone or ZoneInfo(os.environ.get('TIMEZONE','UTC'))
         start_dt=datetime.fromisoformat(start)
         end_dt=datetime.fromisoformat(end)
-        if start_dt.tzinfo is None:start_dt=start_dt.replace(tzinfo=zone)
-        if end_dt.tzinfo is None:end_dt=end_dt.replace(tzinfo=zone)
+        def local(value):
+            if value.tzinfo is not None:return value
+            aware=value.replace(tzinfo=zone)
+            if (aware.astimezone(timezone.utc).astimezone(zone).replace(tzinfo=None)!=value
+                    or aware.replace(fold=0).utcoffset()!=aware.replace(fold=1).utcoffset()):raise ValueError()
+            return aware
+        start_dt,end_dt=local(start_dt),local(end_dt)
         if end_dt<=start_dt:raise ValueError()
         if (end_dt-start_dt)>timedelta(days=14):raise ValueError()
     except (ValueError,TypeError,KeyError):
@@ -411,12 +437,14 @@ def _cache_changed(connection,calendar_id,event_data):
            event_data.get('start',{}).get('dateTime'))
     if not stamp:return
     # Graph timestamps are UTC because writes explicitly use UTC.
-    if provider=='microsoft' and not stamp.endswith('Z'):stamp+='Z'
+    if provider=='microsoft' and datetime.fromisoformat(stamp.replace('Z','+00:00')).tzinfo is None:stamp+='Z'
+    finish=event_data.get('end',{}).get('dateTime')
+    if provider=='microsoft' and finish and datetime.fromisoformat(finish.replace('Z','+00:00')).tzinfo is None:finish+='Z'
     title=event_data.get('summary' if provider=='google' else 'subject','Untitled')[:220]
     with get_conn() as db:
-        db.execute('INSERT INTO life_external_events(connection_id,uid,title,starts_on,starts_at,href,calendar_name) VALUES(?,?,?,?,?,?,?) ON CONFLICT(connection_id,uid) DO UPDATE SET title=excluded.title,starts_on=excluded.starts_on,starts_at=excluded.starts_at,href=excluded.href',
+        db.execute('INSERT INTO life_external_events(connection_id,uid,title,starts_on,starts_at,href,calendar_name,ends_at) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(connection_id,uid) DO UPDATE SET title=excluded.title,starts_on=excluded.starts_on,starts_at=excluded.starts_at,href=excluded.href,ends_at=excluded.ends_at',
                    (connection['id'],calendar_id+':'+event_id,title,_date(stamp),stamp,
-                    event_data.get('htmlLink' if provider=='google' else 'webLink',''),connection['label']))
+                    event_data.get('htmlLink' if provider=='google' else 'webLink',''),connection['label'],finish))
         db.commit()
 
 def _my_writable_accounts(uid):
@@ -438,7 +466,7 @@ def choose_event_destination(request: Request):
     return templates.TemplateResponse(request,'life_event_destination.html',
        {'request':request,'connections':_my_writable_accounts(uid),
         'is_admin':request.state.current_user['role']=='admin',
-        'tz':os.environ.get('TIMEZONE','America/Edmonton')})
+        'tz':str(_user_zone(uid))})
 
 
 @router.get('/{connection_id}/calendars.json')
@@ -454,7 +482,7 @@ def create_unified_event(request:Request,destination:str=Form(...),calendar_id:s
                          title:str=Form(...),start:str=Form(...),end:str=Form(...),
                          kind:str=Form('meeting'),location:str=Form(''),notes:str=Form('')):
     uid=user_id(request)
-    title,start_dt,end_dt=_validate_event(title,start,end)
+    title,start_dt,end_dt=_validate_event(title,start,end,_user_zone(uid))
     if destination=='mlo':
         now=datetime.now(timezone.utc).isoformat()
         with get_conn() as db:
@@ -485,7 +513,7 @@ def edit_local_event_page(request:Request,event_id:int):
     with get_conn() as db:
         event=db.execute('SELECT * FROM life_local_events WHERE id=? AND user_id=?',(event_id,uid)).fetchone()
     if not event:raise HTTPException(404,'Event not found')
-    zone=ZoneInfo(os.environ.get('TIMEZONE','UTC'))
+    zone=_user_zone(uid)
     def local(stamp):return datetime.fromisoformat(stamp).astimezone(zone).strftime('%Y-%m-%dT%H:%M')
     return templates.TemplateResponse(request,'life_local_event_form.html',{
         'request':request,'event':event,'local_start':local(event['start_at_utc']),
@@ -496,7 +524,7 @@ def edit_local_event_page(request:Request,event_id:int):
 def update_local_event(request:Request,event_id:int,title:str=Form(...),start:str=Form(...),end:str=Form(...),
                        kind:str=Form('meeting'),location:str=Form(''),notes:str=Form('')):
     uid=user_id(request)
-    title,start_dt,end_dt=_validate_event(title,start,end)
+    title,start_dt,end_dt=_validate_event(title,start,end,_user_zone(user_id(request)))
     with get_conn() as db:
         cur=db.execute('''UPDATE life_local_events SET title=?,kind=?,location=?,start_at_utc=?,end_at_utc=?,notes=?,updated_at_utc=?
                           WHERE id=? AND user_id=?''',(title,kind[:40],location[:240],start_dt.astimezone(timezone.utc).isoformat(),
@@ -531,7 +559,7 @@ def new_event(request:Request,connection_id:int,calendar_id:str=Form(...),title:
     calendars=_available_calendars(connection)
     if calendar_id not in {c['id'] for c in calendars}:
         raise HTTPException(422,'Select a writable calendar')
-    title,start_dt,end_dt=_validate_event(title,start,end)
+    title,start_dt,end_dt=_validate_event(title,start,end,_user_zone(user_id(request)))
     body=_event_payload(connection['provider'],title,start_dt,end_dt)
     data=_request('POST',_api_event_url(connection['provider'],calendar_id),
                   headers={**_provider_headers(connection),'Content-Type':'application/json'},json=body).json()
@@ -548,7 +576,7 @@ def edit_event_page(request:Request,connection_id:int,event_uid:str):
     end_obj=event.get('end',{})
     if not start_obj.get('dateTime') or not end_obj.get('dateTime'):
         raise HTTPException(422,'All-day events are not editable in MLO yet; edit this event in its source calendar')
-    zone=ZoneInfo(os.environ.get('TIMEZONE','UTC'))
+    zone=_user_zone(user_id(request))
     def local_datetime(v):
         raw=v.get('dateTime','')
         if raw.endswith('Z'):raw=raw[:-1]+'+00:00'
@@ -565,7 +593,7 @@ def edit_event_page(request:Request,connection_id:int,event_uid:str):
 def edit_event(request:Request,connection_id:int,event_uid:str,title:str=Form(...),start:str=Form(...),end:str=Form(...)):
     connection=_owned_connection(user_id(request),connection_id,writable=True)
     cached,(calendar_id,event_id)=_existing_event(user_id(request),connection,event_uid)
-    title,start_dt,end_dt=_validate_event(title,start,end)
+    title,start_dt,end_dt=_validate_event(title,start,end,_user_zone(user_id(request)))
     data=_request('PATCH',_api_event_url(connection['provider'],calendar_id,event_id),
                   headers={**_provider_headers(connection),'Content-Type':'application/json'},
                   json=_event_payload(connection['provider'],title,start_dt,end_dt)).json()

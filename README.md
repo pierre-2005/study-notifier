@@ -1,6 +1,8 @@
-# MLO v3.7 release candidate
+# My Life Organized v3.7
 
-The feature branch contains the reviewed workspace, personalized reminders, course-outline import and account email flows. It remains a draft release candidate. Start with [verification and remaining gates](docs/V37_VERIFICATION.md), [fix review](docs/V37_REVIEW_AND_FIXES.md), [product research](docs/V37_PRODUCT_RESEARCH.md), [email setup](docs/V37_EMAIL_SETUP.md), and [deployment/rollback](docs/V37_DEPLOYMENT.md). Historical release notes follow.
+A redesigned shared workspace with nested tasks, touch/keyboard boards, private reminders, reviewed course-outline imports, optional AI extraction, calendar-aware study planning, email verification and password-reset codes. Existing accounts, permissions, data, calendars and the GitHub Actions to Portainer workflow are retained.
+
+Start with the [setup report](docs/V37_SETUP_REPORT.md), [verification](docs/V37_VERIFICATION.md), [fix review](docs/V37_REVIEW_AND_FIXES.md), [Macro-focused product research](docs/V37_PRODUCT_RESEARCH.md), [email walkthrough](docs/V37_EMAIL_SETUP.md) and [deployment/rollback](docs/V37_DEPLOYMENT.md). Historical release notes follow; current account behavior is described in the v3.7 reports.
 
 # MLO Studio v3.6.4 Update
 

@@ -92,6 +92,10 @@
     "violations": []
   },
   {
+    "screen": "/life/study/planner",
+    "violations": []
+  },
+  {
     "screen": "/life/study/import",
     "violations": []
   },
@@ -125,6 +129,58 @@
   },
   {
     "screen": "outline-review",
+    "violations": []
+  },
+  {
+    "screen": "planner-light-neutral",
+    "violations": []
+  },
+  {
+    "screen": "planner-light-ocean",
+    "violations": []
+  },
+  {
+    "screen": "planner-light-sage",
+    "violations": []
+  },
+  {
+    "screen": "planner-light-rose",
+    "violations": []
+  },
+  {
+    "screen": "planner-light-amber",
+    "violations": []
+  },
+  {
+    "screen": "planner-light-lavender",
+    "violations": []
+  },
+  {
+    "screen": "planner-dark-neutral",
+    "violations": []
+  },
+  {
+    "screen": "planner-dark-ocean",
+    "violations": []
+  },
+  {
+    "screen": "planner-dark-sage",
+    "violations": []
+  },
+  {
+    "screen": "planner-dark-rose",
+    "violations": []
+  },
+  {
+    "screen": "planner-dark-amber",
+    "violations": []
+  },
+  {
+    "screen": "planner-dark-lavender",
+    "violations": []
+  },
+  {
+    "screen": "planner-mobile",
     "violations": []
   },
   {

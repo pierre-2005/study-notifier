@@ -1,10 +1,10 @@
 {% extends 'base.html' %}{% from 'life_components.html' import top %}
 {% block content %}<div class="mlo-space mlo-area-page">
 {{top('Calendar','YOUR ONE SCHEDULE','Tasks, academic deadlines, classes and events, visible together in one place.')}}
-<div class="mlo-area-actions"><a href="/life/calendars">Connect calendars & accounts ↗</a></div>
+<div class="mlo-area-actions"><a href="/life/calendars">Connected calendars ↗</a><a href="/life/study/planner">Study planner ↗</a><a href="/life/calendars/new">New event ↗</a></div>
 <div class="mlo-calendar-legend"><span>◉ Tasks</span><span>◉ Connected calendars</span>{% if is_admin %}<span>▤ Courses</span><span>▣ Events & classes</span><span>◇ Follow-ups</span><span>＄ Bills</span>{% endif %}</div>
 <section class="mlo-surface"><div class="mlo-section-top"><a class="mlo-btn mlo-secondary" href="/life/calendar?month={{prev}}" aria-label="Previous month">←</a><h2>{{month}}</h2><a class="mlo-btn mlo-secondary" href="/life/calendar?month={{nxt}}" aria-label="Next month">→</a></div><div class="mlo-calendar">
 {% for day in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}<div class="mlo-calendar-header">{{day}}</div>{% endfor %}
 {% for week in weeks %}{% for d in week %}<div class="mlo-calendar-day {{'mlo-other-month' if d.month!=month_num else ''}} {{'is-today' if d.isoformat()==today else ''}}"><strong>{{d.day}}</strong>{% if d.month==month_num %}{% for x in events.get(d.day,[]) %}<a href="{{x.href}}" class="mlo-calendar-event mlo-kind-{{x.kind}} {{'is-done' if x.status=='done' else ''}}" title="{{x.kind|title}}: {{x.title}}">{{x.title}}</a>{% endfor %}{% endif %}</div>{% endfor %}{% endfor %}
 </div></section>
-<div class="mlo-area-actions"><a href="/life/tasks">＋ Add task</a><a href="/life/calendars/new">＋ New event</a>{% if is_admin %}<a href="/classes/new">＋ Class meeting</a><a href="/items/new">＋ Academic deadline</a>{% endif %}</div></div>{% endblock %}
+<div class="mlo-area-actions"><a href="/life/tasks">＋ Add task</a>{% if is_admin %}<a href="/classes/new">＋ Class meeting</a><a href="/items/new">＋ Academic deadline</a>{% endif %}</div></div>{% endblock %}

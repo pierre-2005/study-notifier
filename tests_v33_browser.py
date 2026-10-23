@@ -107,11 +107,11 @@ with tempfile.TemporaryDirectory() as tmp:
    assert page.locator('[data-widget]').evaluate_all('(els)=>els.map(e=>e.dataset.widget)')==changed
    # Sidebar labels and order survive reload
    page.locator('[data-nav-edit]').click()
-   field=page.get_by_role('textbox',name='Rename Dashboard')
+   field=page.get_by_role('textbox',name='Rename Today')
    field.fill('My Home');field.press('Tab')
    page.wait_for_timeout(650)
    assert 'My Home' in page.locator('[data-nav-key="life-home"]').inner_text()
-   page.get_by_role('button',name='Move Dashboard down').click()
+   page.get_by_role('button',name='Move Today down').click()
    page.wait_for_timeout(650)
    assert client.get('/life/layout').json()['nav_labels']['life-home']=='My Home'
    render_page();page.wait_for_timeout(600)

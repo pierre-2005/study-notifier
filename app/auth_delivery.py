@@ -125,6 +125,8 @@ def issue_reset_code(uid, email):
             return False
         code=f'{secrets.randbelow(1000000):06d}'
         db.execute('UPDATE auth_reset_codes SET used_at=? WHERE user_id=? AND used_at IS NULL',(at.isoformat(),uid))
+        # A previous queued code is now invalid; do not deliver it after recovery.
+        db.execute('DELETE FROM auth_mail_outbox WHERE user_id=?',(uid,))
         db.execute('''INSERT INTO auth_reset_codes(user_id,code_hash,created_at,expires_at)
             VALUES(?,?,?,?)''',(uid,digest(f'{uid}:{code}'),at.isoformat(),(at+timedelta(minutes=10)).isoformat()))
         queue_email(uid,email,'Your MLO password reset code',

@@ -3,6 +3,7 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+  workflow_call:
 permissions:
   contents: read
 jobs:
@@ -39,3 +40,55 @@ jobs:
           path: |
             test-results/
             docs/preview/v37/
+
+  container:
+    name: Verify container (${{ matrix.platform }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [linux/amd64, linux/arm64]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Build release image without publishing
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          load: true
+          push: false
+          tags: mlo:verify
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+      - name: Verify startup and extraction tools on a disposable database
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/mlo-container-data"
+          docker run --detach --name mlo-verify --platform "$PLATFORM" \
+            -p 127.0.0.1:18000:8000 \
+            --mount "type=bind,source=$RUNNER_TEMP/mlo-container-data,target=/data" \
+            -e STUDY_NOTIFIER_DB=/data/staging.sqlite \
+            -e MLO_ATTACHMENT_DIR=/data/uploads \
+            -e SESSION_SECRET=container-fixture-not-production \
+            -e APP_USERNAME=fixture -e APP_PASSWORD=ContainerFixtureOnly123 \
+            -e MLO_SCHEDULER_ENABLED=false -e MLO_CALENDAR_AUTO_SYNC=false \
+            -e COOKIE_SECURE=false mlo:verify
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18000/health; then break; fi
+            sleep 2
+          done
+          curl --fail --silent http://127.0.0.1:18000/health
+          curl --fail --silent http://127.0.0.1:18000/login > /dev/null
+          docker exec mlo-verify python -c 'import pypdf, cryptography, defusedxml, icalendar, dateutil; from app.meta import APP_VERSION; print(APP_VERSION)'
+          docker exec mlo-verify tesseract --version
+          docker exec mlo-verify pdftoppm -v
+      - name: Container logs
+        if: always()
+        run: docker logs mlo-verify || true
+      - name: Remove disposable container
+        if: always()
+        run: docker rm -f mlo-verify || true

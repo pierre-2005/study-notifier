@@ -237,5 +237,7 @@ def start_scheduler(timezone_name: str) -> BackgroundScheduler:
     sched.add_job(process_v37_task_reminders, trigger=IntervalTrigger(seconds=60), id='v37_task_reminders', replace_existing=True)
     from app.auth_delivery import deliver_mail
     sched.add_job(deliver_mail, trigger=IntervalTrigger(seconds=60), id="account_mail", replace_existing=True, max_instances=1, coalesce=True)
+    from app.study_planner import process_study_plans
+    sched.add_job(process_study_plans, trigger=IntervalTrigger(seconds=60), id='study_planner', replace_existing=True, max_instances=1, coalesce=True)
     sched.start()
     return sched

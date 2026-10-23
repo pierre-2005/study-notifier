@@ -1,4 +1,4 @@
-> **Continuation update, October 23, 2026:** This file describes the original first pass. See [V37_VERIFICATION.md](V37_VERIFICATION.md), [V37_REVIEW_AND_FIXES.md](V37_REVIEW_AND_FIXES.md) and [V37_DEPLOYMENT.md](V37_DEPLOYMENT.md) for the current candidate, evidence and remaining gates. Keep this PR draft until those gates pass.
+> **Release continuation, October 23, 2026:** The original first pass below is historical. The owner subsequently requested the shared redesign, course importer and study planner in this release and authorized merging verified work into `main`. See [V37_SETUP_REPORT.md](V37_SETUP_REPORT.md), [verification](V37_VERIFICATION.md) and [deployment/rollback](V37_DEPLOYMENT.md) for current behavior, evidence and operator steps. Portainer redeployment remains with the owner; production data was not accessed here.
 
 # MLO v3.7 Work Mode continuation and technical handoff
 **Prepared:** 2026-10-22  

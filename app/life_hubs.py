@@ -9,7 +9,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from app.db import get_conn
-from app.lifeos import user_id, data_for, projects_for
+from app.lifeos import user_id, data_for, projects_for, task_nodes_for
 from app.meta import APP_VERSION
 from app.workspace import list_sections_for_user
 
@@ -30,7 +30,17 @@ def study(request:Request):
     with get_conn() as conn:
         tasks=[dict(x) for x in data_for(conn,uid,'open',limit=8,area='Study')]
         projects=[dict(x) for x in projects_for(conn,uid) if x['area']=='Study'][:6]
-        private_courses=conn.execute('SELECT * FROM life_courses WHERE user_id=? ORDER BY created_at DESC',(uid,)).fetchall()
+        private_courses=conn.execute('''SELECT c.*,COUNT(t.id) AS task_count,COALESCE(SUM(t.status='done'),0) AS done_count
+            FROM life_courses c LEFT JOIN life_tasks t ON t.project_id=c.project_id
+            WHERE c.user_id=? GROUP BY c.id ORDER BY c.created_at DESC''',(uid,)).fetchall()
+        course_projects={c['project_id'] for c in private_courses}
+        projects=[p for p in projects if p['id'] not in course_projects]
+        assessments=[dict(r) for r in conn.execute('''SELECT a.*,t.title,t.status,c.name AS course_name,t.due_on AS task_due
+            FROM life_course_assessments a JOIN life_courses c ON c.id=a.course_id
+            JOIN life_tasks t ON t.id=a.task_id WHERE a.user_id=? AND c.user_id=?
+            AND t.owner_id=? AND t.status!='done' ORDER BY t.due_on IS NULL,t.due_on,t.id LIMIT 12''',(uid,uid,uid))]
+        task_nodes=task_nodes_for(conn,uid,tasks)
+        stats=conn.execute("SELECT COUNT(*) AS total,COALESCE(SUM(status='done'),0) AS done FROM life_tasks WHERE owner_id=? AND area='Study'",(uid,)).fetchone()
         courses=[];items=[];classes=[]
         if admin(request):
             courses=conn.execute('''SELECT c.id,c.name,c.term,c.color,COUNT(i.id) AS open_count FROM courses c
@@ -41,19 +51,20 @@ def study(request:Request):
                 WHERE i.status!='done' ORDER BY i.due_at_utc LIMIT 12''').fetchall()
             classes=conn.execute('''SELECT id,title,weekday,start_time_local,location FROM class_meetings
                 WHERE active=1 ORDER BY weekday,start_time_local LIMIT 12''').fetchall()
-    return render(request,'life_study.html',tasks=tasks,projects=projects,courses=courses,private_courses=private_courses,items=items,classes=classes,legacy=admin(request))
+    return render(request,'life_study.html',tasks=tasks,task_nodes=task_nodes,stats=stats,assessments=assessments,projects=projects,courses=courses,private_courses=private_courses,items=items,classes=classes,legacy=admin(request))
 
 @router.get('/work',response_class=HTMLResponse)
 def work(request:Request):
     uid=user_id(request)
     with get_conn() as conn:
         tasks=[dict(x) for x in data_for(conn,uid,'open',limit=10,area='Work')]
+        task_nodes=task_nodes_for(conn,uid,tasks)
         projects=[dict(x) for x in projects_for(conn,uid) if x['area']=='Work'][:8]
         jobs=[]
         if admin(request):
             jobs=conn.execute('''SELECT id,company,role,status,followup_at_utc
                 FROM jobs ORDER BY updated_at_utc DESC LIMIT 20''').fetchall()
-    return render(request,'life_work.html',tasks=tasks,projects=projects,jobs=jobs,legacy=admin(request))
+    return render(request,'life_work.html',tasks=tasks,task_nodes=task_nodes,projects=projects,jobs=jobs,legacy=admin(request))
 
 @router.get('/money',response_class=HTMLResponse)
 def money(request:Request):

@@ -1,5 +1,5 @@
 {% extends "base.html" %}{% block content %}
-<link rel="stylesheet" href="/static/v37-onboarding.css">
+<link rel="stylesheet" href="/static/v37-onboarding.css?v={{APP_VERSION}}">
 {% if message %}<section class="card login-card"><h1>Account created</h1><p class="login-success" role="status">{{message}}</p><a class="btn btn-primary" href="/login">Sign in</a><a href="/verify-email/resend">Resend verification</a></section>{% else %}
 <section class="v37-wizard" id="v37-wizard" data-mode="{{mode|default('profile')}}">
 <header><span class="v37-brand">MLO • My Life Organized</span><span id="v37-count">Step 1 of 5</span></header>
@@ -29,6 +29,6 @@
 <input type="hidden" name="v37_setup" id="v37-setup"><noscript><button class="mlo-btn mlo-primary" type="submit">Create account</button></noscript>
 </form><p class="v37-legal">By continuing, you agree to the <a href="/termsofservice">Terms of Service</a> and acknowledge the <a href="/privacy">Privacy Policy</a>.</p></section>
 <script id="v37-initial" type="application/json">{{initial_setup|default({})|tojson}}</script>
-<script src="/static/v37-onboarding.js" defer></script>
+<script src="/static/v37-onboarding.js?v={{APP_VERSION}}" defer></script>
 {% endif %}
 {% endblock %}

@@ -40,6 +40,7 @@ from app.personalize import router as layout_router, init_layout_schema, appeara
 from app.calendar_links import router as calendar_links_router, init_calendar_links_schema, sync_due_calendars, AUTO_SYNC
 from app.course_import import router as course_router, init_course_schema
 from app.note_reminders import router as note_reminder_router
+from app.study_planner import router as study_planner_router
 from app.v37 import router as v37_router, init_v37_schema, save_user_setup, _validate_preferences, _validate_reminders
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
@@ -140,7 +141,7 @@ async def require_auth(request: Request, call_next):
     # POST/JSON endpoints don't render the sidebar: avoid two extra SQL reads.
     needs_shell = request.method == 'GET' and not path.startswith(('/life/layout','/api/'))
     if needs_shell:
-        titles={'/life':'Today','/life/tasks':'Tasks','/life/projects':'Projects','/life/study':'Study','/life/calendar':'Calendar',
+        titles={'/life/study/planner':'Study planner','/life/study/import':'Course import','/life':'Today','/life/tasks':'Tasks','/life/projects':'Projects','/life/study':'Study','/life/calendar':'Calendar',
                 '/life/calendars':'Connected calendars','/life/notes':'Notes','/life/focus':'Focus','/life/insights':'Insights',
                 '/life/goals':'Goals & habits','/life/work':'Work','/life/spaces':'Spaces','/life/import':'Import',
                 '/life/search':'Search','/life/devices':'Notifications','/settings':'Settings','/account':'Account','/finance':'Finance','/admin':'Administration'}
@@ -2334,6 +2335,7 @@ app.include_router(timers_router)
 app.include_router(v37_router)
 app.include_router(course_router)
 app.include_router(note_reminder_router)
+app.include_router(study_planner_router)
 
 @app.post("/logout")
 def logout(request: Request):

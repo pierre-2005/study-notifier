@@ -1,3 +1,4 @@
+{% from "icons.html" import icon %}
 <!doctype html>
 <html lang="en" data-palette="neutral" data-palette-style="independent">
 <head>
@@ -46,6 +47,7 @@
   <link rel="stylesheet" href="/static/polish343.css?v={{ APP_VERSION }}">
   <link rel="stylesheet" href="/static/v37-board.css?v={{ APP_VERSION }}">
   <link rel="stylesheet" href="/static/workspace37.css?v={{ APP_VERSION }}">
+  <link rel="stylesheet" href="/static/product37.css?v={{ APP_VERSION }}">
   <script src="/static/theme.js?v={{ APP_VERSION }}" defer></script>
   <script src="/static/life.js?v={{ APP_VERSION }}" defer></script>
   <script src="/static/customize.js?v={{ APP_VERSION }}" defer></script>
@@ -80,7 +82,7 @@
         <div class="sidebar-tools">
           <button class="sidebar-tool" type="button" data-command-open>
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <span>Search & commands</span><kbd>Ctrl K</kbd>
+            <span>Quick switcher</span><kbd>Ctrl K</kbd>
           </button>
           <button class="sidebar-tool" type="button" data-global-capture-open title="Add task anywhere (N)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Add task</span><kbd>N</kbd></button><div class="quick-add-wrap">
             <button class="sidebar-tool" type="button" data-quick-add-toggle aria-expanded="false">
@@ -93,9 +95,10 @@
               <a href="/life/notes"><span>✎</span> Note</a>
               <a href="/sections/new"><span>＋</span> Space</a>
               <a href="/life/focus"><span>◷</span> Focus timer</a>
-              {% if is_admin %}
+              <a href="/life/calendars/new">{{icon('calendar')}} Calendar event</a>
+              <a href="/life/study/import">{{icon('book')}} Course outline</a>
+              {% if legacy_owner %}
               <a href="/items/new"><span>▤</span> Academic deadline</a>
-              <a href="/life/calendars/new"><span>▣</span> Calendar event</a>
               <a href="/expenses/new"><span>$</span> Expense</a>
               <a href="/jobs/new"><span>◇</span> Job application</a>
               <a href="/courses/new"><span>▤</span> Course</a>
@@ -107,9 +110,9 @@
         <div class="mlo-sidebar-customize-row"><span>WORKSPACE</span><button type="button" data-nav-edit aria-label="Edit and reorder navigation">Customize</button></div>
         <nav class="sidebar-nav" data-custom-nav>
           <div class="mlo-nav-group" data-nav-group="core">
-          {% for key,label,path,glyph in [('life-home','Dashboard','/life','⌂'),('life-tasks','My tasks','/life/tasks','☷'),('life-projects','Projects','/life/projects','▦'),('life-calendar','Calendar','/life/calendar','▤'),('life-focus','Focus & time','/life/focus','◷'),('life-notes','Notes','/life/notes','✎'),('life-insights','Insights','/life/insights','▥'),('life-goals','Goals & habits','/life/goals','✧'),('life-search','Search','/life/search','⌕'),('life-devices','Phone reminders','/life/devices','♧'),('life-import','Import','/life/import','⇩'),('life-studio','Study','/life/study','▤'),('life-work','Work & career','/life/work','◇'),('life-money','Finance','/finance','＄'),('life-spaces','Spaces','/life/spaces','▧')] %}
+          {% for key,label,path,glyph in [('life-home','Today','/life','home'),('life-tasks','My tasks','/life/tasks','tasks'),('life-projects','Projects','/life/projects','projects'),('life-calendar','Calendar','/life/calendar','calendar'),('life-focus','Focus & time','/life/focus','clock'),('life-notes','Notes','/life/notes','note'),('life-insights','Insights','/life/insights','chart'),('life-goals','Goals & habits','/life/goals','goal'),('life-search','Search','/life/search','search'),('life-devices','Phone reminders','/life/devices','bell'),('life-import','Import','/life/import','import'),('life-studio','Study','/life/study','book'),('life-work','Work & career','/life/work','work'),('life-money','Finance','/finance','money'),('life-spaces','Spaces','/life/spaces','spaces')] %}
           {% if key != 'life-money' or legacy_owner %}
-          <a href="{{path}}" class="nav-item {{'active' if p==path or (path!='/life' and p.startswith(path+'/')) or (key=='life-studio' and (p.startswith('/courses') or p.startswith('/items') or p.startswith('/classes'))) or (key=='life-work' and p.startswith('/jobs')) or (key=='life-money' and (p.startswith('/expenses') or p.startswith('/finance'))) or (key=='life-spaces' and p.startswith('/sections')) else ''}}" data-nav-key="{{key}}" data-nav-default="{{label}}" title="{{label}}"><span class="mlo-navglyph">{{glyph}}</span><span data-nav-label>{{label}}</span><span class="mlo-nav-drag" aria-hidden="true">⠿</span></a>
+          <a href="{{path}}" class="nav-item {{'active' if p==path or (path!='/life' and p.startswith(path+'/')) or (key=='life-studio' and (p.startswith('/courses') or p.startswith('/items') or p.startswith('/classes'))) or (key=='life-work' and p.startswith('/jobs')) or (key=='life-money' and (p.startswith('/expenses') or p.startswith('/finance'))) or (key=='life-spaces' and p.startswith('/sections')) else ''}}" data-nav-key="{{key}}" data-nav-default="{{label}}" title="{{label}}"><span class="mlo-navglyph">{{icon(glyph)}}</span><span data-nav-label>{{label}}</span><span class="mlo-nav-drag" aria-hidden="true">⠿</span></a>
           {% endif %}{% endfor %}
           </div>
           <div class="mlo-sidebar-section-title"><span>MY SPACES</span><a href="/sections/new" aria-label="Add space">＋</a></div>
@@ -175,11 +178,11 @@
       </main>
 
       <nav class="mobile-dock" aria-label="Mobile navigation">
-        <a class="mobile-dock-item {{'active' if p=='/life' else ''}}" href="/life"><span class="mlo-dockglyph">⌂</span><span>Today</span></a>
-        <a class="mobile-dock-item {{'active' if p.startswith('/life/tasks') else ''}}" href="/life/tasks"><span class="mlo-dockglyph">☷</span><span>Tasks</span></a>
-        <a class="mobile-dock-item {{'active' if p.startswith('/life/projects') else ''}}" href="/life/projects"><span class="mlo-dockglyph">▦</span><span>Projects</span></a>
-        <a class="mobile-dock-item {{'active' if p.startswith('/life/focus') else ''}}" href="/life/focus"><span class="mlo-dockglyph">◷</span><span>Focus</span></a>
-        <button class="mobile-dock-item" type="button" data-mobile-more aria-expanded="false" aria-controls="mobile-more-sheet"><span class="mlo-dockglyph">⋯</span><span>More</span></button>
+        <a class="mobile-dock-item {{'active' if p=='/life' else ''}}" href="/life"><span class="mlo-dockglyph">{{icon('home')}}</span><span>Today</span></a>
+        <a class="mobile-dock-item {{'active' if p.startswith('/life/tasks') else ''}}" href="/life/tasks"><span class="mlo-dockglyph">{{icon('tasks')}}</span><span>Tasks</span></a>
+        <a class="mobile-dock-item {{'active' if p.startswith('/life/projects') else ''}}" href="/life/projects"><span class="mlo-dockglyph">{{icon('projects')}}</span><span>Projects</span></a>
+        <a class="mobile-dock-item {{'active' if p.startswith('/life/focus') else ''}}" href="/life/focus"><span class="mlo-dockglyph">{{icon('clock')}}</span><span>Focus</span></a>
+        <button class="mobile-dock-item" type="button" data-mobile-more aria-expanded="false" aria-controls="mobile-more-sheet"><span class="mlo-dockglyph">{{icon('more')}}</span><span>More</span></button>
       </nav>
 
       <section class="mobile-more-sheet" id="mobile-more-sheet" data-mobile-more-sheet aria-label="More navigation" hidden>
@@ -187,7 +190,7 @@
         <div class="mobile-more-grid">
           <a href="/life/study">Study</a><a href="/life/work">Work & career</a>
           {% if legacy_owner %}<a href="/finance">Finance</a>{% endif %}
-          <a href="/life/spaces">Spaces</a><a href="/life/calendar">Calendar</a><a href="/life/calendars">Connected calendars</a><a href="/life/notes">Notes</a><a href="/life/insights">Insights</a><a href="/life/goals">Goals & habits</a><a href="/life/devices">Phone reminders</a><a href="/life/import">Import tasks</a><a href="/life/study/import">Import course outline</a><a href="/life/search">Search</a><a href="/settings">Settings</a><a href="/sections/new">New space</a>
+          <a href="/life/spaces">Spaces</a><a href="/life/calendar">Calendar</a><a href="/life/calendars">Connected calendars</a><a href="/life/notes">Notes</a><a href="/life/insights">Insights</a><a href="/life/goals">Goals & habits</a><a href="/life/devices">Phone reminders</a><a href="/life/import">Import tasks</a><a href="/life/study/import">Import course outline</a><a href="/life/study/planner">Study planner</a><a href="/life/search">Search</a><a href="/settings">Settings</a><a href="/sections/new">New space</a>
         </div>
       </section>
     </div>
@@ -216,6 +219,7 @@
           <a href="/life/calendar" data-command-item data-search="calendar events schedule deadline"><span>Calendar</span><small>Schedule</small></a>
           <a href="/life/focus" data-command-item data-search="focus timers countdown pomodoro"><span>Focus & timers</span><small>Time</small></a>
           <a href="/life/notes" data-command-item data-search="notes knowledge"><span>Notes</span><small>Write</small></a><a href="/life/insights" data-command-item data-search="insights reports stats progress analytics"><span>Insights</span><small>Progress</small></a>
+          <a href="/life/study/planner" data-command-item data-search="study planner automatic schedule blocks availability"><span>Study planner</span><small>Schedule</small></a>
           <a href="/life/study" data-command-item data-search="study courses assignments exams labs class"><span>Study</span><small>Academics</small></a>
           <a href="/life/work" data-command-item data-search="work career jobs applications"><span>Work & career</span><small>Career</small></a>
           {% if legacy_owner %}<a href="/finance" data-command-item data-search="money finance expenses budgets bills"><span>Finance</span><small>Finance</small></a>{% endif %}

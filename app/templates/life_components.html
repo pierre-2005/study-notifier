@@ -9,7 +9,7 @@
   <a class="mlo-task-name {{ 'is-done' if t.status=='done' else '' }}" href="/life/tasks/{{ t.id }}">{{ t.title }}</a>
   <div class="mlo-task-meta">
     {% if t.project_name is defined and t.project_name %}<span>▦ {{ t.project_name }}</span>{% endif %}
-    {% if t.due_on %}<span class="{{ 'mlo-overdue' if t.due_on < current_day() and t.status!='done' else '' }}">◷ {{ t.due_on }}</span>{% endif %}
+    {% if t.due_on %}<span class="{{ 'mlo-overdue' if (t.overdue if t.overdue is defined else t.due_on < current_day() and t.status!='done') else '' }}">◷ {{ t.due_on }}</span>{% endif %}
     {% if t.priority in ['urgent','high'] %}<span class="mlo-priority">◆ {{ t.priority|title }}</span>{% endif %}
     {% if t.recurrence!='none' %}<span>↻ {{ t.recurrence|title }}</span>{% endif %}
   </div>

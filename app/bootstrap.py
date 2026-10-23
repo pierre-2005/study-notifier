@@ -20,6 +20,7 @@ def initialize_database(username='', password='', *, backup=True):
     from app.life_import import init_import_schema
     from app.life_files import init_file_schema
     from app.course_import import init_course_schema
+    from app.study_planner import init_study_schema
     if backup:
         for create in (pre_v37_backup, pre_v3_backup, pre_consolidation_backup, pre_v34_backup, pre_v36_backup):
             create()
@@ -41,3 +42,4 @@ def initialize_database(username='', password='', *, backup=True):
     init_import_schema()
     init_file_schema()
     init_course_schema()
+    init_study_schema()

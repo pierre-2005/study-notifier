@@ -77,7 +77,12 @@ def now() -> str:
 
 
 def today() -> str:
-    return date.today().isoformat()
+    return datetime.now(ZoneInfo(settings.timezone)).date().isoformat()
+
+
+def user_day(conn, uid):
+    from app.v37 import read_user_setup
+    return datetime.now(ZoneInfo(read_user_setup(conn,uid)['timezone'])).date()
 
 
 def user_id(request: Request) -> int:
@@ -270,6 +275,7 @@ def tasks_sql(uid):
 
 
 def data_for(conn, uid, view='all', project=None, limit=150, area=None):
+    local_day=user_day(conn,uid)
     cond, params = tasks_sql(uid)
     where = [cond]
     vals = list(params)
@@ -281,13 +287,13 @@ def data_for(conn, uid, view='all', project=None, limit=150, area=None):
         where.append("t.status != 'done'")
         if view == "today":
             where.append("(t.due_on<=? OR t.due_on IS NULL)")
-            vals.append(today())
+            vals.append(local_day.isoformat())
         elif view == "overdue":
             where.append("t.due_on<?")
-            vals.append(today())
+            vals.append(local_day.isoformat())
         else:
             where.append("t.due_on>? AND t.due_on<=?")
-            vals.extend([today(), (date.today()+timedelta(days=14)).isoformat()])
+            vals.extend([local_day.isoformat(), (local_day+timedelta(days=14)).isoformat()])
     elif view == "done":
         where.append("t.status='done'")
     elif view == "inbox":
@@ -312,6 +318,7 @@ def data_for(conn, uid, view='all', project=None, limit=150, area=None):
 
 def filtered_tasks(conn, uid, view='open', project=None, *, query='', priority='', area='', sort='due', page=1, page_size=40):
     """Paginated, permission-scoped task finder; never materializes the entire list."""
+    local_day=user_day(conn,uid)
     cond, params = tasks_sql(uid)
     clauses = [cond]
     vals = list(params)
@@ -323,13 +330,13 @@ def filtered_tasks(conn, uid, view='open', project=None, *, query='', priority='
         clauses.append("t.status!='done'")
         if view == 'today':
             clauses.append('(t.due_on<=? OR t.due_on IS NULL)')
-            vals.append(today())
+            vals.append(local_day.isoformat())
         elif view == 'overdue':
             clauses.append('t.due_on<?')
-            vals.append(today())
+            vals.append(local_day.isoformat())
         else:
             clauses.append('t.due_on>? AND t.due_on<=?')
-            vals.extend([today(), (date.today()+timedelta(days=14)).isoformat()])
+            vals.extend([local_day.isoformat(), (local_day+timedelta(days=14)).isoformat()])
     elif view == 'done': clauses.append("t.status='done'")
     elif view == 'inbox': clauses.append("t.project_id IS NULL AND t.status!='done'")
     elif view == 'open': clauses.append("t.status!='done'")
@@ -365,6 +372,7 @@ def task_nodes_for(conn,uid,rows):
     from app.task_service import task_forest
     visible={t['id']:dict(t) for t in rows}
     original=set(visible)
+    local_day=user_day(conn,uid).isoformat()
     for _ in range(8):
         missing={t['parent_id'] for t in visible.values() if t['parent_id'] and t['parent_id'] not in visible}
         if not missing: break
@@ -374,6 +382,7 @@ def task_nodes_for(conn,uid,rows):
         visible.update({r['id']:dict(r) for r in ancestors})
     roles={r['id']:r['my_role'] for r in conn.execute("SELECT p.id,CASE WHEN p.owner_id=? THEN 'owner' ELSE m.role END AS my_role FROM life_projects p LEFT JOIN life_project_members m ON m.project_id=p.id AND m.user_id=? WHERE p.owner_id=? OR m.user_id IS NOT NULL",(uid,uid,uid))}
     for task in visible.values():
+        task['overdue']=bool(task['due_on'] and task['due_on']<local_day and task['status']!='done')
         task['can_edit']=(task['owner_id']==uid) if task['project_id'] is None else roles.get(task['project_id']) in ('owner','editor')
         task['is_context']=task['id'] not in original
     forest=task_forest(list(visible.values()))
@@ -411,11 +420,14 @@ def render(request, name, **kwargs):
 def home(request: Request):
     uid = user_id(request)
     with get_conn() as conn:
+        local_today=user_day(conn,uid)
+        from app.v37 import read_user_setup
+        zone=ZoneInfo(read_user_setup(conn,uid)['timezone'])
         tasks = data_for(conn,uid,'today',limit=12)
         task_nodes=task_nodes_for(conn,uid,tasks)
         projects = projects_for(conn,uid)[:5]
         stats = conn.execute("SELECT COUNT(*) AS total, SUM(CASE WHEN status='done' THEN 1 ELSE 0 END) AS done FROM life_tasks WHERE owner_id=?",(uid,)).fetchone()
-        focus = conn.execute("SELECT COALESCE(SUM(minutes),0) AS total FROM life_time_entries WHERE owner_id=? AND occurred_on>=?",(uid,(date.today()-timedelta(days=6)).isoformat())).fetchone()['total']
+        focus = conn.execute("SELECT COALESCE(SUM(minutes),0) AS total FROM life_time_entries WHERE owner_id=? AND occurred_on>=?",(uid,(local_today-timedelta(days=6)).isoformat())).fetchone()['total']
         preference = pref(conn,uid)
         is_admin=getattr(request.state,'legacy_owner',False)
         study=[];bills=[];jobs=[]
@@ -424,7 +436,7 @@ def home(request: Request):
             bills=conn.execute("SELECT id,title,amount,due_at_utc FROM expenses WHERE status='unpaid' ORDER BY due_at_utc LIMIT 3").fetchall()
             jobs=conn.execute("SELECT id,company,role,followup_at_utc FROM jobs WHERE followup_at_utc IS NOT NULL ORDER BY followup_at_utc LIMIT 3").fetchall()
     from datetime import datetime
-    month_start=date.today().replace(day=1)
+    month_start=local_today.replace(day=1)
     month_end=(month_start.replace(day=28)+timedelta(days=4)).replace(day=1)
     month_days=calendar.Calendar(firstweekday=0).monthdatescalendar(month_start.year,month_start.month)
     event_dates=set()
@@ -432,13 +444,15 @@ def home(request: Request):
         for row in conn.execute("SELECT due_on FROM life_tasks WHERE owner_id=? AND due_on>=? AND due_on<? AND status!='done'",(uid,month_start.isoformat(),month_end.isoformat())):
             if row['due_on']:event_dates.add(row['due_on'])
         for row in conn.execute('SELECT start_at_utc FROM life_local_events WHERE user_id=? AND start_at_utc>=? AND start_at_utc<?',(uid,month_start.isoformat(),month_end.isoformat())):
-            if row['start_at_utc']:event_dates.add(str(row['start_at_utc'])[:10])
+            if row['start_at_utc']:event_dates.add(datetime.fromisoformat(row['start_at_utc'].replace('Z','+00:00')).astimezone(zone).date().isoformat())
         for row in conn.execute('SELECT e.starts_on FROM life_external_events e JOIN life_calendar_connections c ON e.connection_id=c.id WHERE c.user_id=? AND e.starts_on>=? AND e.starts_on<? LIMIT 150',(uid,month_start.isoformat(),month_end.isoformat())):
             event_dates.add(row['starts_on'])
-    hour=datetime.now(ZoneInfo(settings.timezone)).hour
+    from app.agenda import agenda_for
+    with get_conn() as conn:agenda=agenda_for(conn,uid,local_today,zone)
+    hour=datetime.now(zone).hour
     greeting='Good morning' if hour<12 else 'Good afternoon' if hour<18 else 'Good evening'
-    return render(request,'life_home.html',tasks=tasks,task_nodes=task_nodes,projects=projects,stats=stats,focus=focus,preference=preference,today=today(),study=study,bills=bills,jobs=jobs,is_admin=is_admin,
-        greeting=greeting,month_name=date.today().strftime('%B %Y'),month_number=date.today().month,month_weeks=month_days,event_dates=event_dates)
+    return render(request,'life_home.html',tasks=tasks,task_nodes=task_nodes,projects=projects,stats=stats,focus=focus,preference=preference,today=local_today.isoformat(),study=study,bills=bills,jobs=jobs,is_admin=is_admin,
+        agenda=agenda,greeting=greeting,month_name=local_today.strftime('%B %Y'),month_number=local_today.month,month_weeks=month_days,event_dates=event_dates)
 
 
 
@@ -872,7 +886,7 @@ def calendar_page(request:Request, month:str=''):
         first=date.fromisoformat(month+'-01') if month else local_today.replace(day=1)
     except ValueError: first=local_today.replace(day=1)
     first=first.replace(day=1)
-    if first.year<2000 or first.year>2100: first=date.today().replace(day=1)
+    if first.year<2000 or first.year>2100: first=local_today.replace(day=1)
     last=date(first.year+(first.month//12),first.month%12+1,1)
     grouped={}
     def add(day,title,href,kind,status=''):

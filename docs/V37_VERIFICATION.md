@@ -1,52 +1,44 @@
-# MLO v3.7 verification and continuation
+# MLO v3.7 release verification
 
-**Release status: draft candidate, not approved for production.** PR #1 remains on `feature/mlo-v37-interactive-workspace` against main. Nothing was merged, deployed to Portainer, published to GHCR or run against the production database. The candidate version is `3.7.0-rc1`.
+**Version: 3.7.0. Local regression result: 31 of 31 scripts passed.** The owner authorized merging verified work into `main` on October 23, 2026 and will handle Portainer redeployment after publication. The latest [PR #1 checks](https://github.com/pierre-2005/study-notifier/pull/1/checks) identify the exact GitHub-verified commit; merging is contingent on those checks succeeding. Development did not access production data, Portainer, real mailboxes or live calendar/notification credentials.
 
-The original 13 changed files and the complete attached/repository handoffs were read. The implementation and findings are in [V37_REVIEW_AND_FIXES.md](V37_REVIEW_AND_FIXES.md). The research and UI decisions are in [V37_PRODUCT_RESEARCH.md](V37_PRODUCT_RESEARCH.md).
+The complete original handoff and every original changed file were reviewed. [Fix-by-file review](V37_REVIEW_AND_FIXES.md), [Macro-focused product/UI research](V37_PRODUCT_RESEARCH.md), [setup report](V37_SETUP_REPORT.md), [email walkthrough](V37_EMAIL_SETUP.md) and [deployment/rollback](V37_DEPLOYMENT.md) document the result.
 
-## Verification evidence
+## Automated evidence
 
-The local regression runner executes each existing `tests*.py` script in a separate process. It preserves historical suites and adds current real-HTTP browser acceptance; older screenshot suites alone do not verify the new stylesheet. Python 3.12, pinned IANA 2026e data and Chrome Headless Shell 156.0.8078.47 were used. No real user credentials or external notifications were used. Automated provider tests use mocks or controlled fixtures.
+Python 3.12, pinned tzdata 2026.5 / IANA 2026e and Chrome Headless Shell 156.0.8078.47 were used locally. `scripts/run_regression.py` executes every standalone `tests*.py` in its own process. Historical suites are retained; the new browser suite serves the actual app and assets over HTTP. External provider calls are controlled mocks/fixtures. Results and timings are in [V37_TEST_RESULTS.json](V37_TEST_RESULTS.json).
 
-| Area | Evidence and practical limit |
+| Area | Result and scope |
 | --- | --- |
-| Core regression | All 28 available standalone scripts passed, with zero failures, in the final local run. Every script is run by `scripts/run_regression.py`; exact results/timings are in [V37_TEST_RESULTS.json](V37_TEST_RESULTS.json). |
-| v3.7 API integration | Sixteen acceptance tests cover member API access, owner/editor/viewer/admin isolation, dependencies across edit paths, recurring successors, cycle/depth checks, stale edits, preferences/mutes, signup/verification/approval, reset limits/expiry/replay/encryption and personal note reminders. |
-| Reminder delivery | Tests exercise tasks, project dates, local/external events, assignments/exams/labs, work tasks/follow-ups, bills, notes and focus, including private-device routing, failures/retry, disabled users, quiet hours and DST-aware date-only deadlines. Network delivery is mocked. |
-| Course outlines | PDF text, DOCX, PNG, JPG, scanned PDF/OCR and text; invalid file/XML handling, ambiguous dates, editable commit, ownership, duplicate/repeated imports, source evidence and optional AI schema/error handling. AI API calls are mocked, not live-model quality tests. |
-| Browser flows | Real server and real JS/CSS against a disposable database. Mouse drag, touch drag with edge scrolling, child edits/creation, parent movement, task inspector save/focus, profile preview, signup and course review/commit. Sixteen main routes at 375/768/1280/1440 pixels; no document horizontal overflow or JS errors in those checks. |
-| Accessibility | Axe-core 4.14.0 ran 33 WCAG 2.0/2.1 A/AA scans, including board in all six palettes/light-dark modes, task inspector, core routes, import review and mobile signup/board. Zero reported violations in these tested states. [Machine-readable scan results](preview/v37/accessibility.json). Keyboard navigation, modal focus and reduced-motion behavior are also exercised. This is not a full accessibility certification or real screen-reader/device study. |
-| Migration rehearsal | Read-only source online backup with outstanding WAL data, migration twice, original-column/row preservation across ten source tables, 64 staging tables, integrity and foreign-key checks, and restoration identical to baseline. A nonempty staging directory is rejected. This was a representative synthetic legacy database, not the user's actual staging data. |
-| Timezone portability | Four dedicated tests select packaged IANA 2026e rules, verify the current Edmonton deadline offset, retain the historical 2025 fall transition and preserve explicit UTC timestamps. Docker, CI and the regression runner select the pinned database. |
-| Existing integrations | Regression coverage retains Google/Microsoft/ICS/local calendar routes, OAuth state, credential encryption, refresh/sync errors, destinations, create/edit/delete, disconnect, Finance, imports/exports, device ownership, public legal routes, PWA manifest/service worker and account themes. Live providers and actual installed OAuth credentials remain unverified. |
-| Build checks | Python compilation, ten JavaScript syntax checks, patch formatting and installed Python dependency consistency. Docker daemon/ARM64 hardware are unavailable here; the Docker image and Raspberry Pi runtime have not been built/tested locally. |
+| Full regression | All 31 scripts passed, zero failures. Includes original functionality, public/legal/PWA, Finance, account/security, notification/device isolation, calendars, layout/appearance, imports/files and new release suites. |
+| v3.7 integration | Sixteen API acceptance tests cover signup/preferences/mail atomicity, email verification and approval, reset code expiry/attempts/replay/encryption, session revocation, admin restrictions, owner/editor/viewer/outsider access, dependencies, recurring successors, hierarchy depth/cycles, stale edits, explicit reminder mutes and note-review dates. |
+| Study planner | Twelve acceptance tests cover busy-time conflicts, estimates minus logged focus, exact imported deadlines, prerequisite/leaf filtering, unplaced tasks, daily limits, preview expiry/staleness, private access/CSRF, idempotent apply, stable event IDs on rename/replan, protected manual/pinned sessions, clear, restoration on undo, explicit automatic opt-in and disabled/unapproved users. |
+| Calendar precision | Seven dedicated tests exercise Google pagination, Graph next links/UTC suffixes, bearer-token destination restrictions, recurring ICS with EXDATE/moved/cancelled instances, RDATE/all-day duration, rejection of dense untrusted recurrence, and missing/ambiguous DST form times. Existing OAuth/create/edit/delete/sync suites also pass. |
+| Personalized reminders | Supported task/project/local and external event/assignment/exam/lab/work/bill/note/focus sources route only to the eligible owner's devices. Retry, lease/deduplication, quiet hours, timezone, explicit mutes and disabled accounts are covered. Completed study tasks stop generating session reminders; unchanged planned slots retain event IDs and delivery history. No actual phone delivery was attempted. |
+| Course imports | PDF text, DOCX, PNG, JPG, scanned PDF/OCR and TXT; bounded/invalid files and XML entities, source evidence, ambiguous dates, editable selection, transaction/dedupe and private ownership. Optional AI request schema/error paths are mocked, not live-model quality tests. |
+| Real browser flows | Mouse/touch drag including edge scrolling, nesting and child status, task inspector save/focus, course source review/commit, appearance/onboarding/signup, and planner preview/apply/undo/pin/clear. Seventeen routes at 375/768/1280/1440 pixels have no document horizontal overflow; no JS errors in tested flows. |
+| Accessibility | Axe-core 4.14.0 reports **zero violations in 47 WCAG 2.0/2.1 A/AA scans**, including shared routes, board and planner in six palettes/light-dark, mobile, inspector and import review. Keyboard alternatives, modal focus, hidden navigation and reduced motion are exercised. This is partial automated evidence, not accessibility certification or a real screen-reader study. [Scan results](preview/v37/accessibility.json). |
+| Legacy staging | Read-only online backup with outstanding WAL, migration twice, original-column preservation, integrity/FK checks, source unchanged and a restore identical to baseline. The older ten-table fixture becomes 67 staging tables. |
+| Full pre-v3.7 staging | A synthetic fixture was generated by actual main `ba3aba3f932753de1dc9014c52558768b84f0b38`. All 49 original tables survive backup and two migrations into 66 tables; restored data matches baseline. Authenticated checks verify old logins, pending approval, capability denial, nested/shared records, custom labels/theme, Finance values, encrypted OAuth round-trip and attachment content/hash. Actual installation data was unavailable. |
+| Timezones | Four dedicated tests select packaged IANA rules, verify current Edmonton deadlines and historical 2025 DST, and retain explicit UTC timestamps. No stored UTC values or timezone identifiers are rewritten. |
+| Source checks | Python compilation, 82 Jinja templates, all 11 JavaScript syntax checks, dependency consistency and patch formatting passed. |
+| Containers | GitHub validation builds and starts separate AMD64/ARM64 images without publishing. Health/login, runtime imports, Tesseract and Poppler are checked against disposable volumes. The main publishing workflow reuses these checks. Consult the latest PR run for its result; ARM64 runs under QEMU, not physical Pi hardware. |
 
-The first remote CI run passed 26 of 27 scripts but found that a reminder fixture assumed a fixed winter UTC offset. The local host database was stale while CI had updated Edmonton rules. The candidate now pins the [first-party Python tzdata](https://docs.python.org/3/library/zoneinfo.html#configuring-the-data-sources) and uses [IANA 2026e](https://www.iana.org/time-zones/releases/2026e) consistently in Docker/CI; fixture clocks are derived from their selected zone and dedicated historical/current-rule tests were added. Explicit stored UTC deadlines are not rewritten.
+The original baseline exposed legal-link omissions, a blocked member API, status/recurrence bypasses and unsafe legacy administrator access. These were fixed rather than waived. An earlier remote run exposed stale local timezone rules and an obsolete fixed-UTC fixture; pinning the timezone database and deriving clocks from zones resolved it. The redesign's browser pass found active navigation/status contrast issues; these were corrected and the final 47 scans pass. The historical sidebar test now expects the deliberate default label Today, while still verifying custom labels/order persistence.
 
-The initial baseline passed 17 of 18 service scripts; the missing signup legal links failed the public legal test. That regression is fixed. Two historical assertions were updated for deliberate behavior changes: Add task wording and owner-delivered recovery instead of administrator-known passwords. A previously blocked member API, recurrence/dependency bypasses and unsafe legacy administrator access were fixed rather than waived.
+## Review screens
 
-## Reviewable screens
+Disposable demonstration data only:
 
 - [Today](preview/v37/today-desktop.png)
-- [Project board](preview/v37/board-desktop.png) and [dark board](preview/v37/board-dark.png)
-- [Mobile board](preview/v37/board-mobile.png)
-- [Course outline review](preview/v37/outline-review-desktop.png)
+- [Project board](preview/v37/board-desktop.png), [dark](preview/v37/board-dark.png), [mobile](preview/v37/board-mobile.png)
+- [Study hub](preview/v37/study-desktop.png)
+- [Course outline source review](preview/v37/outline-review-desktop.png)
+- [Study plan preview](preview/v37/planner-preview-desktop.png), [mobile](preview/v37/planner-mobile.png), [mobile availability](preview/v37/planner-availability-mobile.png)
 - [Appearance preview](preview/v37/appearance-preview.png)
 
-These screenshots contain disposable demonstration data only. Local Chrome Headless Shell was used because the normal Chromium installer/browser executable could not run reliably in this environment.
+## Operator acceptance after source verification
 
-## Remaining release gates
+The owner must rehearse their actual private backup before redeployment, preserve/uploads and current stack configuration, configure SMTP and verify inbox delivery, and check real Google/Microsoft calendars, ntfy phones, installed PWAs and Raspberry Pi performance. These require installation access or external credentials unavailable during development; [V37_SETUP_REPORT.md](V37_SETUP_REPORT.md) contains the exact setup and acceptance steps. No synthetic or mocked result is presented as production verification.
 
-1. Run the documented migration/restoration rehearsal against an actual backed-up staging copy, including its existing foreign keys, historical accounts, encrypted calendar credentials, finance records and attachments. Retain the report privately. Representative tests cannot prove that an unseen production database is clean.
-2. Configure/verify the real sender domain and SMTP credentials, then test inbox delivery, verification/resend and recovery with controlled real mailboxes. [Step-by-step setup](V37_EMAIL_SETUP.md).
-3. Exercise real Google/Microsoft OAuth connections, refresh and calendar writes with controlled test calendars, plus ntfy pairing/delivery on actual phones. Existing provider secrets and callbacks were preserved, not exercised against live accounts here.
-4. Build and inspect the approved multi-architecture image, confirm ARM64/Pi OCR memory and startup behavior, and perform installed PWA checks on iPhone/Windows and actual assistive technology. Browser emulation is partial evidence only.
-5. Review the new UI and course-import behavior with the owner. Complete the latest branch's GitHub Actions run and resolve any failures before approval. Only then obtain explicit approval of the tested commit and deployment window.
-
-Follow [V37_DEPLOYMENT.md](V37_DEPLOYMENT.md) for the staging and rollback procedure. Do not deploy merely because unit tests or a previous commit's CI is green.
-
-## Product work still to do
-
-The requested course-outline assessment importer and substantial shared UI improvements have been brought forward. A complete v4 UI/editor architecture rewrite, generalized cross-content linking, lecture/office-hour extraction and automatic study-block scheduling remain separate major work. No autonomous scheduler has been added. Exact assessment times imported during review are retained for reminders; date edits use the task's current date and do not invent a replacement clock time. Imported tasks appear in MLO Calendar and are not automatically bulk-written to external providers.
-
-Finance remains the installation's historical owner-only module; this release does not silently convert its global records into multi-user finances. Other users' capabilities, approvals, private tasks/projects, device topics and existing OAuth credentials remain isolated. Further per-user Finance support requires a separately reviewed data migration.
+The release includes the requested shared redesign, assessment importer and opt-in automatic study planner. It keeps one real task per assessment, local generated study events, explicit provider writes, current account approval/capability policy and owner-only historical Finance. General block-editor architecture, arbitrary course/lecture recurrence import, graph linking and offline/native architecture remain future v4 work. No complete competitor feature parity or perfect operation on every device is claimed.

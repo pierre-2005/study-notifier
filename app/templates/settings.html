@@ -1,31 +1,15 @@
 {% extends "base.html" %}
-{% block content %}<div class="mlo-tip">Your password and recovery email are managed on <a href="/account/security"><strong>Account security</strong></a>.</div>
+{% block content %}
 {% set is_admin = request.session.get('role') == 'admin' %}
 <div class="page-heading">
-  <div><div class="eyebrow">Preferences</div><h1>Settings</h1><p>Personalize the workspace appearance and navigation{% if is_admin %}, plus reminder templates and notifier behavior{% endif %}.</p></div>
-  {% if is_admin %}<a class="btn" href="/life/devices">Test my notification devices</a>{% endif %}
+  <div><div class="eyebrow">Preferences</div><h1>Settings</h1><p>Your account, workspace and connections.</p></div>
+  <a class="btn" href="/life/onboarding">Edit preferences</a>
 </div>
 
 <div class="settings-layout">
-  {% if is_admin %}
-  <section class="card settings-card">
-    <div class="card-h"><div><h2 class="h2">Navigation</h2><p class="muted mt-1">Choose which optional built-in areas appear in your sidebar and mobile navigation.</p></div></div>
-    <div class="card-b nav-toggle-list settings-nav-list">
-      <label class="switch-row"><span><strong>To-Do</strong><small>Tasks and digest reminders</small></span><input type="checkbox" data-nav-setting="todos" checked><i></i></label>
-      <label class="switch-row"><span><strong>Courses</strong><small>Your course workspace</small></span><input type="checkbox" data-nav-setting="courses" checked><i></i></label>
-      <label class="switch-row"><span><strong>Assignments & Exams</strong><small>Assignments, exams and labs</small></span><input type="checkbox" data-nav-setting="items" checked><i></i></label>
-      <label class="switch-row"><span><strong>Schedule</strong><small>Classes and events</small></span><input type="checkbox" data-nav-setting="schedule" checked><i></i></label>
-      <label class="switch-row"><span><strong>Finance</strong><small>Statements, budgets and analysis</small></span><input type="checkbox" data-nav-setting="finance" checked><i></i></label>
-      <label class="switch-row"><span><strong>Expenses</strong><small>Upcoming payments</small></span><input type="checkbox" data-nav-setting="expenses" checked><i></i></label>
-      <label class="switch-row"><span><strong>Jobs</strong><small>Applications and follow-ups</small></span><input type="checkbox" data-nav-setting="jobs" checked><i></i></label>
-      <label class="switch-row"><span><strong>Timers</strong><small>Focus and countdown timers</small></span><input type="checkbox" data-nav-setting="timers" checked><i></i></label>
-      <div class="settings-inline-actions"><button class="btn" type="button" data-nav-reset>Show all tabs</button></div>
-    </div>
-  </section>
-  {% endif %}
-
+  <section class="card settings-card settings-card-wide"><div class="card-h"><h2 class="h2">Workspace</h2></div><div class="card-b product-settings-links"><a href="/account/security"><strong>Account security</strong><span>Password and recovery email</span></a><a href="/life/onboarding"><strong>Personal reminders</strong><span>Modules, timezone, timing and quiet hours</span></a><a href="/life/devices"><strong>Notification devices</strong><span>Connect a phone and test delivery</span></a><a href="/life/calendars"><strong>Connected calendars</strong><span>Google, Outlook and calendar feeds</span></a><a href="/life/study/planner"><strong>Study planner</strong><span>Availability and automatic planning</span></a></div></section>
   <section class="card settings-card {% if not is_admin %}settings-card-wide{% endif %}">
-    <div class="card-h"><div><h2 class="h2">Appearance</h2><p class="muted mt-1">Choose light behavior and a workspace color palette. These preferences are instant and do not require a page reload.</p></div></div>
+    <div class="card-h"><div><h2 class="h2">Appearance</h2><p class="muted mt-1">Preview your theme and color palette. Changes save to your account.</p></div></div>
     <div class="card-b space-y-4">
       <div>
         <div class="label mb-2">Mode</div>
@@ -55,10 +39,6 @@
     </div>
   </section>
 
-  <section class="card settings-card settings-card-wide">
-    <div class="card-h"><div><h2 class="h2">Personal reminders</h2><p class="muted">Choose reminder timing, quiet hours and workspace preferences.</p></div></div>
-    <div class="card-b"><a class="btn btn-primary" href="/life/onboarding">Edit preferences</a></div>
-  </section>
   {% if is_admin and legacy_notifications %}
   <section class="card settings-card settings-card-wide">
     <div class="card-h"><div><h2 class="h2">Shared notification templates</h2><p class="muted mt-1">Comma-separated minutes before a due time. Existing reminders are not deleted.</p></div></div>

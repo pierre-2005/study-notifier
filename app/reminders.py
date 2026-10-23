@@ -48,7 +48,9 @@ def sources(db, uid, modules):
         for r in db.execute("SELECT id,name,due_on FROM life_projects WHERE owner_id=? AND due_on IS NOT NULL AND status IN ('active','on_hold')", (uid,)):
             yield 'project', str(r['id']), 'project', r['name'], r['due_on']
     if 'event' in kinds:
-        for r in db.execute('SELECT id,title,start_at_utc FROM life_local_events WHERE user_id=?', (uid,)):
+        for r in db.execute('''SELECT e.id,e.title,e.start_at_utc FROM life_local_events e
+                LEFT JOIN life_study_blocks b ON b.event_id=e.id AND b.user_id=e.user_id
+                LEFT JOIN life_tasks t ON t.id=b.task_id WHERE e.user_id=? AND (t.status IS NULL OR t.status!='done')''', (uid,)):
             yield 'local_event', str(r['id']), 'event', r['title'], r['start_at_utc']
         for r in db.execute('''SELECT e.* FROM life_external_events e
                 JOIN life_calendar_connections c ON c.id=e.connection_id WHERE c.user_id=?''', (uid,)):

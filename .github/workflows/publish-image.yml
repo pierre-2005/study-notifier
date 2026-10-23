@@ -11,73 +11,12 @@ permissions:
 
 jobs:
   smoke:
-    name: Test application
-    runs-on: ubuntu-latest
-    env:
-      PYTHONTZPATH: ''
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-          cache: pip
+    name: Verify release
+    uses: ./.github/workflows/v37-validation.yml
+    permissions:
+      contents: read
+      actions: read
 
-      - name: Install app and test dependencies
-        run: |
-          python -m pip install -r requirements.txt
-          python -m pip install -r requirements-test.txt
-          python -m playwright install --with-deps chromium
-          python -c 'import httpx; print("httpx version:", httpx.__version__)'
-
-      - name: Install document extraction tools
-        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr poppler-utils fonts-dejavu-core
-
-      - name: Compile Python modules
-        run: python -m compileall -q app
-      - name: Verify per-account theme persistence
-        run: python tests_v365_appearance.py
-      - name: Verify iPhone pairing and manifest enhancements
-        run: python tests_v364_ios_manifest.py
-      - name: Verify finance, PWA discovery and private ntfy QR pairing
-        run: python tests_v363_finance_pwa_qr.py
-      - name: Verify public PWA installability (manifest, worker, icons)
-        run: python tests_pwa_public.py
-      - name: Verify public privacy, terms and homepage
-        run: python tests_public_legal.py
-      - name: Verify v3.7 acceptance and document imports
-        run: |
-          python tests_v37_workspace.py
-          python tests_v37_release.py
-          python tests_v37_documents.py
-          python tests_v37_staging.py
-          python tests_v37_browser.py
-      - name: Test core routes, security and accounts
-        run: python tests_smoke.py
-      - name: Test imports, files and devices
-        run: python tests_new_features.py
-      - name: Verify device ownership, admin isolation, and notification routing
-        run: python tests_v361_device_isolation.py
-      - name: Test legacy data migration
-        run: python tests_migration.py
-      - name: Test module consolidation
-        run: python tests_consolidation.py
-      - name: Test Studio v3.2 functionality
-        run: python tests_v32.py
-      - name: Test Studio v3.4 functionality
-        run: python tests_v34.py
-      - name: Test account recovery, permissions and session revocation
-        run: python tests_v36_accounts.py
-      - name: Verify destructive-action contrast and responsive layout
-        run: python tests_v36_visual.py
-      - name: Test MLO 3.5 calendar integration
-        run: python tests_v35_calendar.py
-      - name: Test external calendar editing and sidebar positioning
-        run: python tests_v343_calendar.py
-      - name: Test collapsed sidebar, spacing and every major module
-        run: python tests_v342_layout.py
-      - name: Check light/dark contrast across palettes
-        run: |
-          python tests_v341_contrast.py
 
   publish:
     name: Publish multi-architecture Docker image
@@ -99,4 +38,7 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/pierre-2005/study-notifier:v3.7.0-rc1
+          cache-from: |
+            type=gha,scope=linux/amd64
+            type=gha,scope=linux/arm64
+          tags: ghcr.io/pierre-2005/study-notifier:v3.7.0

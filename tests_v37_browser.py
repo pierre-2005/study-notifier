@@ -81,7 +81,7 @@ with tempfile.TemporaryDirectory() as temporary:
                 page.locator('.v37-parent-dialog [type=submit]').click();expect(page.locator('.v37-ticket')).to_have_count(3)
                 # Every main route uses the actual stylesheet and JS bundle.
                 routes=['/life','/life/tasks','/life/projects','/life/notes','/life/calendar','/life/focus','/life/goals',
-                        '/life/insights','/life/study','/life/study/import','/life/work','/finance','/life/calendars','/life/devices','/settings','/admin/users']
+                        '/life/insights','/life/study','/life/study/planner','/life/study/import','/life/work','/finance','/life/calendars','/life/devices','/settings','/admin/users']
                 for width in (375,768,1280,1440):
                     page.set_viewport_size({'width':width,'height':1000})
                     for path in routes:
@@ -125,6 +125,32 @@ with tempfile.TemporaryDirectory() as temporary:
                 audit(page,'outline-review')
                 page.get_by_role('button',name='Add selected assessments',exact=True).click();page.wait_for_url('**/life/study/courses/*')
                 expect(page.get_by_role('heading',name='Communications',exact=True)).to_be_visible()
+                # A real calendar plan can be previewed, applied, undone and pinned.
+                page.goto(base+'/life/study');expect(page.locator('a.mlo-area-row').filter(has=page.get_by_text('Communications',exact=True))).to_be_visible()
+                page.screenshot(path=str(output/'study-desktop.png'),full_page=True)
+                page.goto(base+'/life/study/planner')
+                page.get_by_role('button',name='Preview plan',exact=True).click()
+                expect(page.locator('[data-plan-output]')).to_be_visible()
+                assert page.locator('.planner-proposal').count()>0
+                expect(page.get_by_role('button',name='Apply to my calendar',exact=True)).to_be_enabled()
+                page.evaluate('scrollTo(0,0)');page.screenshot(path=str(output/'planner-preview-desktop.png'),full_page=True)
+                for mode in ('light','dark'):
+                    for palette in ('neutral','ocean','sage','rose','amber','lavender'):
+                        page.evaluate("([mode,palette])=>{document.documentElement.classList.toggle('dark',mode==='dark');document.documentElement.dataset.palette=palette}",[mode,palette])
+                        audit(page,f'planner-{mode}-{palette}')
+                page.evaluate("document.documentElement.classList.remove('dark');document.documentElement.dataset.palette='ocean'")
+                page.set_viewport_size({'width':390,'height':844})
+                assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+                page.evaluate('scrollTo(0,0)');page.screenshot(path=str(output/'planner-mobile.png'));audit(page,'planner-mobile')
+                page.locator('[data-planner-preferences]').scroll_into_view_if_needed();page.screenshot(path=str(output/'planner-availability-mobile.png'))
+                page.get_by_role('button',name='Apply to my calendar',exact=True).click()
+                expect(page.locator('.planner-session')).not_to_have_count(0)
+                page.get_by_role('button',name='Undo last plan',exact=True).click();expect(page.locator('.planner-session')).to_have_count(0)
+                page.get_by_role('button',name='Preview plan',exact=True).click();expect(page.locator('[data-plan-output]')).to_be_visible()
+                page.get_by_role('button',name='Apply to my calendar',exact=True).click();expect(page.locator('.planner-session')).not_to_have_count(0)
+                page.locator('[data-plan-pin]').first.click();expect(page.locator('[data-plan-pin][aria-pressed=true]')).to_have_count(1)
+                page.get_by_role('button',name='Clear future plan',exact=True).click();expect(page.locator('.planner-session')).to_have_count(1)
+                page.set_viewport_size({'width':1440,'height':1000})
                 # Profile wizard preserves explicit mute rules through reload.
                 page.goto(base+'/life/onboarding');expect(page.locator('#v37-next')).to_be_enabled()
                 for _ in range(4):page.locator('#v37-next').click()
@@ -143,6 +169,6 @@ with tempfile.TemporaryDirectory() as temporary:
                     failures=[a for a in audits if a['violations']]
                     assert not failures,[(a['screen'],[(v['id'],len(v['nodes'])) for v in a['violations']]) for a in failures]
                 browser.close()
-                print('PASS v3.7 browser: real drag, nested edits, inspector, 16 routes x 4 widths, mobile navigation, local course import, appearance and signup; no JS errors')
+                print('PASS v3.7 browser: real drag, nested edits, inspector, 17 routes x 4 widths, planner preview/apply/undo/pin/clear, mobile navigation, local course import, appearance and signup; no JS errors')
         finally:
             server.terminate();server.wait(timeout=10)

@@ -32,3 +32,5 @@ defusedxml>=0.7.1,<1
 
 # Keep calendar/reminder rules reproducible across hosts. IANA 2026e.
 tzdata==2026.5
+
+python-dateutil>=2.9,<3
