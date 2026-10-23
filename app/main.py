@@ -38,7 +38,7 @@ from app.consolidation import consolidate_todos
 from app.life_hubs import router as hubs_router
 from app.personalize import router as layout_router, init_layout_schema, appearance_for
 from app.calendar_links import router as calendar_links_router, init_calendar_links_schema, sync_due_calendars, AUTO_SYNC
-from app.v37 import router as v37_router, init_v37_schema
+from app.v37 import router as v37_router, init_v37_schema, save_user_setup, _validate_preferences, _validate_reminders
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -2218,7 +2218,7 @@ def login_submit(
 
 @app.get("/signup", response_class=HTMLResponse)
 def signup_page(request: Request):
-    return templates.TemplateResponse(request, "signup.html", {"request": request, "error": "", "message": ""})
+    return templates.TemplateResponse(request, "v37_onboarding.html", {"request": request, "error": "", "message": "", "mode":"signup"})
 
 
 @app.post("/signup", response_class=HTMLResponse)
@@ -2229,13 +2229,45 @@ def signup_submit(
     password: str = Form(...),
     password_confirm: str = Form(...),
     email: str = Form(""),
+    v37_setup: str = Form(""),
 ):
+    import json
+    from app.auth import get_user_by_username
+    context={"request":request,"error":"","message":"","mode":"signup"}
     if password != password_confirm:
-        return templates.TemplateResponse(request, "signup.html", {"request": request, "error": "Passwords do not match.", "message": ""})
-    ok, message = create_pending_user(username, display_name, password, email)
+        context["error"]="Passwords do not match."
+        return templates.TemplateResponse(request,"v37_onboarding.html",context)
+    if not email.strip():
+        context["error"]="Email is required."
+        return templates.TemplateResponse(request,"v37_onboarding.html",context)
+    try:
+        if len(v37_setup)>5000:
+            raise ValueError("Setup too large")
+        data=json.loads(v37_setup)
+        _validate_preferences(data)
+        _validate_reminders(data.get("reminders",{}))
+        if data.get("theme") not in ("light","dark","system") or data.get("accent_color") not in ("blue","violet","teal","coral"):
+            raise ValueError("Invalid appearance")
+    except (ValueError,TypeError,KeyError,HTTPException):
+        context["error"]="Please complete your setup preferences."
+        return templates.TemplateResponse(request,"v37_onboarding.html",context)
+    ok,message=create_pending_user(username,display_name,password,email)
     if not ok:
-        return templates.TemplateResponse(request, "signup.html", {"request": request, "error": message, "message": ""})
-    return templates.TemplateResponse(request, "signup.html", {"request": request, "error": "", "message": message})
+        context["error"]=message
+        return templates.TemplateResponse(request,"v37_onboarding.html",context)
+    # Pending accounts store only verified server-validated preferences, never the password.
+    user=get_user_by_username(username)
+    if user:
+        with get_conn() as conn:
+            save_user_setup(conn,int(user["id"]),data)
+            conn.commit()
+    context["message"]=message
+    return templates.TemplateResponse(request,"v37_onboarding.html",context)
+
+
+@app.get("/life/onboarding",response_class=HTMLResponse)
+def v37_onboarding(request:Request):
+    return templates.TemplateResponse(request,"v37_onboarding.html",{"request":request,"mode":"profile"})
 
 
 def _require_admin(request: Request):
