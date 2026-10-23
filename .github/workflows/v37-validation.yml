@@ -27,9 +27,16 @@ jobs:
       - name: Install Python regression dependencies
         timeout-minutes: 5
         run: python -m pip install --retries 2 --timeout 30 -r requirements-test.txt
-      - name: Install browser and system dependencies
+      - name: Select installed Chrome or install headless Chromium
         timeout-minutes: 5
-        run: python -m playwright install --with-deps chromium
+        run: |
+          mlo_browser_path=$(command -v google-chrome || command -v google-chrome-stable || true)
+          if [ -n "$mlo_browser_path" ]; then
+            "$mlo_browser_path" --version
+            echo "MLO_BROWSER=$mlo_browser_path" >> "$GITHUB_ENV"
+          else
+            python -m playwright install --with-deps --only-shell chromium
+          fi
       - name: Install accessibility audit engine
         timeout-minutes: 3
         run: |

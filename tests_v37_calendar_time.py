@@ -11,6 +11,7 @@ _tmp=tempfile.TemporaryDirectory()
 os.environ.update(STUDY_NOTIFIER_DB=str(Path(_tmp.name)/'calendar.db'),SESSION_SECRET='calendar-fixture',MLO_SCHEDULER_ENABLED='false')
 from app import calendar_links as links
 from app.calendar_recurrence import expand_feed
+from app.calendar_time import cached_start,reminder_date
 from icalendar import Calendar
 UTC=timezone.utc
 
@@ -19,6 +20,23 @@ def response(value):return Mock(json=lambda:value)
 def feed(events):return Calendar.from_ical('BEGIN:VCALENDAR\nVERSION:2.0\n'+events+'END:VCALENDAR\n')
 
 class CalendarPrecision(unittest.TestCase):
+    def test_all_day_dates_keep_their_date_in_both_hemispheres_and_legacy_rows(self):
+        for flag in (0,1):
+            event={'provider':'google','starts_on':'2031-03-03','starts_at':'2031-03-03','is_all_day':flag}
+            for name in ('America/Vancouver','Asia/Tokyo'):
+                self.assertEqual(cached_start(event,ZoneInfo(name)).date().isoformat(),'2031-03-03')
+            self.assertEqual(reminder_date(event),'2031-03-03')
+    def test_floating_ics_and_historical_graph_clocks_have_distinct_semantics(self):
+        event={'provider':'ical','starts_on':'2031-03-03','starts_at':'2031-03-03T09:00:00','is_all_day':0}
+        zone=ZoneInfo('America/New_York')
+        self.assertEqual(cached_start(event,zone).hour,9)
+        event['provider']='microsoft'
+        self.assertEqual(cached_start(event,zone).hour,4)
+        self.assertEqual(reminder_date(event),'2031-03-03T09:00:00Z')
+    def test_flagged_all_day_uses_personal_day_time_instead_of_provider_midnight(self):
+        event={'provider':'microsoft','starts_on':'2031-03-03','starts_at':'2031-03-03T00:00:00Z','is_all_day':1}
+        self.assertEqual(reminder_date(event),'2031-03-03')
+        self.assertEqual(cached_start(event,ZoneInfo('America/Vancouver')).day,3)
     def test_google_pagination_and_busy_end_data(self):
         outputs=[{'items':[{'id':'primary','summary':'Primary'}]},
             {'items':[{'id':'one','summary':'Meeting','start':{'dateTime':'2031-03-03T09:00:00Z'},'end':{'dateTime':'2031-03-03T10:00:00Z'}}],'nextPageToken':'page-two'},

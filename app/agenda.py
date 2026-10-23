@@ -3,6 +3,7 @@ from datetime import datetime, time, timedelta, timezone
 from urllib.parse import quote
 
 from app.legacy_access import owns_legacy_data
+from app.calendar_time import cached_start,is_all_day
 
 
 def agenda_for(db,uid,day,zone):
@@ -23,7 +24,8 @@ def agenda_for(db,uid,day,zone):
             WHERE c.user_id=? AND e.starts_on>=? AND e.starts_on<=? ORDER BY e.starts_on LIMIT 100''',
             (uid,(day-timedelta(days=1)).isoformat(),(day+timedelta(days=1)).isoformat())):
         href=(f"/life/calendars/{row['connection_id']}/events/{quote(row['uid'],safe='')}/edit" if row['provider'] in ('google','microsoft') else '/life/calendars')
-        add(row['starts_on'] if row['is_all_day'] else row['starts_at'] or row['starts_on'],row['title'],href,row['label'],bool(row['is_all_day'] or not row['starts_at']))
+        instant=cached_start(row,zone)
+        if instant:add(instant.isoformat(),row['title'],href,row['label'],is_all_day(row))
     if owns_legacy_data(db,uid):
         for row in db.execute('SELECT * FROM events WHERE start_at_utc>=? AND start_at_utc<?',(first.isoformat(),last.isoformat())):
             add(row['start_at_utc'],row['title'],f"/events/{row['id']}",'Event')

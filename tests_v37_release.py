@@ -58,6 +58,24 @@ class ReleaseTests(unittest.TestCase):
         with get_conn() as db:
             save_user_setup(db,self.ids[name],{'selected_modules':modules,'reminders':rules,
                 'timezone':'America/Edmonton','quiet_start':'00:00','quiet_end':'00:00','onboarding_completed':True,**extra});db.commit()
+    def test_all_day_cache_is_consistent_across_calendar_agenda_and_reminders(self):
+        from bs4 import BeautifulSoup
+        from app.agenda import agenda_for
+        from app.reminders import sources
+        from datetime import date
+        self.prefs('alice',['calendar'],{'event':[30]})
+        with get_conn() as db:
+            cid=db.execute("INSERT INTO life_calendar_connections(user_id,provider,label,secret_blob,created_at) VALUES(?,'google','Private all-day test','mock','2026-10-23')",(self.ids['alice'],)).lastrowid
+            db.execute('INSERT INTO life_external_events(connection_id,uid,title,starts_on,starts_at,is_all_day) VALUES(?,?,?,?,?,?)',(cid,'all-day-test','Private all-day fixture','2040-11-02','2040-11-02',0));db.commit()
+        response=self.clients['alice'].get('/life/calendar?month=2040-11');self.assertEqual(response.status_code,200)
+        soup=BeautifulSoup(response.text,'html.parser');event=soup.find('a',string='Private all-day fixture')
+        self.assertEqual(event.find_parent('div',class_='mlo-calendar-day').find('strong').text.strip(),'2')
+        self.assertNotIn('Private all-day fixture',self.clients['bob'].get('/life/calendar?month=2040-11').text)
+        with get_conn() as db:
+            agenda=agenda_for(db,self.ids['alice'],date(2040,11,2),ZoneInfo('America/Edmonton'))
+            self.assertTrue(any(e['title']=='Private all-day fixture' and e['clock']=='All day' for e in agenda))
+            self.assertEqual(next(e for e in sources(db,self.ids['alice'],['calendar']) if e[3]=='Private all-day fixture')[-1],'2040-11-02')
+            db.execute('DELETE FROM life_calendar_connections WHERE id=?',(cid,));db.commit()
     def test_all_supported_module_sources_route_only_to_owner_devices(self):
         uid=self.ids['admin'];at=datetime(2026,12,10,9,0,tzinfo=ZoneInfo('America/Edmonton')).astimezone(timezone.utc);stamp=at.isoformat()
         with get_conn() as db:

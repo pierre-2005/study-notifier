@@ -1,158 +1,158 @@
 {
-  "checked_at": "2026-10-23T15:06:23.955000+00:00",
-  "version": "3.7.0",
+  "checked_at": "2026-10-23T15:39:03.235301+00:00",
+  "version": "3.7.1",
   "environment": "Python 3.12, pinned tzdata 2026.5 / IANA 2026e, Linux, Chrome Headless Shell 156.0.8078.47",
   "scope": "Synthetic isolated fixtures and mocked provider calls. No production database or live provider credentials.",
   "scripts": [
     {
       "script": "tests_calendar_destination.py",
       "status": "passed",
-      "seconds": 2.57
+      "seconds": 4.51
     },
     {
       "script": "tests_consolidation.py",
       "status": "passed",
-      "seconds": 3.24
+      "seconds": 4.79
     },
     {
       "script": "tests_migration.py",
       "status": "passed",
-      "seconds": 1.97
+      "seconds": 2.27
     },
     {
       "script": "tests_new_features.py",
       "status": "passed",
-      "seconds": 2.73
+      "seconds": 2.98
     },
     {
       "script": "tests_public_legal.py",
       "status": "passed",
-      "seconds": 1.67
+      "seconds": 3.3
     },
     {
       "script": "tests_pwa_public.py",
       "status": "passed",
-      "seconds": 2.58
+      "seconds": 3.14
     },
     {
       "script": "tests_smoke.py",
       "status": "passed",
-      "seconds": 3.68
+      "seconds": 7.19
     },
     {
       "script": "tests_v32.py",
       "status": "passed",
-      "seconds": 2.82
+      "seconds": 5.4
     },
     {
       "script": "tests_v33_browser.py",
       "status": "passed",
-      "seconds": 13.27
+      "seconds": 20.57
     },
     {
       "script": "tests_v34.py",
       "status": "passed",
-      "seconds": 3.49
+      "seconds": 2.83
     },
     {
       "script": "tests_v341_contrast.py",
       "status": "passed",
-      "seconds": 6.63
+      "seconds": 7.22
     },
     {
       "script": "tests_v342_layout.py",
       "status": "passed",
-      "seconds": 18.18
+      "seconds": 19.07
     },
     {
       "script": "tests_v343_calendar.py",
       "status": "passed",
-      "seconds": 2.62
+      "seconds": 3.41
     },
     {
       "script": "tests_v34_browser.py",
       "status": "passed",
-      "seconds": 6.34
+      "seconds": 6.8
     },
     {
       "script": "tests_v34_perf.py",
       "status": "passed",
-      "seconds": 3.12
+      "seconds": 3.63
     },
     {
       "script": "tests_v35_calendar.py",
       "status": "passed",
-      "seconds": 2.58
+      "seconds": 2.5
     },
     {
       "script": "tests_v361_device_isolation.py",
       "status": "passed",
-      "seconds": 2.37
+      "seconds": 2.69
     },
     {
       "script": "tests_v363_finance_pwa_qr.py",
       "status": "passed",
-      "seconds": 2.53
+      "seconds": 4.09
     },
     {
       "script": "tests_v364_ios_manifest.py",
       "status": "passed",
-      "seconds": 2.43
+      "seconds": 3.39
     },
     {
       "script": "tests_v365_appearance.py",
       "status": "passed",
-      "seconds": 3.25
+      "seconds": 2.78
     },
     {
       "script": "tests_v36_accounts.py",
       "status": "passed",
-      "seconds": 3.14
+      "seconds": 3.72
     },
     {
       "script": "tests_v36_visual.py",
       "status": "passed",
-      "seconds": 4.99
+      "seconds": 6.17
     },
     {
       "script": "tests_v37_browser.py",
       "status": "passed",
-      "seconds": 34.15
+      "seconds": 31.93
     },
     {
       "script": "tests_v37_calendar_time.py",
       "status": "passed",
-      "seconds": 0.97
+      "seconds": 0.87
     },
     {
       "script": "tests_v37_documents.py",
       "status": "passed",
-      "seconds": 2.53
+      "seconds": 2.63
     },
     {
       "script": "tests_v37_planner.py",
       "status": "passed",
-      "seconds": 3.78
+      "seconds": 3.79
     },
     {
       "script": "tests_v37_release.py",
       "status": "passed",
-      "seconds": 10.83
+      "seconds": 5.34
     },
     {
       "script": "tests_v37_staging.py",
       "status": "passed",
-      "seconds": 3.08
+      "seconds": 1.32
     },
     {
       "script": "tests_v37_timezone.py",
       "status": "passed",
-      "seconds": 1.98
+      "seconds": 0.72
     },
     {
       "script": "tests_v37_upgrade.py",
       "status": "passed",
-      "seconds": 3.74
+      "seconds": 3.17
     },
     {
       "script": "tests_v37_workspace.py",
@@ -192,6 +192,19 @@
       "commit": "a718bd80c47805306ac2ab524be9ed5cb5160476",
       "result": "26 of 27 scripts passed; fixed UTC fixture assumed obsolete Edmonton rules",
       "resolution": "Pin packaged IANA rules, derive fixture UTC from user timezone, add four dedicated timezone tests; all 28 scripts pass locally."
+    },
+    {
+      "run": 39978096570,
+      "commit": "74a0d27859f8acbc59eaab20efe9ba31e332045e",
+      "version": "3.7.0",
+      "result": "31 scripts and AMD64/ARM64 container build/start passed before initial PR #1 merge",
+      "followup": "v3.7.1 adds all-day cache semantics and avoids redundant CI browser downloads; latest branch checks remain the merge gate."
     }
-  ]
+  ],
+  "acceptance_cases": {
+    "release_api": 17,
+    "calendar_precision": 10,
+    "planner": 12,
+    "timezone": 4
+  }
 }

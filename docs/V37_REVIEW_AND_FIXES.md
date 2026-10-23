@@ -31,7 +31,7 @@ The attached complete handoff and the entire repository handoff were read before
 - `app/bootstrap.py`, `backup.py`, `db.py` and `scripts/rehearse_v37.py` share additive initialization, add a checked online pre-upgrade backup, close SQLite context connections and support a read-only-source migration/restoration rehearsal. Existing secrets, volume, ports and callback routes are preserved.
 - `workspace37.css`, `task-inspector.js`, base/components and public privacy disclosures establish the shared interface, contextual task editing, readable controls, mobile focus behavior and clear import/email data handling. Relevant tests were updated for deliberate UI wording and the owner-delivered recovery contract. Browser selection is portable rather than hardcoded to `/usr/bin/chromium`.
 - Timezone data is pinned to `tzdata==2026.5` (IANA 2026e), and Docker/CI select the packaged rules with `PYTHONTZPATH=""`. CI exposed a stale local Edmonton database and an incorrect fixed-UTC test assumption. The test now derives its clock from the selected zone; separate tests cover current Alberta rules, historical DST and unchanged explicit UTC timestamps. No stored timestamps or timezone preference names are rewritten.
-- Docker adds OCR tools. Compose passes optional scheduler/AI settings with AI disabled by default. The publishing workflow keeps its normal main trigger and AMD64/ARM64 targets and uses release tag `v3.7.0`. PR validation now builds and starts AMD64 and ARM64 images without publishing; main publication waits for the same complete validation workflow.
+- Docker adds OCR tools. Compose passes optional scheduler/AI settings with AI disabled by default. The publishing workflow keeps its normal main trigger and AMD64/ARM64 targets and uses release tag `v3.7.1`. PR validation now builds and starts AMD64 and ARM64 images without publishing; main publication waits for the same complete validation workflow.
 
 ## Retained product boundaries
 
@@ -51,3 +51,9 @@ The importer currently extracts assessments and deadlines, not arbitrary lecture
 - The main publish workflow reuses the entire PR regression and AMD64/ARM64 build/start workflow, so publication cannot bypass the release checks. OCR tools and timezone pin remain in both images. Volume, path, ports, credentials and callbacks remain unchanged.
 
 Primary implementation references checked for this continuation: [dateutil recurrence](https://dateutil.readthedocs.io/en/stable/rrule.html), [Google pagination](https://developers.google.com/workspace/calendar/api/guides/pagination), [Microsoft Graph pagination](https://learn.microsoft.com/en-us/graph/paging). These sources informed bounded expansion and page traversal; provider correctness is exercised with fixtures rather than live credentials.
+
+## All-day calendar follow-up (v3.7.1)
+
+`calendar_time.py` centralizes cached display and reminder date semantics. A date-only or flagged all-day event retains its calendar date; a floating ICS event uses the viewer’s timezone; suffix-free historical Graph timestamps remain UTC. Calendar, Today’s agenda/mini-calendar and personal reminders use these rules. Three precision regressions and one authenticated cross-view/owner-isolation regression cover the correction. The follow-up has a separate version tag so an older image build cannot replace its image.
+
+CI installer phases now have explicit timeouts/retry bounds. Tests use the runner's installed Chrome when available and otherwise install only Chromium's headless shell; the full regression and accessibility suite remains mandatory. This removes the redundant browser/system download that stalled earlier runs without changing the application image or deployment topology.
