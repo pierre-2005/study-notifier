@@ -141,6 +141,8 @@ with tempfile.TemporaryDirectory() as temporary:
                 page.evaluate("document.documentElement.classList.remove('dark');document.documentElement.dataset.palette='ocean'")
                 page.set_viewport_size({'width':390,'height':844})
                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+                assert page.locator('[data-window-field=start]').first.bounding_box()['width']>=130
+                assert abs(page.locator('[data-window-field=start]').first.bounding_box()['width']-page.locator('[data-window-field=end]').first.bounding_box()['width'])<1
                 page.evaluate('scrollTo(0,0)');page.screenshot(path=str(output/'planner-mobile.png'));audit(page,'planner-mobile')
                 page.locator('[data-planner-preferences]').scroll_into_view_if_needed();page.screenshot(path=str(output/'planner-availability-mobile.png'))
                 page.get_by_role('button',name='Apply to my calendar',exact=True).click()
