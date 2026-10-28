@@ -17,6 +17,7 @@ def init_finance_schema() -> None:
     This is safe to call on every startup. Existing user data is not overwritten.
     """
     with get_conn() as conn:
+        seed_rules = not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='finance_merchant_rules'").fetchone()
         conn.execute("""
         CREATE TABLE IF NOT EXISTS finance_categories(
             name TEXT PRIMARY KEY,
@@ -95,7 +96,7 @@ def init_finance_schema() -> None:
                 (category, 0, ts),
             )
 
-        for category, keywords in DEFAULT_RULES.items():
+        for category, keywords in (DEFAULT_RULES.items() if seed_rules else []):
             for keyword in keywords:
                 conn.execute(
                     "INSERT OR IGNORE INTO finance_merchant_rules(category, keyword, created_at_utc) VALUES(?,?,?)",

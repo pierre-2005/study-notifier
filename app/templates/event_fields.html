@@ -1,0 +1,4 @@
+{% from 'ui.html' import field,select,textarea %}{% set event=event|default({}) %}
+{{field('title','Title',event.title|default(''),required=true,max='240')}}{{select('kind','Type',[('meeting','Meeting'),('personal','Personal'),('other','Other')],event.kind|default('meeting'))}}{{field('location','Location',event.location|default(''))}}{{field('start_at_local','Starts',local_input(event.start_at_utc|default(''),tz|default(record_timezone)),type='datetime-local',required=true)}}{{field('end_at_local','Ends',local_input(event.end_at_utc|default(''),tz|default(record_timezone)),type='datetime-local')}}{{textarea('notes','Notes',event.notes|default(''))}}
+
+<p class="mlo-subtle record-wide">Times use {{tz|default(record_timezone)}}.</p>

@@ -1,0 +1,435 @@
+{
+  "version": "4.0.0",
+  "prepared_date": "2026-10-27",
+  "baseline_commit": "6fc0fd97a7085dacad80745973a56dcea8f3e893",
+  "source_pr": "https://github.com/pierre-2005/study-notifier/pull/3",
+  "local_environment": "Windows, CPython 3.12.15, Chromium 156, axe-core 4.14.0, portable Tesseract 5.5 and Poppler",
+  "local_regression": {
+    "initial_run": [
+      {
+        "script": "tests_calendar_destination.py",
+        "status": "passed",
+        "seconds": 5.83
+      },
+      {
+        "script": "tests_consolidation.py",
+        "status": "passed",
+        "seconds": 8.2
+      },
+      {
+        "script": "tests_migration.py",
+        "status": "passed",
+        "seconds": 5.58
+      },
+      {
+        "script": "tests_new_features.py",
+        "status": "passed",
+        "seconds": 6.38
+      },
+      {
+        "script": "tests_public_legal.py",
+        "status": "passed",
+        "seconds": 4.17
+      },
+      {
+        "script": "tests_pwa_public.py",
+        "status": "passed",
+        "seconds": 3.7
+      },
+      {
+        "script": "tests_smoke.py",
+        "status": "passed",
+        "seconds": 11.98
+      },
+      {
+        "script": "tests_v32.py",
+        "status": "passed",
+        "seconds": 7.38
+      },
+      {
+        "script": "tests_v33_browser.py",
+        "status": "passed",
+        "seconds": 19.94
+      },
+      {
+        "script": "tests_v34.py",
+        "status": "passed",
+        "seconds": 8.92
+      },
+      {
+        "script": "tests_v341_contrast.py",
+        "status": "passed",
+        "seconds": 10.59
+      },
+      {
+        "script": "tests_v342_layout.py",
+        "status": "passed",
+        "seconds": 36.08
+      },
+      {
+        "script": "tests_v343_calendar.py",
+        "status": "passed",
+        "seconds": 8.88
+      },
+      {
+        "script": "tests_v34_browser.py",
+        "status": "passed",
+        "seconds": 11.45
+      },
+      {
+        "script": "tests_v34_perf.py",
+        "status": "passed",
+        "seconds": 8.03
+      },
+      {
+        "script": "tests_v35_calendar.py",
+        "status": "passed",
+        "seconds": 6.8
+      },
+      {
+        "script": "tests_v361_device_isolation.py",
+        "status": "passed",
+        "seconds": 6.94
+      },
+      {
+        "script": "tests_v363_finance_pwa_qr.py",
+        "status": "passed",
+        "seconds": 5.81
+      },
+      {
+        "script": "tests_v364_ios_manifest.py",
+        "status": "passed",
+        "seconds": 5.16
+      },
+      {
+        "script": "tests_v365_appearance.py",
+        "status": "passed",
+        "seconds": 5.98
+      },
+      {
+        "script": "tests_v36_accounts.py",
+        "status": "passed",
+        "seconds": 8.53
+      },
+      {
+        "script": "tests_v36_visual.py",
+        "status": "passed",
+        "seconds": 9.39
+      },
+      {
+        "script": "tests_v37_browser.py",
+        "status": "passed",
+        "seconds": 67.44
+      },
+      {
+        "script": "tests_v37_calendar_time.py",
+        "status": "passed",
+        "seconds": 2.77
+      },
+      {
+        "script": "tests_v37_documents.py",
+        "status": "passed",
+        "seconds": 21.53
+      },
+      {
+        "script": "tests_v37_planner.py",
+        "status": "passed",
+        "seconds": 21.7
+      },
+      {
+        "script": "tests_v37_release.py",
+        "status": "passed",
+        "seconds": 20.39
+      },
+      {
+        "script": "tests_v37_staging.py",
+        "status": "passed",
+        "seconds": 10.3
+      },
+      {
+        "script": "tests_v37_timezone.py",
+        "status": "passed",
+        "seconds": 3.67
+      },
+      {
+        "script": "tests_v37_upgrade.py",
+        "status": "passed",
+        "seconds": 21.25
+      },
+      {
+        "script": "tests_v37_workspace.py",
+        "status": "passed",
+        "seconds": 4.84
+      },
+      {
+        "script": "tests_v4.py",
+        "status": "passed",
+        "seconds": 10.76
+      },
+      {
+        "script": "tests_v4_browser.py",
+        "status": "failed",
+        "seconds": 248.97
+      },
+      {
+        "script": "tests_v4_upgrade.py",
+        "status": "passed",
+        "seconds": 30.03
+      }
+    ],
+    "final_results": [
+      {
+        "script": "tests_calendar_destination.py",
+        "status": "passed",
+        "seconds": 5.83,
+        "evidence": "release-regression/tests_calendar_destination.log"
+      },
+      {
+        "script": "tests_consolidation.py",
+        "status": "passed",
+        "seconds": 8.2,
+        "evidence": "release-regression/tests_consolidation.log"
+      },
+      {
+        "script": "tests_migration.py",
+        "status": "passed",
+        "seconds": 5.58,
+        "evidence": "release-regression/tests_migration.log"
+      },
+      {
+        "script": "tests_new_features.py",
+        "status": "passed",
+        "seconds": 6.38,
+        "evidence": "release-regression/tests_new_features.log"
+      },
+      {
+        "script": "tests_public_legal.py",
+        "status": "passed",
+        "seconds": 4.17,
+        "evidence": "release-regression/tests_public_legal.log"
+      },
+      {
+        "script": "tests_pwa_public.py",
+        "status": "passed",
+        "seconds": 3.7,
+        "evidence": "release-regression/tests_pwa_public.log"
+      },
+      {
+        "script": "tests_smoke.py",
+        "status": "passed",
+        "seconds": 11.98,
+        "evidence": "release-regression/tests_smoke.log"
+      },
+      {
+        "script": "tests_v32.py",
+        "status": "passed",
+        "seconds": 7.38,
+        "evidence": "release-regression/tests_v32.log"
+      },
+      {
+        "script": "tests_v33_browser.py",
+        "status": "passed",
+        "seconds": 19.94,
+        "evidence": "release-regression/tests_v33_browser.log"
+      },
+      {
+        "script": "tests_v34.py",
+        "status": "passed",
+        "seconds": 8.92,
+        "evidence": "release-regression/tests_v34.log"
+      },
+      {
+        "script": "tests_v341_contrast.py",
+        "status": "passed",
+        "seconds": 10.59,
+        "evidence": "release-regression/tests_v341_contrast.log"
+      },
+      {
+        "script": "tests_v342_layout.py",
+        "status": "passed",
+        "seconds": 36.08,
+        "evidence": "release-regression/tests_v342_layout.log"
+      },
+      {
+        "script": "tests_v343_calendar.py",
+        "status": "passed",
+        "seconds": 8.88,
+        "evidence": "release-regression/tests_v343_calendar.log"
+      },
+      {
+        "script": "tests_v34_browser.py",
+        "status": "passed",
+        "seconds": 11.45,
+        "evidence": "release-regression/tests_v34_browser.log"
+      },
+      {
+        "script": "tests_v34_perf.py",
+        "status": "passed",
+        "seconds": 8.03,
+        "evidence": "release-regression/tests_v34_perf.log"
+      },
+      {
+        "script": "tests_v35_calendar.py",
+        "status": "passed",
+        "seconds": 6.8,
+        "evidence": "release-regression/tests_v35_calendar.log"
+      },
+      {
+        "script": "tests_v361_device_isolation.py",
+        "status": "passed",
+        "seconds": 6.94,
+        "evidence": "release-regression/tests_v361_device_isolation.log"
+      },
+      {
+        "script": "tests_v363_finance_pwa_qr.py",
+        "status": "passed",
+        "seconds": 5.81,
+        "evidence": "release-regression/tests_v363_finance_pwa_qr.log"
+      },
+      {
+        "script": "tests_v364_ios_manifest.py",
+        "status": "passed",
+        "seconds": 5.16,
+        "evidence": "release-regression/tests_v364_ios_manifest.log"
+      },
+      {
+        "script": "tests_v365_appearance.py",
+        "status": "passed",
+        "seconds": 5.98,
+        "evidence": "release-regression/tests_v365_appearance.log"
+      },
+      {
+        "script": "tests_v36_accounts.py",
+        "status": "passed",
+        "seconds": 8.53,
+        "evidence": "release-regression/tests_v36_accounts.log"
+      },
+      {
+        "script": "tests_v36_visual.py",
+        "status": "passed",
+        "seconds": 9.39,
+        "evidence": "release-regression/tests_v36_visual.log"
+      },
+      {
+        "script": "tests_v37_browser.py",
+        "status": "passed",
+        "seconds": 67.44,
+        "evidence": "release-regression/tests_v37_browser.log"
+      },
+      {
+        "script": "tests_v37_calendar_time.py",
+        "status": "passed",
+        "seconds": 2.77,
+        "evidence": "release-regression/tests_v37_calendar_time.log"
+      },
+      {
+        "script": "tests_v37_documents.py",
+        "status": "passed",
+        "seconds": 21.53,
+        "evidence": "release-regression/tests_v37_documents.log"
+      },
+      {
+        "script": "tests_v37_planner.py",
+        "status": "passed",
+        "seconds": 21.7,
+        "evidence": "release-regression/tests_v37_planner.log"
+      },
+      {
+        "script": "tests_v37_release.py",
+        "status": "passed",
+        "seconds": 20.39,
+        "evidence": "release-regression/tests_v37_release.log"
+      },
+      {
+        "script": "tests_v37_staging.py",
+        "status": "passed",
+        "seconds": 10.3,
+        "evidence": "release-regression/tests_v37_staging.log"
+      },
+      {
+        "script": "tests_v37_timezone.py",
+        "status": "passed",
+        "seconds": 3.67,
+        "evidence": "release-regression/tests_v37_timezone.log"
+      },
+      {
+        "script": "tests_v37_upgrade.py",
+        "status": "passed",
+        "seconds": 21.25,
+        "evidence": "release-regression/tests_v37_upgrade.log"
+      },
+      {
+        "script": "tests_v37_workspace.py",
+        "status": "passed",
+        "seconds": 4.84,
+        "evidence": "release-regression/tests_v37_workspace.log"
+      },
+      {
+        "script": "tests_v4.py",
+        "status": "passed",
+        "seconds": 10.76,
+        "evidence": "release-regression/tests_v4.log"
+      },
+      {
+        "script": "tests_v4_browser.py",
+        "status": "passed",
+        "evidence": "v4-browser-verified.log",
+        "rerun_after": "Two sharing-form labels and pairing text contrast corrected after the complete first run."
+      },
+      {
+        "script": "tests_v4_upgrade.py",
+        "status": "passed",
+        "seconds": 30.03,
+        "evidence": "release-regression/tests_v4_upgrade.log"
+      }
+    ],
+    "passed": 34,
+    "failed": 0,
+    "note": "The complete local run passed 33 scripts and found three new accessibility findings in v4 browser checks. After fixing those, the v4 browser, iOS manifest, public PWA and source checks passed. Exact final-head CI must separately run all 34 scripts."
+  },
+  "source_checks": {
+    "python_files": 64,
+    "templates": 81,
+    "javascript_files": 20,
+    "cache_version": "4.0.0",
+    "cache_assets": 18
+  },
+  "browser": {
+    "populated_routes": 59,
+    "widths": [
+      375,
+      768,
+      1280,
+      1440
+    ],
+    "route_width_states": 236,
+    "v4_axe_scans": 97,
+    "inherited_axe_scans": 47,
+    "violations": 0,
+    "javascript_errors": []
+  },
+  "upgrade": {
+    "source_version": "3.7.1",
+    "source_commit": "6fc0fd97a7085dacad80745973a56dcea8f3e893",
+    "synthetic": true,
+    "production_verification": false,
+    "tables_preserved": 66,
+    "wal_preserved": true,
+    "source_unchanged": true,
+    "migration_twice": true,
+    "restored_identically": true,
+    "attachment_sha256": "f84b9871468d2af89e0754da60b6caec166e0843d14d0cdad255c607314ac285"
+  },
+  "remote_ci": "Required for the exact PR head; current status is shown on PR #3. Container checks include AMD64 and ARM64 under QEMU. A prior checkpoint is not final-head evidence.",
+  "production_or_live_integrations_tested": false,
+  "first_final_head_ci": {
+    "commit": "c3955fc3dfba4e8abb970dd722b09d07f41b1434",
+    "run": "https://github.com/pierre-2005/study-notifier/actions/runs/40630506216",
+    "regression_scripts_passed": 33,
+    "failed_script": "tests_v4_browser.py",
+    "finding": "Transient signup text contrast during opacity entrance animation. Removed opacity fade; position animation remains.",
+    "amd64": "passed",
+    "arm64_qemu": "passed",
+    "superseded": "The corrected final head requires a fresh full CI run."
+  }
+}

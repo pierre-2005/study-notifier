@@ -109,6 +109,7 @@ def read_pdf(path: str | Path, password: str = "") -> tuple[str, list[str], str]
         if not password or reader.decrypt(password) == 0:
             raise ValueError(f"{path.name} is password protected.")
 
+    if len(reader.pages)>60: raise ValueError("Use at most 60 pages per statement.")
     normal_pages: list[str] = []
     layout_pages: list[str] = []
     for page in reader.pages:
@@ -118,6 +119,7 @@ def read_pdf(path: str | Path, password: str = "") -> tuple[str, list[str], str]
         except Exception:
             layout = ""
         layout_pages.append(layout.replace("\u00a0", " "))
+        if sum(map(len,normal_pages))+sum(map(len,layout_pages))>1_000_000:raise ValueError("Statement text exceeds the extraction limit.")
 
     normal = "\n".join(normal_pages)
     layout = "\n".join(layout_pages)

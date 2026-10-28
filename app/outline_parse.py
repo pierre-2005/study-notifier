@@ -20,7 +20,7 @@ def ocr(path):
         if image.width * image.height > 20_000_000:
             raise ValueError('Image exceeds 20 megapixels. Resize it and try again.')
         image.verify()
-    result = subprocess.run(['tesseract', str(path), 'stdout', '-l', 'eng'],
+    result = subprocess.run([os.getenv('MLO_TESSERACT','tesseract'), str(path), 'stdout', '-l', 'eng'],
                             capture_output=True, timeout=25, check=True)
     return result.stdout.decode('utf-8', errors='replace')[:MAX_TEXT]
 
@@ -42,7 +42,7 @@ def extract(path, extension):
             if len(text.strip()) < 25:
                 with tempfile.TemporaryDirectory() as tmp:
                     prefix = str(Path(tmp) / 'page')
-                    subprocess.run(['pdftoppm', '-f', str(number), '-l', str(number),
+                    subprocess.run([os.getenv('MLO_PDFTOPPM','pdftoppm'), '-f', str(number), '-l', str(number),
                                     '-singlefile', '-scale-to', '2200', '-png', str(path), prefix],
                                    capture_output=True, timeout=20, check=True)
                     text = ocr(prefix + '.png')
@@ -154,9 +154,12 @@ def candidates(pages, year):
 if __name__ == '__main__':
     try:
         # This worker parses only one temporary file and returns bounded JSON.
-        import resource
-        resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
-        resource.setrlimit(resource.RLIMIT_CPU, (40, 40))
+        try:
+            import resource
+            resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
+            resource.setrlimit(resource.RLIMIT_CPU, (40, 40))
+        except ImportError:
+            pass  # Windows uses the parent timeout and bounded file/page/pixel limits.
         print(json.dumps({'pages': extract(sys.argv[1], sys.argv[2])}))
     except Exception as exc:
         print(json.dumps({'error': str(exc)[:250]}))

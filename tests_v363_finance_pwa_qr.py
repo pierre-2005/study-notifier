@@ -42,7 +42,7 @@ with tempfile.TemporaryDirectory() as temp:
           'frequency__income_1':'Monthly'})
         assert resp.status_code==303,(resp.status_code,resp.text[:1000])
         assert resp.headers['location']=='/finance/budget?saved=1'
-        assert 'Budget saved successfully' in admin.get(resp.headers['location']).text
+        assert 'Budget saved.' in admin.get(resp.headers['location']).text
         assert admin.post('/finance/budget/save',data={'name':'AJAX safe'},headers={'accept':'application/json'}).json()['ok'] is True
         with get_conn() as c:
             saved=c.execute("SELECT amount FROM finance_budget_rows WHERE section='income' AND name='Employment (primary)'").fetchone()

@@ -55,14 +55,14 @@
   ],
   "screenshots": [
     {
-      "src": "/static/dashboard-desktop.png",
+      "src": "/static/dashboard-v4-desktop.png",
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
       "label": "MLO dashboard with planning and calendar widgets"
     },
     {
-      "src": "/static/dashboard-mobile.png",
+      "src": "/static/dashboard-v4-mobile.png",
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",

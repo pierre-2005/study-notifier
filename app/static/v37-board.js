@@ -30,12 +30,12 @@
     }));
     if(focusKey){const focus=root.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`);const actions=focus?.closest('.v37-task-actions');if(actions)actions.open=true;focus?.focus();}
   }
-  async function load(){const r=await fetch(`/api/v37/projects/${pid}/board`,{credentials:'same-origin'});if(!r.ok||!r.headers.get('content-type')?.includes('application/json'))throw Error('Could not load the board. Check your connection or sign in again.');board=await r.json();paint()}
+  async function load(){const r=await fetch(`/api/v4/projects/${pid}/board`,{credentials:'same-origin'});if(!r.ok||!r.headers.get('content-type')?.includes('application/json'))throw Error('Could not load the board. Check your connection or sign in again.');board=await r.json();paint()}
   async function change(kind,body,focusKey){
     if(busy)return;busy=true;root.setAttribute('aria-busy','true');message.textContent='Saving…';
     try{
       const current=task(body.task_id);
-      const r=await fetch(`/api/v37/projects/${pid}/${kind}`,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,expected_updated_at:current?.updated_at})});
+      const r=await fetch(`/api/v4/projects/${pid}/${kind}`,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,expected_updated_at:current?.updated_at})});
       if(!r.headers.get('content-type')?.includes('application/json'))throw Error('Sign in again to save your changes.');
       const data=await r.json();
       if(!r.ok)throw Error(typeof data.detail==='string'?data.detail:'The change could not be saved.');

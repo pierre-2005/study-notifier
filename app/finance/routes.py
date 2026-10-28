@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import logging
 import sqlite3
+from starlette.concurrency import run_in_threadpool
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse, JSONResponse
@@ -13,8 +14,7 @@ from app.finance.parser import TRANSACTION_TYPES
 from app.meta import APP_VERSION
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[1] / "templates"
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-templates.env.globals["APP_VERSION"] = APP_VERSION
+from app.ui import templates
 router = APIRouter(prefix="/finance", tags=["finance"])
 log = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ def template_context(request: Request, **extra):
 @router.get("", response_class=HTMLResponse)
 def finance_home(request: Request):
     summary = service.finance_summary()
-    recent = service.list_transaction_rows(include_excluded=False)[:8]
+    recent = service.list_transaction_rows(include_excluded=False,limit=8)
     imports = service.imports()[:5]
     return templates.TemplateResponse(
         request,
@@ -56,16 +56,19 @@ def import_page(request: Request):
 async def import_pdfs(request: Request, files: list[UploadFile] = File(...)):
     results = []
     errors = []
+    if len(files) > 10: raise HTTPException(413, "Upload up to 10 statements at a time.")
     for f in files:
         if not f.filename or not f.filename.lower().endswith(".pdf"):
             errors.append(f"{f.filename or 'File'}: not a PDF file")
             continue
         try:
-            data = await f.read()
+            data = await f.read(10 * 1024 * 1024 + 1)
+            if len(data) > 10 * 1024 * 1024: raise ValueError("Each statement must be 10 MB or smaller.")
+            if not data.startswith(b"%PDF-"): raise ValueError("Choose a valid PDF statement.")
             if not data:
                 errors.append(f"{f.filename}: empty file")
                 continue
-            results.append(service.import_pdf_bytes(f.filename, data))
+            results.append(await run_in_threadpool(service.import_pdf_bytes, f.filename, data))
         except Exception as exc:
             errors.append(f"{f.filename}: {exc}")
     return templates.TemplateResponse(
@@ -87,24 +90,24 @@ def transactions_page(
     category: str = Query("All"),
     month: str = Query(""),
     show_excluded: bool = Query(False),
+    q: str = Query("",max_length=200),
+    page: int = Query(1,ge=1),
 ):
     categories = service.list_categories()
-    rows = service.list_transaction_rows(include_excluded=show_excluded, category=category, month=month)
-    txs = service.load_transactions(include_excluded=show_excluded, category=category, month=month)
-    total = sum(tx.amount for tx in txs if tx.included and tx.transaction_type in ("Purchase", "Refund/Credit"))
-    months = monthly.all_months(service.load_transactions(include_excluded=True))
+    result=service.transaction_page(show_excluded,category,month,q,page)
     return templates.TemplateResponse(
         request,
         "finance_transactions.html",
         template_context(
             request,
-            rows=rows,
+            **result,
+            q=q,
+            previous_url=str(request.url.include_query_params(page=max(1,result['page']-1))),
+            next_url=str(request.url.include_query_params(page=result['page']+1)),
             categories=categories,
             selected_category=category,
             selected_month=month,
-            months=months,
             show_excluded=show_excluded,
-            total=total,
         ),
     )
 
@@ -160,7 +163,7 @@ def budget_page(request: Request, saved: bool = False):
     return templates.TemplateResponse(
         request,
         "finance_budget.html",
-        template_context(request, data=data, grouped=grouped, analysis=analysis, save_error=None, saved=saved),
+        template_context(request, data=data, grouped=grouped, rows=rows, stages=budget.STAGES, analysis=analysis, save_error=None, saved=saved),
     )
 
 
@@ -174,26 +177,35 @@ async def save_budget(request: Request):
             "name": form.get(f"name__{key}", ""),
             "amount": form.get(f"amount__{key}", "0"),
             "frequency": form.get(f"frequency__{key}", "Monthly"),
+            "stage": form.get(f"stage__{key}", ""),
         })
+    status, detail = 200, ""
     try:
-        service.save_budget_rows(str(form.get("name", "")), rows)
-    except (sqlite3.Error, ValueError, OverflowError):
-        log.exception('Unable to save finance budget (database or invalid amount)')
-        if request.headers.get('accept') == 'application/json':
-            return JSONResponse({'ok':False,'detail':'Budget could not be saved. Try again. Your existing budget was not changed.'},status_code=503)
-        # Keep the user in the styled Finance view instead of a bare 500 page.
+        revision = service.save_budget_rows(str(form.get("name", "")), rows, form.get("revision"))
+    except service.BudgetConflict as exc:
+        status, detail = 409, str(exc)
+    except (ValueError, OverflowError) as exc:
+        status, detail = 422, str(exc)
+    except sqlite3.Error:
+        log.exception("Unable to save budget")
+        status, detail = 503, "Budget could not be saved. Your edits are still here. Please retry."
+    if status != 200:
+        if "application/json" in request.headers.get("accept", ""):
+            return JSONResponse({"ok": False, "detail": detail}, status_code=status)
         data = service.budget_data()
         analysis = budget.analyze_budget(data, service.load_transactions(include_excluded=False), service.list_categories())
-        grouped = {}
-        for row in service.budget_rows_for_template(data):
-            grouped.setdefault(row['section_label'], []).append(row)
-        return templates.TemplateResponse(request, 'finance_budget.html',
-            template_context(request, data=data, grouped=grouped, analysis=analysis,
-                save_error='Budget could not be saved. Your existing budget has not been changed. Please retry, or check the server logs.'),
-            status_code=503)
-    if request.headers.get('accept') == 'application/json':
-        return JSONResponse({'ok':True})
-    return RedirectResponse('/finance/budget?saved=1', status_code=303)
+        draft = []
+        for i, row in enumerate(rows):
+            draft.append({**row, "key": f"draft_{i}", "stage": budget.stage_for(row["section"], row["name"], {row["name"]: row.get("stage")}), "visible": True, "monthly": 0})
+        data["name"] = str(form.get("name", ""))
+        # Keep the submitted revision, so retrying cannot bypass a conflict.
+        data["revision"] = str(form.get("revision", data["revision"]))
+        return templates.TemplateResponse(request, "finance_budget.html",
+            template_context(request, data=data, rows=draft, stages=budget.STAGES, analysis=analysis,
+                             save_error=detail, saved=False), status_code=status)
+    if "application/json" in request.headers.get("accept", ""):
+        return JSONResponse({"ok": True, "revision": revision})
+    return RedirectResponse("/finance/budget?saved=1", status_code=303)
 
 
 @router.post("/budget/custom")

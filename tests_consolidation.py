@@ -41,10 +41,11 @@ with tempfile.TemporaryDirectory() as root:
             assert c.execute('SELECT COUNT(*) FROM life_legacy_todo_map').fetchone()[0]==1
             assert Path(root,'test.pre-mlo-v3.1.sqlite.backup').is_file()
         assert consolidate_todos()==0, 'Migration should be idempotent'
-        for path,needle in [('/life','Private midterm'),('/life/study','ENEL Test'),('/life/work','Private Company'),('/life/money','Secret bill'),('/life/spaces','Spaces'),('/life/calendar','Private midterm'),('/life/focus','Timers'),('/courses','ENEL Test'),('/items','Private midterm'),('/jobs','Private Company'),('/expenses','Secret bill')]:
+        for path,needle in [('/life','Private midterm'),('/life/study','ENEL Test'),('/life/work','Private Company'),('/expenses','Secret bill'),('/life/spaces','Spaces'),('/life/calendar','Private midterm'),('/life/focus','Timers'),('/courses','ENEL Test'),('/items','Private midterm'),('/jobs','Private Company'),('/expenses','Secret bill')]:
             res=a.get(path)
             assert res.status_code==200,(path,res.status_code,res.text[:1500])
             assert needle in res.text,(path,needle,res.text[:1500])
+        assert a.get('/life/money',follow_redirects=False).headers['location']=='/finance'
         html=a.get('/life').text
         assert 'CLASSIC TOOLS' not in html
         assert 'My tasks' in html and 'Work & career' in html

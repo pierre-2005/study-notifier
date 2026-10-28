@@ -1,4 +1,5 @@
 """Local PDF/DOCX/OCR extraction and optional AI contract without a live API key."""
+from pathlib import Path
 import io
 import json
 import os
@@ -28,7 +29,7 @@ class OutlineFormats(unittest.TestCase):
         self.assertEqual(candidates(parse_upload(document.getvalue(),'.docx'),2026)[0]['kind'],'lab')
     def test_image_and_scanned_pdf_ocr(self):
         image=Image.new('RGB',(1500,300),'white');draw=ImageDraw.Draw(image)
-        font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',38)
+        font=ImageFont.truetype(next(str(p) for p in [Path('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'),Path('C:/Windows/Fonts/arial.ttf')] if p.is_file()),38)
         draw.text((35,75),'Assignment 3 | November 25, 2026 | 15%',font=font,fill='black')
         for extension,format in (('.png','PNG'),('.jpg','JPEG'),('.pdf','PDF')):
             out=io.BytesIO();image.save(out,format=format)

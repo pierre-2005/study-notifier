@@ -1,25 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="mlo-legacy-trail"><a href="/life/spaces">← Spaces</a><span> / </span><span>Details & management</span></div>
-<div class="finance-back-row"><a class="back-link" href="/sections">← All sections</a></div>
+<div class="finance-back-row"><a class="back-link" href="/sections">← All spaces</a></div>
 <div class="page-heading">
-  <div><div class="section-page-title"><span class="section-page-icon">{{ section['icon'] }}</span><div><div class="eyebrow">{{ 'Your section' if section['is_owner'] else 'Shared section' }} · Grocery & meals</div><h1>{{ section['name'] }}</h1></div></div><p>{{ section['description'] or 'Plan groceries together, connect ingredients to meals, and compare what items cost over time.' }}</p></div>
+  <div><div class="section-page-title"><span class="section-page-icon">{{ section['icon'] }}</span><div><div class="eyebrow">{{ 'Your space' if section['is_owner'] else 'Shared space' }} · Grocery & meals</div><h1>{{ section['name'] }}</h1></div></div><p>{{ section['description'] or 'Plan groceries together, connect ingredients to meals, and compare what items cost over time.' }}</p></div>
 </div>
 
-<nav class="grocery-tabs" aria-label="Grocery planner sections"><a href="#shopping-list">Shopping list</a><a href="#recipes">Recipes</a><a href="#prices">Price history</a><a href="#section-settings">Settings & sharing</a></nav>
+<nav class="subnav" aria-label="Grocery views">{% for key,label in [('list','Shopping list'),('recipes','Recipes'),('prices','Price history'),('settings','Settings & sharing')] if key!='settings' or section.is_owner %}<a href="?view={{key}}" class="{{'active' if space_view==key else ''}}" {% if space_view==key %}aria-current="page"{% endif %}>{{label}}</a>{% endfor %}</nav>
 
-<div class="grocery-layout">
+<div class="grocery-layout grocery-view-{{space_view}}">
   <div class="space-y-4">
+{% if space_view == 'list' %}
     <section class="card" id="shopping-list">
       <div class="card-h"><div><div class="h2">Shopping list</div><div class="muted mt-1">Items can belong to one or many recipes. Checked items stay visible until you clear them.</div></div>{% if section['can_edit'] %}<form method="post" action="/sections/{{ section['id'] }}/groceries/list/clear"><button class="btn" type="submit">Clear checked</button></form>{% endif %}</div>
       <div class="card-b">
         {% if section['can_edit'] %}
-        <form method="post" action="/sections/{{ section['id'] }}/groceries/items/add" class="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4">
-          <input class="input sm:col-span-2" name="name" placeholder="Milk, chicken breast, rice…" required>
-          <input class="input" name="unit" placeholder="Unit (kg, L, item)" value="item">
-          <input class="input" name="aisle" placeholder="Aisle/category">
-          <button class="btn btn-primary sm:col-span-4" type="submit">Add to list</button>
-        </form>
+        <form method="post" action="/sections/{{section.id}}/groceries/items/add" class="record-form" data-enhanced-form><label class="record-field">Item<input class="input" name="name" placeholder="Milk, rice, vegetables" required maxlength="120"></label><label class="record-field">Unit<input class="input" name="unit" value="item" maxlength="30"></label><label class="record-field">Aisle or category<input class="input" name="aisle" maxlength="100"></label><div class="record-actions record-wide"><button class="mlo-btn mlo-primary">Add to list</button></div></form>
         {% endif %}
 
         {% set ns = namespace(list_count=0) %}
@@ -37,7 +32,7 @@
               </div>{% endif %}
             </div>
             <div class="grocery-item-side">
-              {% if section['can_edit'] %}<details><summary class="btn">Edit qty</summary><form method="post" action="/sections/{{ section['id'] }}/groceries/list/{{ item['list_entry_id'] }}/update" class="inline-mini-form mt-2"><input class="input" type="number" step="0.01" min="0.01" name="quantity" value="{{ item['list_quantity'] or 1 }}"><input class="input" name="unit" value="{{ item['list_unit'] or item['default_unit'] }}"><input class="input" name="note" value="{{ item['list_note'] or '' }}" placeholder="Note"><button class="btn" type="submit">Save</button></form></details>{% endif %}
+              {% if section['can_edit'] %}<details><summary class="btn">Edit qty</summary><form method="post" action="/sections/{{ section['id'] }}/groceries/list/{{ item['list_entry_id'] }}/update" class="inline-mini-form mt-2" data-enhanced-form><input class="input" type="number" step="0.01" min="0.01" name="quantity" aria-label="Quantity" value="{{ item['list_quantity'] or 1 }}"><input class="input" aria-label="Unit" name="unit" value="{{ item['list_unit'] or item['default_unit'] }}"><input class="input" name="note" value="{{ item['list_note'] or '' }}" placeholder="Note"><button class="btn" type="submit">Save</button></form></details>{% endif %}
             </div>
           </div>
           {% endif %}
@@ -45,11 +40,13 @@
         {% if ns.list_count == 0 %}<div class="empty-state">Your shopping list is empty. Add an item above or add all ingredients from a recipe.</div>{% endif %}
       </div>
     </section>
+{% endif %}
 
+{% if space_view == 'recipes' %}
     <section class="card" id="recipes">
       <div class="card-h"><div><div class="h2">Recipes & meals</div><div class="muted mt-1">Connect each meal to grocery items, then add the whole recipe to your shopping list in one click.</div></div></div>
       <div class="card-b">
-        {% if section['can_edit'] %}<form method="post" action="/sections/{{ section['id'] }}/groceries/recipes/add" class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4"><input class="input" name="name" placeholder="Chicken Alfredo" required><input class="input sm:col-span-2" name="notes" placeholder="Optional notes"><button class="btn btn-primary sm:col-span-3" type="submit">Add recipe</button></form>{% endif %}
+        {% if section['can_edit'] %}<form method="post" action="/sections/{{section.id}}/groceries/recipes/add" class="record-form" data-enhanced-form><label class="record-field">Recipe name<input class="input" name="name" required maxlength="120"></label><label class="record-field">Notes<input class="input" name="notes"></label><div class="record-actions record-wide"><button class="mlo-btn mlo-primary">Add recipe</button></div></form>{% endif %}
         {% for recipe in recipes %}
         <article class="recipe-card">
           <div class="spread hstack"><div><strong>{{ recipe['name'] }}</strong><div class="small">{{ recipe['ingredient_count'] }} ingredient{{ '' if recipe['ingredient_count']==1 else 's' }}</div></div>
@@ -57,43 +54,32 @@
           </div>
           {% if recipe['notes'] %}<div class="muted mt-2">{{ recipe['notes'] }}</div>{% endif %}
           <ul class="recipe-ingredients">{% for ing in recipe_map.get(recipe['id'], []) %}<li><span>{{ ing['quantity'] }} {{ ing['unit'] or ing['default_unit'] }} · <strong>{{ ing['item_name'] }}</strong></span>{% if section['can_edit'] %}<form method="post" action="/sections/{{ section['id'] }}/groceries/recipes/{{ recipe['id'] }}/ingredient/{{ ing['grocery_item_id'] }}/remove"><button class="ingredient-remove" type="submit" aria-label="Remove {{ ing['item_name'] }} from {{ recipe['name'] }}">×</button></form>{% endif %}</li>{% else %}<li class="muted">No ingredients linked yet.</li>{% endfor %}</ul>
-          {% if section['can_edit'] and items %}<form method="post" action="/sections/{{ section['id'] }}/groceries/recipes/{{ recipe['id'] }}/ingredient" class="inline-mini-form mt-3"><select class="input" name="grocery_item_id">{% for item in items %}<option value="{{ item['id'] }}">{{ item['name'] }}</option>{% endfor %}</select><input class="input" type="number" step="0.01" min="0.01" name="quantity" value="1"><input class="input" name="unit" placeholder="unit"><button class="btn" type="submit">Link ingredient</button></form>{% endif %}
+          {% if section['can_edit'] and items %}<form method="post" action="/sections/{{section.id}}/groceries/recipes/{{recipe.id}}/ingredient" class="record-form" data-enhanced-form><label class="record-field">Ingredient<select class="input" name="grocery_item_id">{% for item in items %}<option value="{{item.id}}">{{item.name}}</option>{% endfor %}</select></label><label class="record-field">Quantity<input class="input" type="number" name="quantity" min="0.01" step="0.01" value="1" required></label><label class="record-field">Unit<input class="input" name="unit" placeholder="Use the ingredient's unit"></label><div class="record-actions record-wide"><button class="mlo-btn mlo-secondary">Link ingredient</button></div></form>{% endif %}
         </article>
         {% else %}<div class="empty-state">No recipes yet. Add grocery items first, then create a recipe and link its ingredients.</div>{% endfor %}
       </div>
     </section>
+{% endif %}
 
+{% if space_view == 'prices' %}
     <section class="card" id="prices">
       <div class="card-h"><div><div class="h2">Price history</div><div class="muted mt-1">Record what you actually paid. Unit price is calculated automatically so different package sizes can still be compared.</div></div></div>
       <div class="card-b">
-        {% if section['can_edit'] and items %}<form method="post" action="/sections/{{ section['id'] }}/groceries/prices/add" class="grid grid-cols-1 sm:grid-cols-6 gap-2 mb-4">
-          <select class="input sm:col-span-2" name="grocery_item_id">{% for item in items %}<option value="{{ item['id'] }}">{{ item['name'] }}</option>{% endfor %}</select>
-          <input class="input" type="number" step="0.01" min="0" name="total_cost" placeholder="Total $" required>
-          <input class="input" type="number" step="0.01" min="0.01" name="quantity" value="1" title="Comparable quantity or package size">
-          <input class="input" name="store" placeholder="Store">
-          <input class="input" type="date" name="purchased_on" value="{{ today }}" required>
-          <input class="input sm:col-span-5" name="note" placeholder="Optional note, size, brand…"><button class="btn btn-primary" type="submit">Record price</button>
-        </form>{% endif %}
+        {% if section['can_edit'] and items %}<form method="post" action="/sections/{{section.id}}/groceries/prices/add" class="record-form" data-enhanced-form><label class="record-field">Item<select class="input" name="grocery_item_id">{% for item in items %}<option value="{{item.id}}">{{item.name}}</option>{% endfor %}</select></label><label class="record-field">Total paid<input class="input" name="total_cost" type="number" min="0" step="0.01" required></label><label class="record-field">Quantity<input class="input" name="quantity" type="number" min="0.01" step="0.01" value="1" required></label><label class="record-field">Store<input class="input" name="store" maxlength="100"></label><label class="record-field">Purchase date<input class="input" name="purchased_on" type="date" value="{{today}}" required></label><label class="record-field">Note<input class="input" name="note" maxlength="300"></label><div class="record-actions record-wide"><button class="mlo-btn mlo-primary">Record price</button></div></form>{% endif %}
         <div class="overflow-x-auto"><table class="table price-history-table"><thead><tr><th>Date</th><th>Item</th><th>Store</th><th>Total</th><th>Qty</th><th>Unit cost</th><th>Recorded by</th></tr></thead><tbody>
           {% for row in price_history %}<tr><td>{{ row['purchased_on'] }}</td><td><strong>{{ row['item_name'] }}</strong></td><td>{{ row['store'] or '—' }}</td><td>${{ '%.2f'|format(row['total_cost']) }}</td><td>{{ row['quantity'] }}</td><td>${{ '%.2f'|format(row['unit_cost']) }}</td><td>{{ row['purchased_by_name'] }}</td></tr>{% else %}<tr><td colspan="7" class="muted">No price history yet.</td></tr>{% endfor %}
         </tbody></table></div>
       </div>
     </section>
+{% endif %}
   </div>
 
-  <aside class="space-y-4" id="section-settings">
+  <aside class="space-y-4" id="section-settings">{% if space_view=='list' %}
     <section class="card"><div class="card-h"><div><div class="h2">Item catalog</div><div class="muted mt-1">Reusable ingredients/items in this section.</div></div></div><div class="card-b">
-      {% for item in items %}<div class="row py-2"><div><strong>{{ item['name'] }}</strong><div class="small">{{ item['default_unit'] }}{% if item['aisle'] %} · {{ item['aisle'] }}{% endif %}</div></div>{% if not item['list_entry_id'] and section['can_edit'] %}<form method="post" action="/sections/{{ section['id'] }}/groceries/list/add-existing"><input type="hidden" name="grocery_item_id" value="{{ item['id'] }}"><button class="btn" type="submit">Add</button></form>{% endif %}</div>{% else %}<div class="muted">No grocery items yet.</div>{% endfor %}
+      {% for item in items %}<div class="row py-2"><div><strong>{{ item['name'] }}</strong><div class="small">{{ item['default_unit'] }}{% if item['aisle'] %} · {{ item['aisle'] }}{% endif %}</div></div>{% if not item['list_entry_id'] and section['can_edit'] %}<form method="post" action="/sections/{{ section['id'] }}/groceries/list/add-existing"><input type="hidden" name="grocery_item_id" aria-label="Grocery item" value="{{ item['id'] }}"><button class="btn" type="submit">Add</button></form>{% endif %}</div>{% else %}<div class="muted">No grocery items yet.</div>{% endfor %}
     </div></section>
 
-    {% if section['is_owner'] %}<section class="card"><div class="card-h"><div class="h2">Section settings</div></div><form class="card-b space-y-3" method="post" action="/sections/{{ section['id'] }}/update"><label class="field"><span class="label">Name</span><input class="input" name="name" value="{{ section['name'] }}" required></label><label class="field"><span class="label">Icon</span><input class="input" name="icon" value="{{ section['icon'] }}" maxlength="8"></label><label class="field"><span class="label">Description</span><textarea class="textarea" name="description">{{ section['description'] }}</textarea></label><input type="hidden" name="content" value=""><label class="switch-row"><span><strong>Show in sidebar</strong><small>Keep this section in quick navigation.</small></span><input type="checkbox" name="show_in_sidebar" {% if section['show_in_sidebar'] %}checked{% endif %}><i></i></label><button class="btn btn-primary" type="submit">Save section</button></form></section>{% endif %}
-
-    {% if section['is_owner'] %}<section class="card"><div class="card-h"><div><div class="h2">Share with roommate</div><div class="muted mt-1">Only approved accounts can be added.</div></div></div><div class="card-b">
-      {% if shareable_users %}<form method="post" action="/sections/{{ section['id'] }}/share" class="space-y-3"><select class="input" name="user_id">{% for u in shareable_users %}<option value="{{ u['id'] }}">{{ u['display_name'] or u['username'] }} (@{{ u['username'] }})</option>{% endfor %}</select><label class="switch-row"><span><strong>Can edit</strong></span><input type="checkbox" name="can_edit" checked><i></i></label><button class="btn" type="submit">Share section</button></form>{% endif %}
-      <div class="share-list mt-3">{% for u in members %}<div class="share-user"><div><strong>{{ u['display_name'] or u['username'] }}</strong><div class="small">{{ 'Can edit' if u['can_edit'] else 'View only' }}</div></div><form method="post" action="/sections/{{ section['id'] }}/share/{{ u['id'] }}/remove"><button class="btn" type="submit">Remove</button></form></div>{% else %}<div class="muted">Not shared yet.</div>{% endfor %}</div>
-    </div></section>{% endif %}
-
-    {% if section['is_owner'] %}<section class="card"><div class="card-b"><form method="post" action="/sections/{{ section['id'] }}/delete" onsubmit="return confirm('Delete this grocery section, recipes, list and price history?');"><button class="btn btn-danger" type="submit">Delete section</button></form></div></section>{% endif %}
+{% endif %}{% if space_view=='settings' %}{% include 'space_settings.html' %}{% endif %}
   </aside>
 </div>
 {% endblock %}

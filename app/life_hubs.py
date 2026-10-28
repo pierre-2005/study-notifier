@@ -14,9 +14,7 @@ from app.meta import APP_VERSION
 from app.workspace import list_sections_for_user
 
 router = APIRouter(prefix='/life', tags=['life-areas'])
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent/'templates'))
-templates.env.globals['APP_VERSION'] = APP_VERSION
-templates.env.globals['current_day'] = lambda: date.today().isoformat()
+from app.ui import templates
 
 def admin(request):
     return getattr(request.state,'legacy_owner',False)
@@ -71,11 +69,8 @@ def money(request:Request):
     uid=user_id(request)
     if not admin(request):
         return render(request,'life_money.html',expenses=[],total_unpaid=0,upcoming=0,legacy=False)
-    with get_conn() as conn:
-        rows=conn.execute('''SELECT id,title,category,amount,due_at_utc,status,recurrence
-            FROM expenses ORDER BY CASE WHEN status='unpaid' THEN 0 ELSE 1 END,due_at_utc LIMIT 30''').fetchall()
-        totals=conn.execute("SELECT COALESCE(SUM(amount),0) AS total,COUNT(*) AS count FROM expenses WHERE status='unpaid'").fetchone()
-    return render(request,'life_money.html',expenses=rows,total_unpaid=totals['total'],upcoming=totals['count'],legacy=True)
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse('/finance',303)
 
 @router.get('/spaces',response_class=HTMLResponse)
 def spaces(request:Request):

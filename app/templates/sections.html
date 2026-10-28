@@ -1,4 +1,0 @@
-{% extends 'base.html' %}{% from 'life_components.html' import top %}
-{% block content %}<div class="mlo-space mlo-area-page"><div class="mlo-legacy-trail"><a href="/life/spaces">← Spaces</a><span>/</span><span>All sections</span></div>
-{{top('Shared spaces','COLLABORATION','Groceries, recipes, checklists, notes and shared plans.','Create space ↗','/sections/new')}}
-<div class="mlo-area-list-grid">{% for x in sections %}<a href="/sections/{{x.id}}" class="mlo-area-job"><span class="mlo-space-icon">{{x.icon}}</span><strong>{{x.name}}</strong><span>{{x.description or 'Lists and shared notes'}}</span><small>{{'You own this space' if x.is_owner else 'Shared with you'}}</small></a>{% else %}<div class="mlo-surface mlo-empty"><strong>Create your first shared space</strong><p>Start with a grocery list or a flexible notebook.</p><a href="/sections/new" class="mlo-btn mlo-primary">Create space</a></div>{% endfor %}</div></div>{% endblock %}

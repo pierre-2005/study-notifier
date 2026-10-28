@@ -1,3 +1,4 @@
+from scripts.qa_db import closing_connection
 """Representative Study Notifier v1.4 schema upgrade and cold snapshot test."""
 import os,sys,tempfile,types,sqlite3
 from pathlib import Path
@@ -7,7 +8,7 @@ stub=types.ModuleType('app.scheduler');stub.start_scheduler=lambda tz:StubSched(
 temp=tempfile.TemporaryDirectory(); path=Path(temp.name)/'existing.sqlite'
 os.environ.update({'STUDY_NOTIFIER_DB':str(path),'APP_USERNAME':'admin','APP_PASSWORD':'safe-password','SESSION_SECRET':'testing-secret-legacy','COOKIE_SECURE':'false'})
 from app.db import SCHEMA
-with sqlite3.connect(path) as conn:
+with closing_connection(sqlite3.connect(path)) as conn:
  conn.executescript(SCHEMA)
  conn.execute('INSERT INTO courses(name,term,created_at_utc) VALUES(?,?,?)',('Physics 365','Fall 2024','2024-09-01T00:00:00+00:00'))
  conn.execute("INSERT INTO todos(title,created_at_utc,updated_at_utc) VALUES(?,?,?)",('Preserve existing todo','2024-09-01T00:00:00+00:00','2024-09-01T00:00:00+00:00'))
@@ -19,9 +20,9 @@ with TestClient(app) as client:
  assert client.get('/health').status_code==200
  backup=path.with_name(path.stem+'.pre-mlo-v3.sqlite.backup')
  assert backup.is_file()
- with sqlite3.connect(backup) as snap:
+ with closing_connection(sqlite3.connect(backup)) as snap:
   assert snap.execute("SELECT title FROM todos").fetchone()[0]=='Preserve existing todo'
- with sqlite3.connect(path) as live:
+ with closing_connection(sqlite3.connect(path)) as live:
   assert live.execute("SELECT name FROM courses").fetchone()[0]=='Physics 365'
   assert live.execute("SELECT title FROM expenses").fetchone()[0]=='Rent'
   assert live.execute("SELECT title FROM todos").fetchone()[0]=='Preserve existing todo'

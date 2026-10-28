@@ -29,11 +29,11 @@ with tempfile.TemporaryDirectory() as tmp:
             assert token in r.text,(route,token)
             assert 'href="/privacy"' in r.text
             assert 'href="/termsofservice"' in r.text
-            assert 'href="/static/public-legal.css?' in r.text
+            assert 'href="/static/public.css?' in r.text
         assert 'Google API Services User Data Policy' in visitor.get('/privacy').text
         assert 'hello@example.org' in visitor.get('/privacy').text
         assert 'hello@example.org' in visitor.get('/termsofservice').text
-        assert visitor.get('/static/public-legal.css').status_code == 200
+        assert visitor.get('/static/public.css').status_code == 200
         assert visitor.get('/life').status_code in (302,303,307)
         assert '/login' in visitor.get('/life').headers['location']
         assert visitor.get('/login').status_code == 200

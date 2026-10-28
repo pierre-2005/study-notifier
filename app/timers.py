@@ -11,8 +11,7 @@ from app.db import get_conn, _ensure_column
 from app.meta import APP_VERSION
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-templates.env.globals["APP_VERSION"] = APP_VERSION
+from app.ui import templates
 router = APIRouter(prefix="/timers", tags=["timers"])
 
 
@@ -83,11 +82,7 @@ def active_timer_for_user(user_id: int):
 
 @router.get("", response_class=HTMLResponse)
 def timers_page(request: Request):
-    user = _user(request)
-    with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM timers WHERE user_id=? ORDER BY CASE status WHEN 'running' THEN 0 WHEN 'paused' THEN 1 ELSE 2 END, updated_at_utc DESC LIMIT 40", (user["id"],)).fetchall()
-    timers = [dict(r) | {"remaining": _remaining(r)} for r in rows]
-    return templates.TemplateResponse(request, "timers.html", {"request": request, "timers": timers})
+    return RedirectResponse('/life/focus',status_code=303)
 
 
 @router.post("/new")

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+import re
 
 from app.finance.parser import STANDARD_CATEGORIES, Transaction
 
@@ -32,7 +34,7 @@ EXPENSE_GROUPS = {
         "Internet, cable and home phone", "Mobile phone", "Streaming media subscriptions", "Other digital subscriptions",
     ],
     "Food": [
-        "Groceries", "Meal kits and food-delivery services", "Cafés and coffee shops",
+        "Groceries", "Meal kits and food-delivery services", "CafÃ©s and coffee shops",
         "Restaurants (dine-in, delivery or takeout)",
     ],
     "Debt payments": [
@@ -70,13 +72,42 @@ SAVINGS_ROWS = [
 ]
 
 
-def _number(value) -> float:
+def money_decimal(value, *, signed=False) -> Decimal:
+    """Reject malformed money before writes, with deterministic cents."""
+    raw = str(value if value is not None else "").strip() or "0"
+    if raw.startswith("$"): raw = raw[1:]
+    pattern = r"(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,6})?"
+    if signed: pattern = "-?" + pattern
+    if len(raw) > 30 or not re.fullmatch(pattern, raw):
+        raise ValueError("Enter a valid amount, such as 125.50.")
     try:
-        if isinstance(value, str):
-            value = value.replace("$", "").replace(",", "").strip()
-        return max(0.0, float(value or 0.0))
-    except Exception:
-        return 0.0
+        amount = Decimal(raw.replace(",", ""))
+        if not amount.is_finite() or abs(amount) > Decimal("999999999.99"):
+            raise ValueError("Amount must be within 999,999,999.99.")
+        return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    except InvalidOperation as exc:
+        raise ValueError("Enter a valid amount.") from exc
+
+
+def _number(value) -> float:
+    return float(money_decimal(value))
+
+
+STAGES = [("income", "Income"), ("essentials", "Essentials"),
+          ("flexible", "Flexible spending"), ("savings", "Savings"), ("review", "Review")]
+FLEXIBLE_TERMS = ("streaming", "subscription", "meal kit", "food-delivery", "café", "restaurant",
+                  "recreation", "hobbies", "tickets", "gifts", "donation", "beauty", "spa", "decor")
+COMMON_ROWS = {"Employment income", "Mortgage or rent", "Groceries", "Electricity, gas and water",
+               "Mobile phone", "Public transit", "Restaurants (dine-in, delivery or takeout)",
+               "Streaming media subscriptions", "Emergency fund"}
+
+
+def stage_for(section: str, name: str, overrides: dict | None = None) -> str:
+    if section in ("income", "custom_income"): return "income"
+    if section in ("savings", "custom_savings"): return "savings"
+    override = (overrides or {}).get(name)
+    if override in ("essentials", "flexible"): return override
+    return "flexible" if any(term in name.lower() for term in FLEXIBLE_TERMS) else "essentials"
 
 
 def normalize_frequency(value: str, default: str = "Monthly") -> str:
@@ -119,7 +150,7 @@ def monthly_budget_values(data: dict) -> dict:
     income = {}
     for section in ("income", "custom_income"):
         for name, r in data.get(section, {}).items():
-            income[name] = monthlyize(r.get("amount", 0), r.get("frequency", "Monthly"))
+            income[name] = income.get(name,0) + monthlyize(r.get("amount", 0), r.get("frequency", "Monthly"))
     expenses = {
         name: monthlyize(r.get("amount", 0), r.get("frequency", "Monthly"))
         for name, r in data.get("expenses", {}).items()
@@ -127,7 +158,7 @@ def monthly_budget_values(data: dict) -> dict:
     savings = {}
     for section in ("savings", "custom_savings"):
         for name, r in data.get(section, {}).items():
-            savings[name] = monthlyize(r.get("amount", 0), r.get("frequency", "Monthly"))
+            savings[name] = savings.get(name,0) + monthlyize(r.get("amount", 0), r.get("frequency", "Monthly"))
     return {
         "income": income,
         "expenses": expenses,
@@ -203,64 +234,8 @@ def analyze_budget(data: dict, transactions: list[Transaction], categories: list
         "actual_total": actual_total,
         "planned_cash_after": planned_cash_after,
         "actual_cash_after": actual_cash_after,
-        "recommendations": build_recommendations(rows, transactions, actual_cash_after, planned),
     }
 
-
-def build_recommendations(rows: list[dict], transactions: list[Transaction], cash_after: float, planned: dict) -> list[str]:
-    recs: list[str] = []
-    over = sorted((r for r in rows if r["status"] == "Over"), key=lambda r: r["actual"] - r["budget"], reverse=True)
-    watch = sorted((r for r in rows if r["status"] == "Watch"), key=lambda r: r["utilization"], reverse=True)
-    no_budget = sorted((r for r in rows if r["status"] == "No budget" and r["actual"] > 0), key=lambda r: r["actual"], reverse=True)
-
-    if not over and not watch and not no_budget:
-        recs.append("You are within every spending limit you entered. Your current category limits look sustainable based on the statements loaded.")
-
-    discretionary_terms = (
-        "restaurant", "café", "coffee", "streaming", "digital subscription", "recreation",
-        "tickets", "hobbies", "gifts", "clothing", "beauty", "ride-share", "food-delivery",
-    )
-    essential_terms = ("rent", "mortgage", "property tax", "electricity", "insurance", "prescription", "childcare", "student loan")
-
-    for r in over:
-        over_by = r["actual"] - r["budget"]
-        name_lower = r["category"].lower()
-        if any(k in name_lower for k in discretionary_terms):
-            action = "This is a good place to cut, pause, or set a stricter weekly limit."
-        elif any(k in name_lower for k in essential_terms):
-            action = "This looks more essential, so first check whether the budget amount is realistic before trying to cut it."
-        elif "grocer" in name_lower:
-            action = "Review large grocery runs and mixed-retailer purchases before cutting necessities."
-        elif "gas" in name_lower or "transport" in name_lower:
-            action = "Review driving frequency, fuel choice, parking, or whether this budget simply needs to be higher."
-        else:
-            action = "Review the largest purchases below and decide whether they were one-time or can be reduced."
-        recs.append(f"{r['category']} is about ${over_by:,.2f}/month over budget. {action}")
-        top = top_transactions_for_category(transactions, r["category"], 3)
-        if top:
-            recs.append("Largest items to review: " + ", ".join(f"{t.description} (${abs(t.amount):,.2f})" for t in top) + ".")
-
-    if watch:
-        recs.append("Close to the limit: " + ", ".join(f"{r['category']} ({r['utilization']*100:.0f}%)" for r in watch[:6]) + ".")
-    if no_budget:
-        recs.append("You have spending with no budget set for: " + ", ".join(f"{r['category']} (${r['actual']:,.0f}/mo)" for r in no_budget[:6]) + ". Add limits if you want these tracked.")
-
-    if cash_after < 0:
-        recs.append(f"Your average spending plus savings goals are about ${abs(cash_after):,.2f}/month above the income entered. Start with the over-budget discretionary categories, then reconsider savings timing or fixed-cost assumptions if needed.")
-    else:
-        recs.append(f"After average spending and ${planned['total_savings']:,.2f}/month of savings goals, about ${cash_after:,.2f}/month remains unallocated.")
-
-    if planned["total_savings"] <= 0:
-        recs.append("No savings goal is currently funded. Consider assigning some of the remaining cash to an emergency fund or another goal.")
-    return recs
-
-
-def top_transactions_for_category(transactions: list[Transaction], category: str, limit: int = 3) -> list[Transaction]:
-    candidates = [
-        tx for tx in transactions
-        if tx.included and tx.transaction_type == "Purchase" and tx.category == category and tx.amount > 0
-    ]
-    return sorted(candidates, key=lambda t: t.amount, reverse=True)[:limit]
 
 # Visual grouping used by the CIBC-inspired annual breakdown card.
 BUDGET_CHART_GROUPS = ["Housing", "Essentials", "Transportation", "Living", "Personal spending", "Savings"]

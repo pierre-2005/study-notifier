@@ -6,7 +6,7 @@
 {% if project.my_role!='viewer' %}{{quick_task('/life/projects/' ~ project.id,project.id,'Add a project task…')}}{% endif %}
 <div class="mlo-tabbar"><a href="/life/projects/{{project.id}}?view=board" class="{{'active' if view=='board' else ''}}">Board</a><a href="/life/projects/{{project.id}}?view=list" class="{{'active' if view=='list' else ''}}">List</a><a href="/life/projects/{{project.id}}?view=table" class="{{'active' if view=='table' else ''}}">Table</a><a href="/life/projects/{{project.id}}?view=calendar" class="{{'active' if view=='calendar' else ''}}">Due dates</a></div>
 <div class="mlo-two-thirds"><section class="mlo-surface"><div class="mlo-section-top"><h2>Project tasks</h2><span class="mlo-count">{{tasks|length}}</span></div>
-{% if view=='board' %}<div id="mlo-v37-board" data-project-id="{{project.id}}" data-editable="{{'true' if project.my_role!='viewer' else 'false'}}">{{task_tree(task_nodes,'/life/projects/' ~ project.id)}}</div><script src="/static/v37-board.js?v={{APP_VERSION}}" defer></script>
+{% if view=='board' %}<div id="mlo-v37-board" data-project-id="{{project.id}}" data-editable="{{'true' if project.my_role!='viewer' else 'false'}}">{{task_tree(task_nodes,'/life/projects/' ~ project.id)}}</div><script src="/static/board.js?v={{APP_VERSION}}" defer></script>
 {% elif view=='table' %}<div class="table-wrap"><table class="mlo-task-table"><thead><tr><th>Task</th><th>Status</th><th>Priority</th><th>Due date</th></tr></thead><tbody>{{task_table(task_nodes)}}</tbody></table></div>
 {% elif view=='calendar' %}{{task_tree(task_nodes,'/life/projects/' ~ project.id ~ '?view=calendar')}}
 {% else %}{{task_tree(task_nodes,'/life/projects/' ~ project.id ~ '?view=list')}}{% endif %}

@@ -41,9 +41,9 @@ with tempfile.TemporaryDirectory() as d:
                 soup=BeautifulSoup(client.get(path).text,'html.parser')
                 for n in soup.select('script[src],link[rel="stylesheet"],link[rel="manifest"]'):n.decompose()
                 st=soup.new_tag('style')
-                st.string='\n'.join((Path('app/static')/n).read_text() for n in ['theme.css','life.css','design32.css','design33.css','flow34.css'])
+                st.string='\n'.join((Path('app/static')/n).read_text() for n in ('app.css',))
                 soup.head.append(st)
-                for n in ['theme.js','life.js','customize.js','flow34.js']:
+                for n in ['theme.js','life.js','customize.js','capture.js']:
                     sc=soup.new_tag('script');sc.string=(Path('app/static')/n).read_text();soup.body.append(sc)
                 view.set_content(str(soup),wait_until='load')
             errors=[]

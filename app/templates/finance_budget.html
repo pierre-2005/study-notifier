@@ -1,95 +1,53 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="mlo-legacy-trail"><a href="/finance">Finance overview</a><span> / </span><span>Budget</span></div>
+
 {% include "finance_nav.html" %}
-
-<div class="finance-back-row"><a class="back-link" href="/finance">← Finance overview</a><a class="back-link" href="/finance/monthly">Monthly comparison</a></div>
-
-<div class="page-heading finance-page-head">
-  <div><div class="eyebrow">Finance</div><h1>Budget calculator</h1><p>Enter income, expenses and savings goals using the frequency that matches how you actually pay or receive them.</p></div>
-  <a class="btn" href="/finance">Back to Finance</a>
-</div>
-
-
-
-<div class="budget-step-nav" aria-label="Budget sections">
-  <a href="#budget-income"><strong>1</strong> Income</a><a href="#budget-expenses"><strong>2</strong> Expenses</a><a href="#budget-savings"><strong>3</strong> Savings</a><a href="#budget-results"><strong>4</strong> Results</a>
-</div>
-
-<div class="metric-grid finance-metric-grid">
-  <div class="metric-card"><span class="metric-label">Monthly income</span><strong class="metric-value metric-money">{{ money(analysis.planned.total_income) }}</strong><span class="metric-note">Income entered</span></div>
-  <div class="metric-card"><span class="metric-label">Budgeted expenses</span><strong class="metric-value metric-money">{{ money(analysis.planned.total_expenses) }}</strong><span class="metric-note">Monthly equivalent</span></div>
-  <div class="metric-card"><span class="metric-label">Actual avg spend</span><strong class="metric-value metric-money">{{ money(analysis.actual_total) }}</strong><span class="metric-note">From loaded statements</span></div>
-  <div class="metric-card"><span class="metric-label">Cash left</span><strong class="metric-value metric-money">{{ money(analysis.actual_cash_after) }}</strong><span class="metric-note">After actual spend + goals</span></div>
-</div>
-
-<div class="budget-layout">
-  <section class="card budget-form-card">
-    <form method="post" action="/finance/budget/save" class="card-b" data-budget-save-form>
-      {% if saved %}<div class="mlo-budget-feedback" role="status">Budget saved successfully.</div>{% endif %}
-      {% if save_error %}<div class="mlo-budget-feedback" role="alert">{{ save_error }}</div>{% endif %}
-      <div class="mlo-budget-feedback" data-budget-feedback hidden role="status"></div>
-      <label class="field"><span class="label">Budget name (optional)</span><input class="input mt-1" name="name" value="{{ data.name or '' }}" placeholder="Pierre's monthly plan"></label>
-
-      {% for group_name, rows in grouped.items() %}
-        {% set anchor = 'budget-income' if group_name in ['Income','Custom income'] else 'budget-savings' if 'Savings' in group_name or 'savings' in group_name else 'budget-expenses' %}
-        <div class="budget-section-block" id="{{ anchor }}">
-          <div class="budget-section-title">{{ group_name }}</div>
-          <div class="overflow-x-auto">
-            <table class="table budget-table">
-              <thead><tr><th>Category</th><th>Amount</th><th>Frequency</th></tr></thead>
-              <tbody>
-                {% for r in rows %}
-                <tr data-budget-row data-budget-kind="{{ r.chart_kind }}" data-budget-group="{{ r.chart_group }}">
-                  <td style="font-weight:650; min-width:210px;">{{ r.name }}</td>
-                  <td>
-                    <input type="hidden" name="row_key" value="{{ r.key }}"><input type="hidden" name="section__{{ r.key }}" value="{{ r.section }}"><input type="hidden" name="name__{{ r.key }}" value="{{ r.name }}">
-                    <input class="input" data-budget-amount inputmode="decimal" name="amount__{{ r.key }}" value="{{ r.amount }}">
-                  </td>
-                  <td><select class="input" data-budget-frequency name="frequency__{{ r.key }}">{% for f in frequencies %}<option value="{{ f }}" {% if r.frequency == f %}selected{% endif %}>{{ f }}</option>{% endfor %}</select></td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+<div class="mlo-space budget-workspace">
+  <header class="mlo-page-head"><div><div class="mlo-kicker">Finance</div><h1>Your budget</h1><p>Plan what comes in, what goes out, and what you want to save.</p></div><button type="button" class="mlo-btn mlo-secondary" data-budget-quick hidden>Quick edit</button></header>
+  <form method="post" action="/finance/budget/save" data-budget-form>
+    <input type="hidden" name="revision" value="{{data.revision}}">
+    {% if saved %}<p class="product-feedback" role="status">Budget saved.</p>{% endif %}
+    <p class="product-feedback" data-budget-feedback role="status" aria-live="polite" {% if not save_error %}hidden{% endif %}>{{save_error or ''}}</p>
+    <nav class="budget-progress" aria-label="Budget steps" data-budget-nav hidden>{% for key,label in stages %}<button type="button" data-budget-step="{{key}}"><span>{{loop.index}}</span>{{label}}</button>{% endfor %}</nav>
+    <div class="budget-workbench">
+      <div class="budget-panels">
+        {% for stage,label in stages if stage != 'review' %}
+        <section class="mlo-surface budget-stage" data-budget-panel="{{stage}}" aria-labelledby="heading-{{stage}}">
+          <header class="budget-stage-heading"><div><span class="mlo-kicker">Step {{loop.index}} of 5</span><h2 id="heading-{{stage}}" tabindex="-1">{{label}}</h2><p class="mlo-subtle">{{ {'income':'Use take-home amounts and the frequency you receive them.','essentials':'Housing, food, transport and other commitments.','flexible':'Subscriptions, dining, hobbies and everyday extras.','savings':'Give each goal an amount and a regular contribution.'}[stage] }}</p></div><button class="mlo-btn mlo-secondary" type="button" data-budget-add="{{stage}}" hidden>Add category</button></header>
+          {% if stage == 'income' %}<label class="budget-name">Budget name <span class="mlo-subtle">Optional</span><input name="name" value="{{data.name}}" maxlength="120" placeholder="Monthly plan"></label>{% endif %}
+          <div class="budget-rows" data-budget-rows="{{stage}}">
+            {% for r in rows if r.stage == stage %}
+            <div class="budget-row" data-budget-row data-stage="{{stage}}" data-common="{{'true' if r.visible else 'false'}}">
+              <div class="budget-category"><strong data-category-name>{{r.name}}</strong><span class="mlo-subtle" data-row-monthly>{{money(r.monthly)}} / month</span></div>
+              <input type="hidden" name="row_key" value="{{r.key}}"><input type="hidden" name="section__{{r.key}}" value="{{r.section}}"><input type="hidden" name="name__{{r.key}}" value="{{r.name}}"><input type="hidden" name="stage__{{r.key}}" value="{{stage}}" data-row-stage>
+              <label>Amount <span class="budget-money-input"><span aria-hidden="true">$</span><input data-budget-amount name="amount__{{r.key}}" value="{{r.amount}}" inputmode="decimal" aria-label="{{r.name}} amount" maxlength="30"></span></label>
+              <label>Frequency<select data-budget-frequency name="frequency__{{r.key}}" aria-label="{{r.name}} frequency">{% for f in frequencies %}<option {% if r.frequency == f %}selected{% endif %}>{{f}}</option>{% endfor %}</select></label>
+              <div class="budget-row-tools" data-budget-tools hidden>{% if stage in ['essentials','flexible'] %}<button class="mlo-link-btn" type="button" data-budget-move title="Move to the other spending group">Move</button>{% endif %}<button class="mlo-link-btn" type="button" data-budget-remove aria-label="Remove {{r.name}} from plan">Remove</button></div>
+            </div>
+            {% endfor %}
           </div>
-        </div>
-      {% endfor %}
-
-      <div class="hstack mt-5"><button class="btn btn-primary" type="submit">Save budget</button><a class="btn" href="#budget-results">View results</a></div>
-    </form>
-  </section>
-
-  <aside class="budget-side" data-budget-chart>
-    <div class="budget-chart-card">
-      <div class="budget-chart-body">
-        <h2 class="budget-chart-title">Annual budget breakdown</h2>
-        <div class="budget-donut-wrap"><div class="budget-donut" data-budget-donut aria-label="Annual budget breakdown donut chart"></div></div>
-        <div class="budget-chart-legend">
-          {% set chart_rows = [
-            ('Housing','var(--chart-1)'),('Essentials','var(--chart-2)'),('Transportation','var(--chart-3)'),('Living','var(--chart-4)'),('Personal spending','var(--chart-5)'),('Savings','var(--chart-6)')
-          ] %}
-          {% for label,color in chart_rows %}<div class="budget-chart-row" data-chart-group="{{ label }}"><span class="budget-chart-dot" style="--dot:{{ color }}"></span><span>{{ label }}</span><strong data-chart-percent>0%</strong><span data-chart-amount>$0</span></div>{% endfor %}
-        </div>
+          <p class="mlo-subtle budget-empty" hidden>No categories yet. Add one to get started.</p>
+        </section>
+        {% endfor %}
+        <section class="mlo-surface budget-stage" data-budget-panel="review" aria-labelledby="heading-review">
+          <span class="mlo-kicker">Step 5 of 5</span><h2 id="heading-review" tabindex="-1">Review your plan</h2><p class="mlo-subtle">Monthly equivalents use 52 weeks or 26 biweekly payments per year.</p>
+          <div data-budget-review></div>
+          <h3>Statement comparison</h3><p class="mlo-subtle">Average spending across {{analysis.months}} imported calendar month{{'s' if analysis.months != 1 else ''}}.</p>
+          <div class="table-region" tabindex="0" role="region" aria-label="Budget and statement comparison"><table class="table budget-comparison"><thead><tr><th scope="col">Category</th><th scope="col">Monthly plan</th><th scope="col">Statement average</th><th scope="col">Remaining</th></tr></thead><tbody data-budget-comparison>
+          {% for r in analysis.rows %}<tr data-comparison-name="{{r.category}}" data-actual="{{r.actual}}" {% if not r.budget and not r.actual %}hidden{% endif %}><th scope="row">{{r.category}}</th><td data-comparison-plan>{{money(r.budget)}}</td><td>{{money(r.actual)}}</td><td data-comparison-left>{{money(r.difference)}}</td></tr>{% endfor %}
+          </tbody></table></div>
+        </section>
+        <div class="budget-actions"><button class="mlo-btn mlo-secondary" type="button" data-budget-back hidden>Back</button><span data-budget-position class="mlo-subtle"></span><button class="mlo-btn mlo-primary" type="button" data-budget-next hidden>Continue</button><button class="mlo-btn mlo-primary" type="submit" data-budget-save>Save budget</button></div>
       </div>
-      <div class="budget-chart-totals">
-        <div class="budget-chart-total-row"><span>Total income</span><strong data-chart-income>$0</strong></div>
-        <div class="budget-chart-total-row"><span>Total expenses + savings</span><strong data-chart-expenses>$0</strong></div>
-        <div class="budget-chart-total-row cash-left"><span>Annual amount left</span><strong data-chart-left>$0</strong></div>
-      </div>
+      <aside class="mlo-surface budget-summary" aria-label="Monthly budget summary">
+        <span class="mlo-kicker">Monthly plan</span><h2>Every dollar, assigned</h2>
+        <div class="budget-allocation" aria-hidden="true"><span data-allocation="essentials"></span><span data-allocation="flexible"></span><span data-allocation="savings"></span></div>
+        <dl><div><dt>Take-home income</dt><dd data-budget-total="income">{{money(analysis.planned.total_income)}}</dd></div><div><dt>Essentials</dt><dd data-budget-total="essentials">{{money(rows|selectattr('stage','equalto','essentials')|sum(attribute='monthly'))}}</dd></div><div><dt>Flexible spending</dt><dd data-budget-total="flexible">{{money(rows|selectattr('stage','equalto','flexible')|sum(attribute='monthly'))}}</dd></div><div><dt>Savings</dt><dd data-budget-total="savings">{{money(analysis.planned.total_savings)}}</dd></div><div class="budget-summary-total"><dt>Unallocated</dt><dd data-budget-total="left">{{money(analysis.planned_cash_after)}}</dd></div></dl><p class="mlo-subtle" data-budget-health>Amounts stay in your draft until you save.</p>
+      </aside>
     </div>
-  </aside>
+  </form>
+  <noscript><section class="mlo-surface"><h2>Add a category</h2><p>Save your edits above before adding a category.</p><form method="post" action="/finance/budget/custom" class="mlo-form"><label>Type<select name="section"><option value="custom_income">Income</option><option value="expenses">Expense</option><option value="custom_savings">Savings</option></select></label><label>Name<input name="name" required maxlength="180"></label><button class="mlo-btn mlo-secondary">Add category</button></form></section></noscript>
+  <dialog class="budget-category-dialog" data-budget-dialog aria-labelledby="budget-dialog-title"><div class="budget-dialog-head"><h2 id="budget-dialog-title">Add a category</h2><button class="icon-btn" type="button" data-budget-close aria-label="Close category picker">×</button></div><label>Find a category<input type="search" data-budget-search placeholder="Search or enter a new name" maxlength="180"></label><div data-budget-options></div><button class="mlo-btn mlo-primary" type="button" data-budget-create>Add custom category</button></dialog>
 </div>
-
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5">
-  <section class="card"><div class="card-h"><div><div class="h2">Add custom budget row</div><div class="muted mt-1">Create your own income, expense category, or savings goal.</div></div></div><form method="post" action="/finance/budget/custom" class="card-b space-y-3"><label class="field"><span class="label">Type</span><select class="input" name="section"><option value="custom_income">Custom income</option><option value="expenses">Custom expense/category</option><option value="custom_savings">Custom savings goal</option></select></label><label class="field"><span class="label">Name</span><input class="input" name="name" required></label><button class="btn" type="submit">Add row</button></form></section>
-  <section class="card lg:col-span-2"><div class="card-h"><div><div class="h2">Budget coach</div><div class="muted mt-1">Actual spending uses {{ analysis.months }} loaded calendar month(s).</div></div></div><div class="card-b space-y-3">{% for rec in analysis.recommendations %}<div class="row py-3" {% if loop.first %}style="border-top:0"{% endif %}>{{ rec }}</div>{% endfor %}</div></section>
-</div>
-
-<section class="card mt-5 budget-section-block" id="budget-results">
-  <div class="card-h"><div><div class="h2">Budget vs actual monthly spending</div><div class="muted mt-1">See which categories are comfortable, close to the limit, or over budget.</div></div></div>
-  <div class="card-b overflow-x-auto"><table class="table"><thead><tr><th>Category</th><th>Budget</th><th>Actual avg</th><th>Remaining / Over</th><th>% Used</th><th>Status</th></tr></thead><tbody>
-    {% for r in analysis.rows %}{% if r.budget > 0 or r.actual > 0 %}<tr><td style="font-weight:650">{{ r.category }}</td><td>{{ money(r.budget) }}</td><td>{{ money(r.actual) }}</td><td>{{ money(r.difference) }}</td><td>{% if r.budget > 0 %}{{ '%.0f'|format(r.utilization * 100) }}%{% else %}—{% endif %}</td><td><span class="badge">{{ r.status }}</span></td></tr>{% endif %}{% endfor %}
-  </tbody></table></div>
-</section>
-<script src="/static/budget-save.js?v={{ APP_VERSION }}" defer></script>
+<script src="/static/budget.js?v={{APP_VERSION}}" defer></script>
 {% endblock %}

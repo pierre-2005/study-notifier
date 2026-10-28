@@ -2,7 +2,7 @@
 
 
 def initialize_database(username='', password='', *, backup=True):
-    from app.backup import pre_v3_backup, pre_consolidation_backup, pre_v34_backup, pre_v36_backup, pre_v37_backup
+    from app.backup import pre_v3_backup, pre_consolidation_backup, pre_v34_backup, pre_v36_backup, pre_v37_backup, pre_v4_backup
     from app.db import init_db
     from app.auth import init_auth_schema, ensure_bootstrap_admin
     from app.account_security import init_account_security_schema
@@ -22,7 +22,7 @@ def initialize_database(username='', password='', *, backup=True):
     from app.course_import import init_course_schema
     from app.study_planner import init_study_schema
     if backup:
-        for create in (pre_v37_backup, pre_v3_backup, pre_consolidation_backup, pre_v34_backup, pre_v36_backup):
+        for create in (pre_v4_backup, pre_v37_backup, pre_v3_backup, pre_consolidation_backup, pre_v34_backup, pre_v36_backup):
             create()
     init_db()
     init_auth_schema()
@@ -43,3 +43,6 @@ def initialize_database(username='', password='', *, backup=True):
     init_file_schema()
     init_course_schema()
     init_study_schema()
+
+    from app.v4_schema import init_v4_schema
+    init_v4_schema()

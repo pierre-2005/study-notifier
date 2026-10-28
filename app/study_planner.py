@@ -19,8 +19,7 @@ from app.legacy_access import owns_legacy_data
 
 UTC=timezone.utc
 router=APIRouter(prefix='/life/study/planner',tags=['study planner'])
-templates=Jinja2Templates(directory=str(Path(__file__).parent/'templates'))
-templates.env.globals['APP_VERSION']=APP_VERSION
+from app.ui import templates
 
 
 class Window(BaseModel):
