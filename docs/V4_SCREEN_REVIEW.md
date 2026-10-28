@@ -136,3 +136,9 @@ Live SMTP/OAuth/phone delivery, installed PWA/Store behavior, actual production
 backup rehearsal and physical Pi performance require the owner steps in
 [V4_SETUP_REPORT.md](V4_SETUP_REPORT.md) and
 [V4_DEPLOYMENT.md](V4_DEPLOYMENT.md).
+
+The first final-head Linux run passed the 33 other scripts and both container
+build/start jobs, then caught a transient signup contrast failure during its
+opacity entrance animation. The opacity fade was removed so the text retains
+its normal contrast throughout; the small position animation remains. Full
+CI is required again for the corrected final head.

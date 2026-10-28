@@ -96,3 +96,9 @@ on reviewed assessments; notes use a bounded Markdown subset; ICS feeds are
 read-only. No offline editing, live collaborative block editor, universal bank
 parser, competitor parity or infrastructure-level inability to read server-side
 plaintext is claimed.
+
+The first final-head Linux run passed the 33 other scripts and both container
+build/start jobs, then caught a transient signup contrast failure during its
+opacity entrance animation. The opacity fade was removed so the text retains
+its normal contrast throughout; the small position animation remains. Full
+CI is required again for the corrected final head.

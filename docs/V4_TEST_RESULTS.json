@@ -421,5 +421,15 @@
     "attachment_sha256": "f84b9871468d2af89e0754da60b6caec166e0843d14d0cdad255c607314ac285"
   },
   "remote_ci": "Required for the exact PR head; current status is shown on PR #3. Container checks include AMD64 and ARM64 under QEMU. A prior checkpoint is not final-head evidence.",
-  "production_or_live_integrations_tested": false
+  "production_or_live_integrations_tested": false,
+  "first_final_head_ci": {
+    "commit": "c3955fc3dfba4e8abb970dd722b09d07f41b1434",
+    "run": "https://github.com/pierre-2005/study-notifier/actions/runs/40630506216",
+    "regression_scripts_passed": 33,
+    "failed_script": "tests_v4_browser.py",
+    "finding": "Transient signup text contrast during opacity entrance animation. Removed opacity fade; position animation remains.",
+    "amd64": "passed",
+    "arm64_qemu": "passed",
+    "superseded": "The corrected final head requires a fresh full CI run."
+  }
 }
