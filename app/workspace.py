@@ -367,7 +367,7 @@ def delete_section(request: Request, section_id: int):
 
 
 @router.post("/{section_id}/share")
-def share_section(request: Request, section_id: int, user_id: int = Form(...), can_edit: str = Form("on")):
+def share_section(request: Request, section_id: int, user_id: int = Form(...), can_edit: str = Form("off")):
     with get_conn() as conn:
         section = _section_access(conn, request, section_id)
         if not section["is_owner"]:

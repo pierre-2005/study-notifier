@@ -102,7 +102,7 @@ class V4Acceptance(unittest.TestCase):
   r=self.post('/sections/new',{'name':'Shared notebook'},who='alice');sid=int(r.headers['location'].rsplit('/',1)[1])
   self.post(f'/sections/{sid}/update',{'content':'Preserve this'},who='alice')
   self.post(f'/sections/{sid}/share',{'user_id':self.ids['editor'],'can_edit':'on'},who='alice')
-  self.post(f'/sections/{sid}/share',{'user_id':self.ids['viewer'],'can_edit':'off'},who='alice')
+  self.post(f'/sections/{sid}/share',{'user_id':self.ids['viewer']},who='alice')
   with get_conn() as db:version=db.execute('SELECT updated_at_utc FROM workspace_sections WHERE id=?',(sid,)).fetchone()[0]
   self.assertEqual(self.post(f'/sections/{sid}/update',{'name':'Renamed','settings_form':'1','base_version':version},who='alice').status_code,303)
   self.assertEqual(self.post(f'/sections/{sid}/update',{'content':'Lost','base_version':version},who='editor').status_code,409)
@@ -143,5 +143,34 @@ class V4Acceptance(unittest.TestCase):
   self.assertEqual(safe_href('https://example.com/path'),'https://example.com/path')
   response=self.admin.get('/missing-v4-route');self.assertEqual(response.status_code,404);self.assertIn('Page not found',response.text)
   response=self.admin.post('/expenses/new',data={'title':'x','amount':'NaN','due_at_local':'broken'},headers={'accept':'application/json'});self.assertEqual(response.status_code,422)
+
+ def test_15_recurring_bill_has_one_successor(self):
+  r=self.post('/expenses/new',{'title':'Recurring identity fixture','amount':'10','due_at_local':'2026-11-01T09:00','recurrence':'monthly'})
+  eid=int(r.headers['location'].rsplit('/',1)[1])
+  self.post(f'/expenses/{eid}/status',{'status':'paid'})
+  with get_conn() as db:
+   successor=db.execute('SELECT successor_id FROM mlo_bill_successors WHERE expense_id=?',(eid,)).fetchone()[0]
+   db.execute('UPDATE expenses SET title=? WHERE id=?',('Renamed recurring bill',eid));db.commit()
+  self.post(f'/expenses/{eid}/status',{'status':'unpaid'});self.post(f'/expenses/{eid}/status',{'status':'paid'})
+  with get_conn() as db:self.assertEqual(db.execute('SELECT successor_id FROM mlo_bill_successors WHERE expense_id=?',(eid,)).fetchone()[0],successor)
+  self.post(f'/expenses/{successor}/delete',{})
+  self.post(f'/expenses/{eid}/status',{'status':'unpaid'});self.post(f'/expenses/{eid}/status',{'status':'paid'})
+  with get_conn() as db:self.assertIsNone(db.execute('SELECT successor_id FROM mlo_bill_successors WHERE expense_id=?',(eid,)).fetchone()[0])
+
+ def test_16_export_text_and_worker_secrets(self):
+  from app.exports import CsvWriter,csv_cell
+  from app.document_process import worker_environment
+  import io
+  for value in ('=2+2',' +SUM(A1:A3)','@example','-HYPERLINK(1)'):
+   self.assertTrue(csv_cell(value).startswith("'"))
+  self.assertEqual(csv_cell('-12.34'),'-12.34')
+  stream=io.StringIO();CsvWriter(stream).writerow(['=2+2','ordinary',12.34]);self.assertTrue(stream.getvalue().startswith("'=2+2,ordinary,12.34"))
+  with patch.dict(os.environ,{'SESSION_SECRET':'private','OPENAI_API_KEY':'private','MLO_SMTP_PASSWORD':'private'}):
+   env=worker_environment();self.assertFalse(any(key in env for key in ('SESSION_SECRET','OPENAI_API_KEY','MLO_SMTP_PASSWORD','MLO_CREDENTIAL_KEY')))
+ def test_17_malformed_origin_is_a_clean_denial(self):
+  response=self.admin.post('/life/tasks',data={'title':'Blocked'},headers={'origin':'https://[broken'})
+  self.assertEqual(response.status_code,403);self.assertIn('Access is restricted',response.text)
+  response=self.admin.post('/life/layout/appearance',json={'theme':'invalid'},headers={'origin':'https://evil.example'})
+  self.assertEqual(response.status_code,403);self.assertIn('detail',response.json())
 
 if __name__=='__main__':unittest.main()

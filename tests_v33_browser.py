@@ -49,7 +49,7 @@ with tempfile.TemporaryDirectory() as tmp:
     style=soup.new_tag('style')
     style.string='\n'.join(Path('app/static/'+name).read_text() for name in ('app.css',))
     soup.head.append(style)
-    for name in ['theme.js','life.js','customize.js']:
+    for name in ['appearance.js','tasks.js','layout.js']:
      script=soup.new_tag('script')
      script.string=Path('app/static/'+name).read_text()
      soup.body.append(script)
@@ -123,7 +123,7 @@ with tempfile.TemporaryDirectory() as tmp:
     render_page(target=preview)
     preview.evaluate("window.__setPalette('ocean');window.__setPaletteStyle('full');document.activeElement.blur()")
     preview.wait_for_timeout(250)
-    assert preview.locator('.mlo-capture .mlo-primary').evaluate("e=>getComputedStyle(e).backgroundColor")=='rgb(40, 120, 200)'
+    assert preview.locator('.mlo-capture .mlo-primary').evaluate("e=>{const probe=document.createElement('span');probe.style.color='var(--action-bg)';document.body.append(probe);const expected=getComputedStyle(probe).color;probe.remove();return getComputedStyle(e).backgroundColor===expected}")
     assert preview.evaluate('document.documentElement.scrollWidth <= innerWidth'),f'{label} page scrolls horizontally'
     preview.screenshot(path=f'docs/preview/{label}-v33.png',full_page=(label=='mobile'))
     preview.close()

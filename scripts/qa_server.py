@@ -86,6 +86,16 @@ def main():
             for index in range(72):
                 service.insert_transaction(db,Transaction(date=f'2026-{9+index%2:02d}-{1+index%28:02d}',description=['Weekly groceries','Coffee with friends','Transit pass','Bookshop'][index%4]+f' {index+1}',amount=round(12.45+index*1.63,2),category=['Groceries','Cafés and coffee shops','Public transit','Hobbies and recreation'][index%4],bank='BMO' if index%2 else 'Scotiabank',source_file='demonstration.pdf'))
             db.commit()
+        from app.auth import create_pending_user
+        for username,label in [('read_only','Read-only collaborator'),('editor_user','Editor collaborator')]:
+            create_pending_user(username,label,'FixtureMemberOnly!234')
+            with get_conn() as db:db.execute('UPDATE users SET approved=1 WHERE username=?',(username,));db.commit()
+        post(f'/life/projects/{pid}/invite',username='read_only',role='viewer')
+        post(f'/life/projects/{pid}/invite',username='editor_user',role='editor')
+        post('/life/notes',title='Shared design notes',body='## Read-only preview\n\nA shared note with **safe formatting**.',project_id=pid)
+        with get_conn() as db:fixture['shared_note_id']=db.execute('SELECT MAX(id) FROM life_notes').fetchone()[0]
+        post('/life/devices',name='Demonstration phone')
+        with get_conn() as db:fixture['device_id']=db.execute('SELECT MAX(id) FROM life_devices').fetchone()[0]
         (root/'fixture.json').write_text(json.dumps(fixture))
     import uvicorn
     uvicorn.run(app,host='127.0.0.1',port=args.port,log_level='warning')

@@ -94,3 +94,22 @@ def pre_v36_backup():
         return target
     finally:
         if partial.exists(): partial.unlink()
+
+
+def pre_v4_backup():
+    """Checked online snapshot before the v4 initialization path touches data."""
+    source=Path(DB_PATH)
+    if not source.is_file() or not source.stat().st_size:return None
+    target=source.with_name(source.stem+'.pre-mlo-v4.sqlite.backup')
+    if target.exists():
+        with closing(sqlite3.connect(target.as_uri()+'?mode=ro',uri=True)) as saved:
+            if saved.execute('PRAGMA quick_check').fetchone()[0]!='ok':raise RuntimeError('The v4 backup failed its integrity check.')
+        return target
+    partial=target.with_name(target.name+'.partial')
+    with closing(sqlite3.connect(source.as_uri()+'?mode=ro',uri=True,timeout=30)) as original:
+        with closing(sqlite3.connect(partial)) as saved:
+            original.backup(saved)
+            if saved.execute('PRAGMA quick_check').fetchone()[0]!='ok':raise RuntimeError('The v4 backup failed its integrity check.')
+    os.chmod(partial,0o600)
+    os.replace(partial,target)
+    return target

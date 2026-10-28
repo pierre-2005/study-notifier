@@ -1,42 +1,73 @@
-# My Life Organized v3.7.1
+# My Life Organized 4.0
 
-A redesigned shared workspace with nested tasks, touch/keyboard boards, private reminders, reviewed course-outline imports, optional AI extraction, calendar-aware study planning, email verification and password-reset codes. Existing accounts, permissions, data, calendars and the GitHub Actions to Portainer workflow are retained.
+MLO is a self-hosted workspace for tasks, projects, calendars, study, work, notes,
+shared spaces, focus time and personal finances. FastAPI, Jinja, vanilla
+JavaScript and SQLite remain the application platform. The browser and installed
+PWA use the same server data.
 
-Start with the [setup report](docs/V37_SETUP_REPORT.md), [verification](docs/V37_VERIFICATION.md), [fix review](docs/V37_REVIEW_AND_FIXES.md), [Macro-focused product research](docs/V37_PRODUCT_RESEARCH.md), [email walkthrough](docs/V37_EMAIL_SETUP.md) and [deployment/rollback](docs/V37_DEPLOYMENT.md). Historical release notes follow; current account behavior is described in the v3.7 reports.
+Version 4.0 rebuilds the record workflows and shared interface, including a
+five-stage Budget, a Markdown note editor, editable goals and habits, separate
+space/grocery views, a mobile calendar agenda, and safer concurrent edits.
+The released course importer, study planner, nested task board, private
+reminders, verification email and password recovery remain integrated.
 
-# MLO Studio v3.6.4 Update
+Read the [setup report](docs/V4_SETUP_REPORT.md),
+[verification report](docs/V4_VERIFICATION.md),
+[screen/workflow review](docs/V4_SCREEN_REVIEW.md) and
+[deployment and rollback guide](docs/V4_DEPLOYMENT.md).
+[PR #3](https://github.com/pierre-2005/study-notifier/pull/3) identifies the
+reviewed branch and its exact checks. A source version is not evidence that the
+image has been published or that the owner's server has been redeployed.
 
-See [the v3.6.4 release notes](docs/RELEASE_V364.md) and [Windows/iPhone guide](docs/PWABUILDER_WINDOWS_AND_IPHONE_V364.md). All previous features and backend data are retained.
+## Existing installation
 
-# My Life Organized Studio v3.6
+Keep the current Portainer Git stack, `refs/heads/main`, root
+`docker-compose.yml`, `study_notifier_data:/data`, `/data/study_notifier.db`,
+`/data/mlo_uploads`, and `127.0.0.1:8001:8000`. Keep
+`https://organizer.overvault.ca`, the registered OAuth callback, existing
+accounts and all current secrets. The owner pulls/redeploys the existing stack
+after verification and image publication. Do not create a second stack or a new
+volume to upgrade.
 
-**Account security + interface quality release**, based on the MLO v3.5 source application.
+Before rollout, rehearse an actual private backup using the deployment guide.
+The startup snapshot supplements an independent backup and coordinated
+attachment/configuration snapshot. Run one scheduler worker per database.
 
-The update adds administrator-managed passwords and member capabilities, optional recovery email and verification, one-use password-reset links, session revocation, and a theme-aware project deletion panel. It also preserves MLO's existing projects, tasks, multi-account Google/Outlook calendar integration, background sync, themes and server-backed PWA architecture.
+## Product boundaries
 
-## Read before upgrading
+- Projects are private by default; their creator controls sharing. Account
+  administrators do not automatically get private project/device access.
+- Historical Finance, academic and job records remain bound to their original
+  installation owner. Version 4 does not expose those tables to every account.
+- Statement import supports BMO and Scotiabank PDF formats. Review imported
+  transactions; universal bank formats are not implemented.
+- Course imports create actual tasks after source review. Optional AI requires
+  configuration and per-upload consent. Arbitrary lecture recurrences and LMS
+  extraction are outside the current importer.
+- Google/Microsoft writes use the selected account/calendar. Ordinary ICS
+  subscriptions are read-only. Background refresh continues automatically.
+- Notes support a compact Markdown subset, explicit saves and stale-edit
+  protection. This is not live collaborative block editing.
+- The PWA caches public static assets only. Private pages, APIs and offline
+  editing are not cached. Store package identities/versions are separate.
 
-- `docs/DEPLOY_V36.md` - precise GitHub -> GitHub Actions -> Portainer deployment.
-- `docs/MLO_PRODUCT_RELEASE_MASTER_PLAN.md` - **one consolidated review document** covering account security/email, intelligent syllabus and bank-statement imports, and the free Microsoft Store release plan.
-- `docs/VERIFICATION_V36.md` - actual test outcomes, limitations and remaining security work.
+## Verification
 
-## Main changes
+Use Python 3.12, the pinned timezone data, Tesseract/Poppler and the dependencies
+in `requirements-test.txt`. Set `PYTHONTZPATH` to an empty value. Install
+Playwright Chromium and `axe-core@4.14.0`; set `MLO_AXE_PATH` to `axe.min.js` and
+optionally `MLO_BROWSER` to a Chromium executable. Run:
 
-- **Admin Users:** approve/revoke; enable/disable; per-user capability controls; administrator password-confirmed temporary password and recovery email management.
-- **Account security:** current-password change, recovery-email entry and verification, optional self-service forgot-password for **verified** email only.
-- **Password safety:** short-lived single-use reset links, session revocation and required password rotation for admin-issued temporary passwords.
-- **Database:** additive schema update, automatic pre-migration SQLite snapshot, existing account/data preservation.
-- **UI:** project deletion surface follows the chosen light/dark theme and colors, with accessible spacing and contrast.
-- **Bootstrap:** `APP_PASSWORD` creates the initial administrator but does **not** reset its password on every restart.
+```sh
+python -m compileall -q app scripts
+python -m scripts.check_source
+python scripts/run_regression.py
+```
 
-All optional email settings are listed in `.env.production.example`; use Portainer environment variables for production and keep real passwords outside GitHub. Every existing user must sign in again after the new session-version check activates.
+Every standalone regression runs in its own process. Browser tests serve the
+actual application against disposable populated data. GitHub additionally
+builds/starts AMD64 and ARM64 containers before any main-branch publication.
+Full evidence and installation checks are in the verification/setup reports.
 
-**Scope note:** syllabus and bank-statement extraction and Microsoft Store submission are described in the consolidated plan, but are **not** implemented in this release. Live SMTP must be configured and tested before email recovery can deliver messages. Public deployment should wait until remaining tenant isolation and security concerns are addressed.
-
-## v3.6.1 notification-device privacy hardening
-
-All phone records are account-owned. This update adds explicit 404 responses for cross-account toggle and delete attempts, disables legacy shared-topic delivery by default, and checks owner-matched notification routing in CI. See `docs/DEVICE_PRIVACY_V361.md` for behavior, caveats, and upgrade instructions.
-
-## v3.6.3: Finance, PWA and ntfy QR fixes
-
-See [docs/RELEASE_V363_FINANCE_PWA_NTFY.md](docs/RELEASE_V363_FINANCE_PWA_NTFY.md) for the finance budget-save repair, persistent tabs, root PWA manifest, and owner-only ntfy QR pairing. Existing Portainer data volume and public MLO domain remain unchanged.
+Earlier release documentation is retained under `docs/` as historical context;
+the v4 reports describe the current behavior.

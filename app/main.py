@@ -1,47 +1,40 @@
 from fastapi import FastAPI, Request, Form, HTTPException, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
-from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
 from pathlib import Path
 from datetime import timedelta, datetime, timezone
-from zoneinfo import ZoneInfo
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
-import calendar
 import os
 import secrets
 import urllib.parse
 from starlette.middleware.sessions import SessionMiddleware
 from app.finance.routes import router as finance_router
-from app.finance.db import init_finance_schema
 from app.auth import (
-    init_auth_schema, ensure_bootstrap_admin, get_user_by_username, get_user_by_id,
-    verify_password, create_pending_user, list_users, set_user_approval, set_user_active, user_capabilities, PERMISSION_LABELS,
+    get_user_by_username, get_user_by_id,
+    verify_password, list_users, set_user_approval, set_user_active, user_capabilities, PERMISSION_LABELS,
 )
-from app.workspace import router as workspace_router, init_workspace_schema, list_sections_for_user
-from app.timers import router as timers_router, init_timer_schema, active_timer_for_user
+from app.workspace import router as workspace_router, list_sections_for_user
+from app.timers import router as timers_router, active_timer_for_user
 
 
-from app.account_security import router as accounts_router, init_account_security_schema
+from app.account_security import router as accounts_router
 from app.config import settings
-from app.db import init_db, get_conn
+from app.db import get_conn
 from app.scheduler import start_scheduler
-from app.timeutil import now_utc, parse_local_datetime_localinput, utc_to_local_str
 from app.notifier import build_notifier
 from app.meta import APP_VERSION
-from app.lifeos import router as life_router, init_life_schema
-from app.phones import router as phone_router, init_phone_schema
-from app.life_import import router as import_router, init_import_schema
-from app.life_files import router as files_router, init_file_schema
-from app.backup import pre_v3_backup, pre_consolidation_backup, pre_v34_backup, pre_v36_backup
-from app.consolidation import consolidate_todos
+from app.lifeos import router as life_router
+from app.phones import router as phone_router
+from app.life_import import router as import_router
+from app.life_files import router as files_router
 from app.life_hubs import router as hubs_router
-from app.personalize import router as layout_router, init_layout_schema, appearance_for
-from app.calendar_links import router as calendar_links_router, init_calendar_links_schema, sync_due_calendars, AUTO_SYNC
-from app.course_import import router as course_router, init_course_schema
+from app.personalize import router as layout_router, appearance_for
+from app.calendar_links import router as calendar_links_router, sync_due_calendars, AUTO_SYNC
+from app.course_import import router as course_router
 from app.note_reminders import router as note_reminder_router
 from app.study_planner import router as study_planner_router
-from app.v37 import router as v37_router, init_v37_schema, save_user_setup, _validate_preferences, _validate_reminders
+from app.v37 import router as v37_router, save_user_setup, _validate_preferences, _validate_reminders
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 from app.ui import templates
@@ -70,7 +63,6 @@ APP_PASSWORD = os.getenv("APP_PASSWORD", "")
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").lower() in ("1", "true", "yes", "on")
 
 
-
 # Reject cross-site form/API writes. This guards session-authenticated POST routes
 # without requiring JavaScript or changing the existing HTML form workflow.
 @app.middleware("http")
@@ -78,16 +70,20 @@ async def reject_cross_site_writes(request: Request, call_next):
     if request.method in ('POST','PUT','PATCH','DELETE'):
         origin=request.headers.get('origin','')
         from urllib.parse import urlparse
-        public_host=urlparse(os.getenv('MLO_PUBLIC_URL','')).netloc.lower()
+        try:
+            public_host=urlparse(os.getenv('MLO_PUBLIC_URL','')).netloc.lower()
+            origin_host=urlparse(origin).netloc.lower() if origin else ''
+        except ValueError:
+            return error_response(request,403,'Cross-origin write blocked')
         current=request.headers.get('host','').lower()
         allowed={current}
         if public_host: allowed.add(public_host)
-        if origin and urlparse(origin).netloc.lower() not in allowed:
+        if origin and origin_host not in allowed:
             from fastapi.responses import JSONResponse
-            return JSONResponse({'detail':'Cross-origin write blocked'},status_code=403)
+            return error_response(request,403,'Cross-origin write blocked')
         if request.headers.get('sec-fetch-site','').lower() == 'cross-site':
             from fastapi.responses import JSONResponse
-            return JSONResponse({'detail':'Cross-site write blocked'},status_code=403)
+            return error_response(request,403,'Cross-site write blocked')
     return await call_next(request)
 
 # Resolve the signed-in database user and protect private routes.
@@ -143,7 +139,7 @@ async def require_auth(request: Request, call_next):
     # POST/JSON endpoints don't render the sidebar: avoid two extra SQL reads.
     needs_shell = request.method == 'GET' and not path.startswith(('/life/layout','/api/'))
     if needs_shell:
-        titles={'/life/study/planner':'Study planner','/life/study/import':'Course import','/life':'Today','/life/tasks':'Tasks','/life/projects':'Projects','/life/study':'Study','/life/calendar':'Calendar',
+        titles={'/expenses':'Bills','/courses':'Courses','/items':'Assessments','/classes':'Classes','/events':'Saved events','/jobs':'Applications','/sections':'Spaces','/life/study/planner':'Study planner','/life/study/import':'Course import','/life':'Today','/life/tasks':'Tasks','/life/projects':'Projects','/life/study':'Study','/life/calendar':'Calendar',
                 '/life/calendars':'Connected calendars','/life/notes':'Notes','/life/focus':'Focus','/life/insights':'Insights',
                 '/life/goals':'Goals & habits','/life/work':'Work','/life/spaces':'Spaces','/life/import':'Import',
                 '/life/search':'Search','/life/devices':'Notifications','/settings':'Settings','/account':'Account','/finance':'Finance','/admin':'Administration'}
@@ -161,7 +157,6 @@ async def require_auth(request: Request, call_next):
     # connection attempts when the capability has been revoked.
     if (user['role']!='admin' and path.startswith('/life/calendars/connect/')
             and not user_capabilities(user)['calendar_connect']):
-        from fastapi.responses import PlainTextResponse
         return error_response(request,403,'Calendar connections are disabled for this account.')
 
     # Enforce the administrator's per-user capability restrictions on writes.
@@ -175,7 +170,6 @@ async def require_auth(request: Request, call_next):
             'import_tasks' if p.startswith(('/life/import/','/life/study/import')) else
             'devices_manage' if p.startswith('/life/devices') else None)
         if needed and not user_capabilities(user)[needed]:
-            from fastapi.responses import PlainTextResponse
             return error_response(request,403,'Your account does not have permission for this action.')
 
     # Member accounts are collaboration accounts by default. Personal school,
@@ -198,7 +192,6 @@ app.add_middleware(
     same_site="lax",
     https_only=COOKIE_SECURE,
 )
-
 
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -237,7 +230,7 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 
-from app.record_helpers import _safe_next_url, _get_setting, _set_setting, _clean_choice, _clamp_int, _parse_csv_ints
+from app.record_helpers import _safe_next_url, _get_setting, _set_setting
 
 @app.get("/health")
 def health():
@@ -273,39 +266,10 @@ def terms_of_service_page(request: Request):
     }, headers={'Cache-Control': 'public, max-age=300'})
 
 
-
-
 # ----------------- COURSES -----------------
 
 
-
-
-
-
-
-
-
-
 # ----------------- ITEMS -----------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # ----------------- TODOS -----------------
@@ -320,90 +284,14 @@ TODO_INTERVAL_OPTIONS = [
     (1440, "Every 1 day"),
 ]
 
-def _todo_interval_human(minutes: int) -> str:
-    if minutes < 60:
-        return f"{minutes} min"
-    if minutes % 1440 == 0:
-        d = minutes // 1440
-        return "1 day" if d == 1 else f"{d} days"
-    if minutes % 60 == 0:
-        h = minutes // 60
-        return "1 hour" if h == 1 else f"{h} hours"
-    return f"{minutes} min"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # ----------------- JOBS -----------------
-
-
-
-
-
-
-
-
-
-
 
 
 # ----------------- EXPENSES -----------------
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # ----------------- SCHEDULE -----------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # ----------------- SETTINGS -----------------

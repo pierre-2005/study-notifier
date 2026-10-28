@@ -146,6 +146,7 @@
     saving=true;const submitted=generation;save.disabled=true;save.textContent='Saving…';
     try{
       const response=await fetch(form.action,{method:'POST',body:new FormData(form),headers:{Accept:'application/json'}});
+      if(response.status===401)throw new Error('Your session expired. Sign in in another tab, then retry. Your edits are still here.');
       const type=response.headers.get('content-type')||'';
       if(response.redirected||!type.includes('application/json'))throw new Error('Your session may have expired. Sign in in another tab, then retry. Your edits are still here.');
       const payload=await response.json();if(!response.ok)throw new Error(payload.detail||'Unable to save. Please retry.');

@@ -82,11 +82,7 @@ def active_timer_for_user(user_id: int):
 
 @router.get("", response_class=HTMLResponse)
 def timers_page(request: Request):
-    user = _user(request)
-    with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM timers WHERE user_id=? ORDER BY CASE status WHEN 'running' THEN 0 WHEN 'paused' THEN 1 ELSE 2 END, updated_at_utc DESC LIMIT 40", (user["id"],)).fetchall()
-    timers = [dict(r) | {"remaining": _remaining(r)} for r in rows]
-    return templates.TemplateResponse(request, "timers.html", {"request": request, "timers": timers})
+    return RedirectResponse('/life/focus',status_code=303)
 
 
 @router.post("/new")

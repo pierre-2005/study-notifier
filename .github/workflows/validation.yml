@@ -1,4 +1,4 @@
-name: MLO v3.7 regression checks
+name: MLO release regression checks
 on:
   pull_request:
     branches: [main]
@@ -9,7 +9,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     env:
       MLO_SCHEDULER_ENABLED: 'false'
       PYTHONTZPATH: ''
@@ -45,13 +45,15 @@ jobs:
       - name: Compile and check patch formatting
         run: |
           python -m compileall -q app scripts
+          python -m pip check
+          python -m scripts.check_source
           git diff --check
       - name: Run every regression script
         run: python scripts/run_regression.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: v37-verification
+          name: v4-verification
           path: |
             test-results/
             docs/preview/v37/

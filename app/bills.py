@@ -162,6 +162,7 @@ def set_expense_status(expense_id: int, status: str = Form(...)):
     now = now_utc().isoformat()
     status = _clean_choice(status, EXPENSE_STATUSES, "unpaid")
     with get_conn() as conn:
+        conn.execute("BEGIN IMMEDIATE")
         exp = conn.execute("SELECT * FROM expenses WHERE id=?", (expense_id,)).fetchone()
         if not exp:
             return RedirectResponse("/expenses", status_code=303)
@@ -173,6 +174,7 @@ def set_expense_status(expense_id: int, status: str = Form(...)):
             and exp["status"] != "paid"
             and exp["recurrence"]
             and exp["recurrence"] != "none"
+            and not conn.execute("SELECT 1 FROM mlo_bill_successors WHERE expense_id=?",(expense_id,)).fetchone()
         ):
             due_dt = datetime.fromisoformat(exp["due_at_utc"])
             if due_dt.tzinfo is None:
@@ -235,6 +237,7 @@ def set_expense_status(expense_id: int, status: str = Form(...)):
                     )
                     new_id = cur.lastrowid
                     _create_default_expense_reminders(conn, new_id, exp["title"], next_due_iso)
+                conn.execute("INSERT OR IGNORE INTO mlo_bill_successors(expense_id,successor_id) VALUES(?,?)",(expense_id,existing_next["id"] if existing_next else new_id))
 
         conn.commit()
 

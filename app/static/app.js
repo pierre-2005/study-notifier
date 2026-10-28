@@ -12,7 +12,7 @@
   }
   document.addEventListener('submit',async event=>{
     const form=event.target;
-    if(event.defaultPrevented||form.method.toLowerCase()!=='post'||form.enctype==='multipart/form-data'||form.matches('[data-note-editor],[data-budget-form]')||['/login','/signup'].includes(new URL(form.action).pathname)||form.closest('[data-onboarding]'))return;
+    if(!form.closest('[data-app-layout]')||event.defaultPrevented||form.method.toLowerCase()!=='post'||form.enctype==='multipart/form-data'||form.matches('[data-note-editor],[data-budget-form]')||['/login','/signup'].includes(new URL(form.action).pathname)||form.closest('[data-onboarding]'))return;
     // Component handlers receive submit first and can opt out by preventing it.
     event.preventDefault();if(saving.has(form))return;
     saving.add(form);const buttons=[...form.querySelectorAll('button[type=submit],button:not([type])')];
@@ -21,6 +21,7 @@
     feedback(form,'Saving…');
     try{
       const response=await fetch(form.action,{method:'POST',body,headers:{Accept:'application/json'}});
+      if(response.status===401)throw new Error('Your session expired. Sign in in another tab, then retry. Your edits are still here.');
       const url=new URL(response.url);
       if(response.redirected&&url.pathname==='/login')throw new Error('Your session expired. Sign in in another tab, then retry. Your edits are still here.');
       const json=(response.headers.get('content-type')||'').includes('application/json');

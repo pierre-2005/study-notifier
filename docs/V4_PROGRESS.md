@@ -1,31 +1,31 @@
-# MLO v4 development ledger
+# MLO v4 completion ledger
 
 Baseline: `6fc0fd97a7085dacad80745973a56dcea8f3e893` (3.7.1).
-The complete October 26 handoff, including its historical appendices, was read.
-No surviving v4 checkout or published branch was found. This branch reconstructs
-and independently verifies the work. It is not yet a released version.
+The full October 26 handoff, including historical appendices, was read.
+No surviving v4 checkout or published branch was found. The implementation was
+reconstructed from verified main and saved durably in PR #3.
 
-Implemented: guided Budget with five stages and quick edit, transactional cent
-validation and revision conflicts, custom categories, draft retention, SQL
-transaction pagination, bounded statement worker, persistent rule deletion,
-shared rendering/errors/forms, extracted school/career/bills/event routes,
-canonical task adapters/API compatibility, editable bills/courses/assessments,
-notes Markdown preview and version protection, goal/habit CRUD and local days,
-space partial updates and versions, separated grocery views, calendar agenda,
-one canonical shared stylesheet and current entry points. Prior static URLs
-remain available for installed clients.
+Implementation complete: guided five-stage Budget and quick edit; atomic cent
+validation/revisions; hidden/custom/movable categories; draft retention; SQL
+Finance pagination, persistent rules, bounded parsers and CSV protection;
+shared rendering/forms/errors; extracted record routes; canonical task/API
+adapters; bill/course/assessment/event editing; notes preview/save/versioning;
+goal/habit CRUD; separated space/grocery views and settings; calendar agenda;
+canonical CSS/current entry points; data/ACL/old asset compatibility;
+additive schema/online backup and actual v4 PWA preview assets.
 
-Verification so far: 14 new service acceptance tests passed. The first populated
-browser review covered 58 routes at desktop and phone widths (116 states), with
-no document horizontal overflow or JavaScript errors. Four accessibility issues
-were found and corrected; the final re-audit is pending. Historical service
-regressions pass except the local OCR fixture, whose Windows runtime setup is
-being completed. Synthetic migration/restore suites pass. No live integration
-or production verification is claimed.
+Local verification complete: all 31 historical scripts, 17 new service tests,
+236 populated route/width states, 97 new and 47 inherited accessibility scans
+with zero violations, no JavaScript errors, and exact-v3.7.1 synthetic migration
+and restore. The initial full run found three accessibility issues; the affected
+suite and PWA/source checks passed after correction. See V4_VERIFICATION.md for
+the precise sequence and limits, and V4_SCREEN_REVIEW.md for all reviewed routes.
+Setup, email/calendar/AI/phone guidance, migration provenance, deployment and
+rollback reports are included. Version/cache/Compose/publication target agree
+on 4.0.0. Historical screenshot evidence and compatibility assets are retained.
 
-Remaining release gates: expanded interactive browser and accessibility checks,
-all historical tests on the final source, current screenshot review, final
-source checks, v3.7.1 upgrade rehearsal, setup/verification/rollback reports,
-consistent release version, remote CI including AMD64/ARM64 container checks.
-No main merge, image publication, production database or Portainer action has
-been performed. The owner retains the existing-stack rollout responsibility.
+Final remote release gate: the current PR head must pass the full 34-script
+Linux regression suite and AMD64/ARM64 container build/start. Check PR #3 for
+its actual status. Merge/publication is a separate release action. No production
+server, database, DNS, keys, volume or Portainer action was taken. The owner
+handles actual-backup rehearsal, live integrations and existing-stack rollout.

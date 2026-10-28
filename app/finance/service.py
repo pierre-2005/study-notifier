@@ -14,7 +14,9 @@ from pathlib import Path
 from typing import Iterable
 
 from app.db import get_conn
+from app.exports import CsvWriter
 from app.finance import budget, monthly
+from app.document_process import worker_environment, DOCUMENT_SLOTS
 from app.finance.db import now_iso
 from app.finance.parser import (
     STANDARD_CATEGORIES,
@@ -79,6 +81,7 @@ def add_category(name: str) -> bool:
             """,
             (name, ts, ts),
         )
+        bump_budget_revision(conn)
         conn.commit()
     return True
 
@@ -177,9 +180,11 @@ def import_pdf_bytes(filename: str, data: bytes) -> dict:
     try:
         rules = load_rules()
         categories = list_categories()
+        if not DOCUMENT_SLOTS.acquire(timeout=5):raise ValueError('Two documents are already being processed. Try again shortly.')
         try:
-            process=subprocess.run([sys.executable,'-m','app.finance.worker',tmp_path],input=json.dumps({'rules':rules,'categories':categories}),text=True,encoding='utf-8',capture_output=True,timeout=45)
+            process=subprocess.run([sys.executable,'-m','app.finance.worker',tmp_path],input=json.dumps({'rules':rules,'categories':categories}),text=True,encoding='utf-8',capture_output=True,timeout=45,env=worker_environment())
         except subprocess.TimeoutExpired as exc:raise ValueError('Statement processing took too long. Split the PDF and try again.') from exc
+        finally:DOCUMENT_SLOTS.release()
         if process.returncode:raise ValueError('Unable to read this statement. Use an unencrypted BMO or Scotiabank PDF with at most 60 pages.')
         transactions=[Transaction(**row) for row in json.loads(process.stdout)]
     finally:
@@ -417,24 +422,16 @@ def save_budget_rows(name: str, rows: list[dict], revision=None) -> int:
 
 
 def add_budget_row(section: str, name: str) -> bool:
-    section = clean_text(section, 40)
-    name = clean_text(name, 180)
-    if section not in ("custom_income", "expenses", "custom_savings") or not name:
-        return False
-    if section == "expenses":
-        add_category(name)
-    ts = now_iso()
+    name=clean_text(name,180)
+    if section not in ('custom_income','expenses','custom_savings') or not name:return False
+    ts=now_iso()
     with get_conn() as conn:
-        conn.execute(
-            """
-            INSERT OR IGNORE INTO finance_budget_rows(section, name, amount, frequency, created_at_utc, updated_at_utc)
-            VALUES(?,?,?,?,?,?)
-            """,
-            (section, name, 0, "Monthly", ts, ts),
-        )
-        changed = conn.total_changes > 0
-        conn.commit()
-    return changed
+        conn.execute('BEGIN IMMEDIATE')
+        if conn.execute('SELECT 1 FROM finance_budget_rows WHERE section=? AND name=?',(section,name)).fetchone():return False
+        conn.execute("INSERT INTO finance_budget_rows(section,name,amount,frequency,created_at_utc,updated_at_utc) VALUES(?,?,0,'Monthly',?,?)",(section,name,ts,ts))
+        if section=='expenses':conn.execute('INSERT OR IGNORE INTO finance_categories(name,is_custom,created_at_utc) VALUES(?,1,?)',(name,ts))
+        bump_budget_revision(conn);conn.commit()
+    return True
 
 
 def budget_rows_for_template(data: dict) -> list[dict]:
@@ -490,7 +487,7 @@ def finance_summary() -> dict:
 def export_transactions_csv() -> str:
     rows = list_transaction_rows(include_excluded=True)
     out = io.StringIO()
-    writer = csv.writer(out)
+    writer = CsvWriter(out)
     writer.writerow(["Date", "Bank", "Description", "Amount", "Category", "Type", "Included in Spending", "Note", "Source File"])
     for r in rows:
         writer.writerow([r["date"], r["bank"], r["description"], f"{float(r['amount']):.2f}", r["category"], r["transaction_type"], "Yes" if r["included"] else "No", r["note"], r["source_file"]])
@@ -504,7 +501,7 @@ def export_summary_csv() -> str:
         if tx.included:
             totals[tx.category] = totals.get(tx.category, 0.0) + tx.amount
     out = io.StringIO()
-    writer = csv.writer(out)
+    writer = CsvWriter(out)
     writer.writerow(["Category", "Total"])
     for c in list_categories():
         writer.writerow([c, f"{totals.get(c, 0.0):.2f}"])
@@ -518,9 +515,15 @@ def export_monthly_csv() -> str:
     ov = monthly.overview(txs, bd)
     categories = list(dict.fromkeys(list_categories() + [c for m in ov["categories"].values() for c in m]))
     out = io.StringIO()
-    writer = csv.writer(out)
+    writer = CsvWriter(out)
     writer.writerow(["Month", "Total Spending", "Monthly Budget", "Under/Over", "Scotiabank", "BMO"] + categories)
     for r in ov["rows"]:
         cmap = ov["categories"].get(r["month"], {})
         writer.writerow([r["label"], round(r["total"], 2), round(r["budget"], 2), round(r["difference"], 2), round(r["scotia"], 2), round(r["bmo"], 2)] + [round(cmap.get(c, 0.0), 2) for c in categories])
     return out.getvalue()
+
+
+def bump_budget_revision(conn):
+    row=conn.execute("SELECT value FROM finance_settings WHERE key='budget_revision'").fetchone()
+    current=int(row['value']) if row and str(row['value']).isdigit() else 0
+    conn.execute("INSERT OR REPLACE INTO finance_settings(key,value) VALUES('budget_revision',?)",(str(current+1),))

@@ -606,7 +606,7 @@ def update_class(
     weekday = _clamp_int(weekday, 0, 0, 6)
     duration_minutes = _clamp_int(duration_minutes, 50, 5, 600)
     remind_before_minutes = _clamp_int(remind_before_minutes, 15, 0, 1440)
-    
+
     now_iso = now_utc().isoformat()
 
     with get_conn() as conn:

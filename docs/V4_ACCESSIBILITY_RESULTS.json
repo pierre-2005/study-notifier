@@ -1,0 +1,591 @@
+{
+  "engine": "axe-core 4.14.0",
+  "tags": [
+    "wcag2a",
+    "wcag2aa",
+    "wcag21aa"
+  ],
+  "v4": [
+    {
+      "screen": "/life",
+      "violations": []
+    },
+    {
+      "screen": "/life/tasks",
+      "violations": []
+    },
+    {
+      "screen": "/life/projects",
+      "violations": []
+    },
+    {
+      "screen": "/life/projects/1?view=board",
+      "violations": []
+    },
+    {
+      "screen": "/life/tasks/1",
+      "violations": []
+    },
+    {
+      "screen": "/life/notes",
+      "violations": []
+    },
+    {
+      "screen": "/life/notes/1",
+      "violations": []
+    },
+    {
+      "screen": "/life/calendar",
+      "violations": []
+    },
+    {
+      "screen": "/life/calendar?month=2026-11&view=agenda",
+      "violations": []
+    },
+    {
+      "screen": "/life/focus",
+      "violations": []
+    },
+    {
+      "screen": "/life/goals",
+      "violations": []
+    },
+    {
+      "screen": "/life/insights",
+      "violations": []
+    },
+    {
+      "screen": "/life/study",
+      "violations": []
+    },
+    {
+      "screen": "/life/study/planner",
+      "violations": []
+    },
+    {
+      "screen": "/life/study/import",
+      "violations": []
+    },
+    {
+      "screen": "/life/work",
+      "violations": []
+    },
+    {
+      "screen": "/finance",
+      "violations": []
+    },
+    {
+      "screen": "/finance/transactions",
+      "violations": []
+    },
+    {
+      "screen": "/finance/transactions/1",
+      "violations": []
+    },
+    {
+      "screen": "/finance/budget",
+      "violations": []
+    },
+    {
+      "screen": "/finance/monthly",
+      "violations": []
+    },
+    {
+      "screen": "/finance/rules",
+      "violations": []
+    },
+    {
+      "screen": "/finance/import",
+      "violations": []
+    },
+    {
+      "screen": "/expenses",
+      "violations": []
+    },
+    {
+      "screen": "/expenses/new",
+      "violations": []
+    },
+    {
+      "screen": "/expenses/1",
+      "violations": []
+    },
+    {
+      "screen": "/courses",
+      "violations": []
+    },
+    {
+      "screen": "/courses/new",
+      "violations": []
+    },
+    {
+      "screen": "/courses/1",
+      "violations": []
+    },
+    {
+      "screen": "/items",
+      "violations": []
+    },
+    {
+      "screen": "/items/new",
+      "violations": []
+    },
+    {
+      "screen": "/items/1",
+      "violations": []
+    },
+    {
+      "screen": "/classes",
+      "violations": []
+    },
+    {
+      "screen": "/classes/new",
+      "violations": []
+    },
+    {
+      "screen": "/classes/1/edit",
+      "violations": []
+    },
+    {
+      "screen": "/jobs",
+      "violations": []
+    },
+    {
+      "screen": "/jobs/new",
+      "violations": []
+    },
+    {
+      "screen": "/jobs/1",
+      "violations": []
+    },
+    {
+      "screen": "/events",
+      "violations": []
+    },
+    {
+      "screen": "/events/1",
+      "violations": []
+    },
+    {
+      "screen": "/life/spaces",
+      "violations": []
+    },
+    {
+      "screen": "/sections/new",
+      "violations": []
+    },
+    {
+      "screen": "/sections/1",
+      "violations": []
+    },
+    {
+      "screen": "/sections/1?view=settings",
+      "violations": []
+    },
+    {
+      "screen": "/sections/2?view=list",
+      "violations": []
+    },
+    {
+      "screen": "/sections/2?view=recipes",
+      "violations": []
+    },
+    {
+      "screen": "/sections/2?view=prices",
+      "violations": []
+    },
+    {
+      "screen": "/sections/2?view=settings",
+      "violations": []
+    },
+    {
+      "screen": "/life/calendars",
+      "violations": []
+    },
+    {
+      "screen": "/life/calendars/new",
+      "violations": []
+    },
+    {
+      "screen": "/life/devices",
+      "violations": []
+    },
+    {
+      "screen": "/life/devices/1/pair-iphone",
+      "violations": []
+    },
+    {
+      "screen": "/settings",
+      "violations": []
+    },
+    {
+      "screen": "/account/security",
+      "violations": []
+    },
+    {
+      "screen": "/account/password",
+      "violations": []
+    },
+    {
+      "screen": "/admin/users",
+      "violations": []
+    },
+    {
+      "screen": "/life/import",
+      "violations": []
+    },
+    {
+      "screen": "/life/search",
+      "violations": []
+    },
+    {
+      "screen": "/missing-page",
+      "violations": []
+    },
+    {
+      "screen": "budget-review",
+      "violations": []
+    },
+    {
+      "screen": "budget-light-neutral",
+      "violations": []
+    },
+    {
+      "screen": "budget-light-ocean",
+      "violations": []
+    },
+    {
+      "screen": "budget-light-sage",
+      "violations": []
+    },
+    {
+      "screen": "budget-light-rose",
+      "violations": []
+    },
+    {
+      "screen": "budget-light-amber",
+      "violations": []
+    },
+    {
+      "screen": "budget-light-lavender",
+      "violations": []
+    },
+    {
+      "screen": "budget-dark-neutral",
+      "violations": []
+    },
+    {
+      "screen": "budget-dark-ocean",
+      "violations": []
+    },
+    {
+      "screen": "budget-dark-sage",
+      "violations": []
+    },
+    {
+      "screen": "budget-dark-rose",
+      "violations": []
+    },
+    {
+      "screen": "budget-dark-amber",
+      "violations": []
+    },
+    {
+      "screen": "budget-dark-lavender",
+      "violations": []
+    },
+    {
+      "screen": "budget-phone-essentials",
+      "violations": []
+    },
+    {
+      "screen": "note-split",
+      "violations": []
+    },
+    {
+      "screen": "note-light-neutral",
+      "violations": []
+    },
+    {
+      "screen": "note-light-ocean",
+      "violations": []
+    },
+    {
+      "screen": "note-light-sage",
+      "violations": []
+    },
+    {
+      "screen": "note-light-rose",
+      "violations": []
+    },
+    {
+      "screen": "note-light-amber",
+      "violations": []
+    },
+    {
+      "screen": "note-light-lavender",
+      "violations": []
+    },
+    {
+      "screen": "note-dark-neutral",
+      "violations": []
+    },
+    {
+      "screen": "note-dark-ocean",
+      "violations": []
+    },
+    {
+      "screen": "note-dark-sage",
+      "violations": []
+    },
+    {
+      "screen": "note-dark-rose",
+      "violations": []
+    },
+    {
+      "screen": "note-dark-amber",
+      "violations": []
+    },
+    {
+      "screen": "note-dark-lavender",
+      "violations": []
+    },
+    {
+      "screen": "shared-project-viewer",
+      "violations": []
+    },
+    {
+      "screen": "shared-note-viewer",
+      "violations": []
+    },
+    {
+      "screen": "public-/",
+      "violations": []
+    },
+    {
+      "screen": "public-/privacy",
+      "violations": []
+    },
+    {
+      "screen": "public-/termsofservice",
+      "violations": []
+    },
+    {
+      "screen": "public-/login",
+      "violations": []
+    },
+    {
+      "screen": "public-/signup",
+      "violations": []
+    },
+    {
+      "screen": "public-/forgot-password",
+      "violations": []
+    },
+    {
+      "screen": "public-/reset-code",
+      "violations": []
+    },
+    {
+      "screen": "public-/verify-email/resend",
+      "violations": []
+    },
+    {
+      "screen": "public-/missing-public",
+      "violations": []
+    }
+  ],
+  "inherited_v37_suite_rerun_on_v4": [
+    {
+      "screen": "board-desktop",
+      "violations": []
+    },
+    {
+      "screen": "board-light-neutral",
+      "violations": []
+    },
+    {
+      "screen": "board-light-ocean",
+      "violations": []
+    },
+    {
+      "screen": "board-light-sage",
+      "violations": []
+    },
+    {
+      "screen": "board-light-rose",
+      "violations": []
+    },
+    {
+      "screen": "board-light-amber",
+      "violations": []
+    },
+    {
+      "screen": "board-light-lavender",
+      "violations": []
+    },
+    {
+      "screen": "board-dark-neutral",
+      "violations": []
+    },
+    {
+      "screen": "board-dark-ocean",
+      "violations": []
+    },
+    {
+      "screen": "board-dark-sage",
+      "violations": []
+    },
+    {
+      "screen": "board-dark-rose",
+      "violations": []
+    },
+    {
+      "screen": "board-dark-amber",
+      "violations": []
+    },
+    {
+      "screen": "board-dark-lavender",
+      "violations": []
+    },
+    {
+      "screen": "task-inspector",
+      "violations": []
+    },
+    {
+      "screen": "/life",
+      "violations": []
+    },
+    {
+      "screen": "/life/tasks",
+      "violations": []
+    },
+    {
+      "screen": "/life/projects",
+      "violations": []
+    },
+    {
+      "screen": "/life/notes",
+      "violations": []
+    },
+    {
+      "screen": "/life/calendar",
+      "violations": []
+    },
+    {
+      "screen": "/life/focus",
+      "violations": []
+    },
+    {
+      "screen": "/life/goals",
+      "violations": []
+    },
+    {
+      "screen": "/life/insights",
+      "violations": []
+    },
+    {
+      "screen": "/life/study",
+      "violations": []
+    },
+    {
+      "screen": "/life/study/planner",
+      "violations": []
+    },
+    {
+      "screen": "/life/study/import",
+      "violations": []
+    },
+    {
+      "screen": "/life/work",
+      "violations": []
+    },
+    {
+      "screen": "/finance",
+      "violations": []
+    },
+    {
+      "screen": "/life/calendars",
+      "violations": []
+    },
+    {
+      "screen": "/life/devices",
+      "violations": []
+    },
+    {
+      "screen": "/settings",
+      "violations": []
+    },
+    {
+      "screen": "/admin/users",
+      "violations": []
+    },
+    {
+      "screen": "board-mobile",
+      "violations": []
+    },
+    {
+      "screen": "outline-review",
+      "violations": []
+    },
+    {
+      "screen": "planner-light-neutral",
+      "violations": []
+    },
+    {
+      "screen": "planner-light-ocean",
+      "violations": []
+    },
+    {
+      "screen": "planner-light-sage",
+      "violations": []
+    },
+    {
+      "screen": "planner-light-rose",
+      "violations": []
+    },
+    {
+      "screen": "planner-light-amber",
+      "violations": []
+    },
+    {
+      "screen": "planner-light-lavender",
+      "violations": []
+    },
+    {
+      "screen": "planner-dark-neutral",
+      "violations": []
+    },
+    {
+      "screen": "planner-dark-ocean",
+      "violations": []
+    },
+    {
+      "screen": "planner-dark-sage",
+      "violations": []
+    },
+    {
+      "screen": "planner-dark-rose",
+      "violations": []
+    },
+    {
+      "screen": "planner-dark-amber",
+      "violations": []
+    },
+    {
+      "screen": "planner-dark-lavender",
+      "violations": []
+    },
+    {
+      "screen": "planner-mobile",
+      "violations": []
+    },
+    {
+      "screen": "signup-mobile",
+      "violations": []
+    }
+  ],
+  "total_scans": 144,
+  "violations": 0,
+  "limits": "Audited rendered fixture states only; not accessibility certification or a screen-reader user study."
+}

@@ -45,6 +45,7 @@
     e.preventDefault();if(saving)return;if(!form.reportValidity())return;saving=true;save.disabled=true;const submitted=generation;status.textContent='Saving…';
     try{
       const response=await fetch(form.action,{method:'POST',body:new FormData(form),headers:{Accept:'application/json'}});
+      if(response.status===401)throw new Error('Your session expired. Sign in in another tab, then retry. Your edits are still here.');
       if(response.redirected||!(response.headers.get('content-type')||'').includes('application/json'))throw new Error('Sign in in another tab, then retry. Your draft is still here.');
       const result=await response.json();if(!response.ok)throw new Error(result.detail||'Unable to save. Please retry.');
       form.elements.base_version.value=result.version;dirty=generation!==submitted;status.textContent=dirty?'Saved. Newer changes are unsaved.':'Saved';

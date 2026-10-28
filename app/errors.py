@@ -8,7 +8,7 @@ log=logging.getLogger(__name__)
 TITLES={400:'Check your request',401:'Sign in to continue',403:'Access is restricted',404:'Page not found',409:'This record changed',413:'Upload is too large',422:'Check the form',429:'Try again shortly',500:'Something went wrong',503:'Temporarily unavailable'}
 
 def wants_json(request):
-    return request.url.path.startswith('/api/') or 'application/json' in request.headers.get('accept','')
+    return request.url.path.startswith('/api/') or 'application/json' in request.headers.get('accept','') or 'application/json' in request.headers.get('content-type','')
 
 def error_response(request,status,detail='',headers=None):
     if not isinstance(detail,str):detail='Check the form and try again.'

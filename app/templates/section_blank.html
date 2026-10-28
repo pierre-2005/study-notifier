@@ -5,13 +5,13 @@
   <div><div class="section-page-title"><span class="section-page-icon">{{ section['icon'] }}</span><div><div class="eyebrow">{{ 'Your space' if section['is_owner'] else 'Shared space' }}</div><h1>{{ section['name'] }}</h1></div></div><p>{{ section['description'] }}</p></div>
 </div>
 
-<nav class="subnav"><a href="?view=list" class="{{'active' if space_view!='settings' else ''}}">Content</a><a href="?view=settings" class="{{'active' if space_view=='settings' else ''}}">Settings & sharing</a></nav>
+<nav class="subnav"><a href="?view=list" class="{{'active' if space_view!='settings' else ''}}">Content</a>{% if section.is_owner %}<a href="?view=settings" class="{{'active' if space_view=='settings' else ''}}">Settings & sharing</a>{% endif %}</nav>
 <div class="space-content-layout">
 {% if space_view != 'settings' %}
   <div class="space-y-4">
     <section class="card"><div class="card-h"><div><div class="h2">Notes</div><div class="muted mt-1"></div></div></div><form method="post" action="/sections/{{ section['id'] }}/update" class="card-b" data-enhanced-form data-protect-draft>
       <input type="hidden" name="base_version" value="{{section.updated_at_utc}}">
-      <textarea class="section-editor" name="content" placeholder="Start writing…" {% if not section['can_edit'] %}readonly{% endif %}>{{ section['content'] }}</textarea>
+      <label class="sr-only" for="space-content">Space notes</label><textarea id="space-content" class="section-editor" name="content" placeholder="Start writing…" {% if not section['can_edit'] %}readonly{% endif %}>{{ section['content'] }}</textarea>
       {% if section['can_edit'] %}<div class="hstack"><button class="btn btn-primary" type="submit">Save notes</button></div>{% endif %}
     </form></section>
 

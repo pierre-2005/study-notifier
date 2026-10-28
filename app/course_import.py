@@ -24,6 +24,7 @@ from app.lifeos import user_id, now
 from app.meta import APP_VERSION
 from app.outline_parse import candidates
 from app import outline_ai
+from app.document_process import worker_environment, DOCUMENT_SLOTS
 
 router=APIRouter(prefix='/life/study',tags=['course outlines'])
 from app.ui import templates
@@ -70,12 +71,15 @@ def parse_upload(data, extension):
     with tempfile.TemporaryDirectory(prefix='mlo-outline-') as tmp:
         path=Path(tmp)/('source'+extension)
         path.write_bytes(data)
+        if not DOCUMENT_SLOTS.acquire(timeout=5):raise ValueError('Two documents are already being processed. Try again shortly.')
         try:
             result=subprocess.run([sys.executable,'-m','app.outline_parse',str(path),extension],
                 capture_output=True,timeout=90,cwd=str(Path(__file__).resolve().parent.parent),
-                env={**{k:os.environ[k] for k in ("SystemRoot","TEMP","TMP","TESSDATA_PREFIX") if k in os.environ},"PATH":os.environ.get("PATH","") if os.name=="nt" else "/usr/bin:/bin","LANG":"C.UTF-8","PYTHONUTF8":"1","PYTHONPATH":str(Path(__file__).resolve().parent.parent),"MLO_TESSERACT":shutil.which("tesseract") or "tesseract","MLO_PDFTOPPM":shutil.which("pdftoppm") or "pdftoppm"})
+                env=worker_environment())
         except subprocess.TimeoutExpired as exc:
             raise ValueError('This document took too long to read. Split it into smaller files.') from exc
+        finally:
+            DOCUMENT_SLOTS.release()
         if len(result.stdout)>3_000_000:
             raise ValueError('The extracted document is too large.')
         try:

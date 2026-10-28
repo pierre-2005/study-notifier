@@ -23,7 +23,7 @@ def main():
         try:
             with (output/(path.stem+'.log')).open('w') as log:
                 proc=subprocess.run([sys.executable,str(path)],cwd=root,stdout=log,stderr=subprocess.STDOUT,
-                                    env={**os.environ,'MLO_SCHEDULER_ENABLED':'false','PYTHONTZPATH':''},timeout=360)
+                                    env={**os.environ,'MLO_SCHEDULER_ENABLED':'false','PYTHONTZPATH':''},timeout=900 if path.name=='tests_v4_browser.py' else 360)
             status='passed' if proc.returncode==0 else 'failed'
         except subprocess.TimeoutExpired:status='timed_out'
         results.append({'script':path.name,'status':status,'seconds':round(time.monotonic()-start,2)})

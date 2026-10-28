@@ -19,6 +19,7 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from app.db import get_conn
+from app.exports import csv_cell
 from app.meta import APP_VERSION
 
 router = APIRouter(prefix="/life", tags=["life-os"])
@@ -905,6 +906,12 @@ def calendar_page(request:Request, month:str='', view:str='auto'):
             if ts.tzinfo is None: ts=ts.replace(tzinfo=timezone.utc)
             return ts.astimezone(zone).date()
         except (ValueError,TypeError): return None
+    def local_clock(value):
+        try:
+            instant=datetime.fromisoformat(str(value).replace('Z','+00:00'))
+            if instant.tzinfo is None:instant=instant.replace(tzinfo=timezone.utc)
+            return instant.astimezone(zone).strftime('%H:%M')
+        except (ValueError,TypeError):return ''
     is_admin=getattr(request.state,'legacy_owner',False)
     with get_conn() as conn:
         cond,params=tasks_sql(uid)
@@ -940,7 +947,7 @@ def calendar_page(request:Request, month:str='', view:str='auto'):
                          WHERE user_id=? AND start_at_utc>=? AND start_at_utc<? ORDER BY start_at_utc LIMIT 500''',
                          (uid,(first-timedelta(days=1)).isoformat(),(last+timedelta(days=1)).isoformat())):
             d=local_day(x['start_at_utc'])
-            if d:add(d,x['title'],f'/life/calendars/local/{x["id"]}/edit','event',clock=datetime.fromisoformat(x['start_at_utc'].replace('Z','+00:00')).astimezone(zone).strftime('%H:%M'))
+            if d:add(d,x['title'],f'/life/calendars/local/{x["id"]}/edit','event',clock=local_clock(x['start_at_utc']))
         # User-specific, previously synchronized external events. No HTTP during page loads.
         for x in conn.execute("""SELECT e.title,e.starts_on,e.starts_at,e.is_all_day,e.href,e.uid,e.connection_id,c.provider,c.label FROM life_external_events e
                       JOIN life_calendar_connections c ON c.id=e.connection_id
@@ -1165,5 +1172,5 @@ def export_tasks_csv(request:Request):
     fields=['title','description','status','priority','area','due_on','recurrence','estimated_minutes','project_name']
     writer=csv.DictWriter(output,fieldnames=fields)
     writer.writeheader()
-    for row in rows: writer.writerow({f:row[f] for f in fields})
+    for row in rows: writer.writerow({f:csv_cell(row[f]) for f in fields})
     return Response(output.getvalue(),media_type='text/csv',headers={'Content-Disposition':'attachment; filename="mlo-tasks.csv"'})
