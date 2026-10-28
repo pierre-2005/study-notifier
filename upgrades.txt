@@ -1,0 +1,6 @@
+Fix check marks when you check off a task.
+Make it so that anytime that you press save or save changes anywhere it then closes the tab or area you were working in and goes back to the place you were at before.
+Make it so that you can drg and drop the tasks between the sections when you drag any part of them not just the drag button.
+Add contrast to the plus and minus button to the focus timer cause its currently black on the dark mode.
+Fix the formatting on the phone area and when I click the phone pair drop down. Make it so that when I scan the apple or android qr code i dont need to sign it to copy the code.
+When I add a task it gets placed below the to do/in progress/blocked/done boxes and you have to refresh the page for it to go to the to do.
