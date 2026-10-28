@@ -47,7 +47,7 @@ with tempfile.TemporaryDirectory() as tmp:
     for node in soup.select('script[src], link[rel="stylesheet"],link[rel="manifest"]'):
      node.decompose()
     style=soup.new_tag('style')
-    style.string='\n'.join(Path('app/static/'+name).read_text() for name in ['theme.css','life.css','design32.css','design33.css'])
+    style.string='\n'.join(Path('app/static/'+name).read_text() for name in ('app.css',))
     soup.head.append(style)
     for name in ['theme.js','life.js','customize.js']:
      script=soup.new_tag('script')

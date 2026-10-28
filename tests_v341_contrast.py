@@ -19,7 +19,7 @@ scheduler.start_scheduler = lambda _: NoopScheduler()
 sys.modules['app.scheduler'] = scheduler
 
 PALETTES = ('neutral', 'ocean', 'sage', 'rose', 'amber', 'lavender')
-CSS = ('theme.css', 'life.css', 'design32.css', 'design33.css', 'flow34.css')
+CSS = ('app.css',)
 SELECTORS = (
     '.mlo-saved-filters',
     '.mlo-saved-filters summary',

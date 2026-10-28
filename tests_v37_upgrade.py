@@ -1,3 +1,4 @@
+from scripts.qa_db import closing_connection
 """Upgrade a backed-up database fixture produced by pre-v3.7 main, preserving every original column."""
 import hashlib
 import json
@@ -14,7 +15,7 @@ with tempfile.TemporaryDirectory() as temporary:
     root=Path(temporary);source=root/'original.sqlite';stage=root/'rehearsal';uploads=root/'uploads';uploads.mkdir()
     original_upload=root/'original-uploads';original_upload.mkdir()
     for folder in (uploads,original_upload):(folder/'preserved-fixture.txt').write_bytes(ATTACHMENT)
-    with sqlite3.connect(source) as original:
+    with closing_connection(sqlite3.connect(source)) as original:
         original.execute('PRAGMA journal_mode=WAL');original.execute('PRAGMA wal_autocheckpoint=0')
         original.executescript((ROOT/'tests/fixtures/pre_v37_main.sql').read_text())
         original.execute("INSERT INTO finance_settings(key,value) VALUES('wal-sentinel','Uncheckpointed fixture data')");original.commit()

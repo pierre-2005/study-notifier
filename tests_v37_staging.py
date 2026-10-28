@@ -1,3 +1,4 @@
+from scripts.qa_db import closing_connection
 """Read-only online backup with outstanding WAL, staging upgrade and verified restore."""
 import json
 import os
@@ -10,7 +11,7 @@ from app.db import SCHEMA
 
 with tempfile.TemporaryDirectory() as temporary:
     root=Path(temporary);source=root/'legacy.sqlite';stage=root/'rehearsal'
-    with sqlite3.connect(source) as connection:
+    with closing_connection(sqlite3.connect(source)) as connection:
         connection.execute('PRAGMA journal_mode=WAL');connection.execute('PRAGMA wal_autocheckpoint=0')
         connection.executescript(SCHEMA)
         connection.execute('INSERT INTO courses(name,term,created_at_utc) VALUES(?,?,?)',('Preserved course','Fall 2026','2026-10-01'))
@@ -27,7 +28,7 @@ with tempfile.TemporaryDirectory() as temporary:
         report=json.loads(result.stdout);assert report['migration_idempotent'] and report['restoration_matches_baseline']
         assert report['source_opened_read_only'] and not report['production_verification']
         assert list(connection.iterdump())==before,'Source changed during rehearsal'
-        with sqlite3.connect(stage/'baseline.sqlite') as backup:
+        with closing_connection(sqlite3.connect(stage/'baseline.sqlite')) as backup:
             assert backup.execute('SELECT title FROM todos').fetchone()[0]=='Preserved uncheckpointed task'
         refuse=subprocess.run([sys.executable,'-m','scripts.rehearse_v37','--source',str(source),'--work-dir',str(stage)],capture_output=True,text=True)
         assert refuse.returncode!=0,'Nonempty staging directory must be refused'

@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory() as d:
   with get_conn() as c: pid=c.execute("SELECT id FROM life_projects WHERE name='REEF'").fetchone()['id']
   soup=BeautifulSoup(client.get(f'/life/projects/{pid}').text,'html.parser')
   for el in soup.select('link[rel="stylesheet"],script'):el.decompose()
-  style=soup.new_tag('style');style.string='\n'.join((Path('app/static')/f).read_text() for f in ('theme.css','life.css','design32.css','design33.css','flow34.css','polish342.css','polish343.css'))
+  style=soup.new_tag('style');style.string='\n'.join((Path('app/static')/f).read_text() for f in ('app.css',))
   soup.head.append(style)
   with sync_playwright() as pw:
    browser=pw.chromium.launch(headless=True,args=['--no-sandbox'],**({'executable_path':(os.environ.get('MLO_BROWSER') or shutil.which('chromium'))} if (os.environ.get('MLO_BROWSER') or shutil.which('chromium')) else {}))

@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="mlo-legacy-trail"><a href="/finance">Finance overview</a><span> / </span><span>Monthly</span></div>
 {% include "finance_nav.html" %}
 
 
@@ -60,14 +59,14 @@
   <div class="h2">Compare two months</div>
   <form method="get" action="/finance/monthly" class="toolbar mt-3">
     <div>
-      <div class="label">Earlier month</div>
-      <select class="input" name="a">
+      <label class="label" for="field-finance_monthly-1-{{loop.index if loop is defined else 0}}">Earlier month</label>
+      <select id="field-finance_monthly-1-{{loop.index if loop is defined else 0}}" class="input" name="a">
         {% for m in months %}<option value="{{ m }}" {% if selected_a == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
       </select>
     </div>
     <div>
-      <div class="label">Later month</div>
-      <select class="input" name="b">
+      <label class="label" for="field-finance_monthly-2-{{loop.index if loop is defined else 0}}">Later month</label>
+      <select id="field-finance_monthly-2-{{loop.index if loop is defined else 0}}" class="input" name="b">
         {% for m in months %}<option value="{{ m }}" {% if selected_b == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
       </select>
     </div>

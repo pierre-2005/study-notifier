@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 from pathlib import Path
+import math
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -11,8 +12,7 @@ from app.db import get_conn
 from app.meta import APP_VERSION
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-templates.env.globals["APP_VERSION"] = APP_VERSION
+from app.ui import templates
 router = APIRouter(prefix="/sections", tags=["sections"])
 
 SECTION_TYPES = {"blank", "grocery"}
@@ -183,16 +183,14 @@ def list_sections_for_user(user_id: int, sidebar_only: bool = False):
 
 
 def _template_context(request: Request, **extra):
-    ctx = {"request": request, "section_icons": SECTION_ICONS}
+    ctx = {"request": request, "section_icons": SECTION_ICONS, "space_view": request.query_params.get("view", "list")}
     ctx.update(extra)
     return ctx
 
 
 @router.get("", response_class=HTMLResponse)
 def sections_home(request: Request):
-    user = _user(request)
-    rows = list_sections_for_user(user["id"])
-    return templates.TemplateResponse(request, "sections.html", _template_context(request, sections=rows))
+    return RedirectResponse('/life/spaces',303)
 
 
 @router.get("/new", response_class=HTMLResponse)
@@ -331,25 +329,30 @@ def section_detail(request: Request, section_id: int):
 
 
 @router.post("/{section_id}/update")
-def update_section(
-    request: Request,
-    section_id: int,
-    name: str = Form(...),
-    icon: str = Form("📄"),
-    description: str = Form(""),
-    content: str = Form(""),
-    show_in_sidebar: str = Form("off"),
-):
+async def update_section(request:Request,section_id:int):
+    form=await request.form()
     with get_conn() as conn:
-        _section_access(conn, request, section_id, require_edit=True)
-        conn.execute(
-            """
-            UPDATE workspace_sections SET name=?,icon=?,description=?,content=?,show_in_sidebar=?,updated_at_utc=? WHERE id=?
-            """,
-            ((name or "Untitled").strip()[:100], (icon or "📄").strip()[:8], (description or "").strip()[:500], content or "", 1 if show_in_sidebar == "on" else 0, now_iso(), section_id),
-        )
+        conn.execute('BEGIN IMMEDIATE')
+        section=_section_access(conn,request,section_id,require_edit=True)
+        if form.get('base_version') is not None and form['base_version']!=section['updated_at_utc']:
+            raise HTTPException(409,'This space changed since you opened it. Your draft is still here. Open the saved space in another tab to compare.')
+        fields={}
+        if 'content' in form:
+            if len(str(form['content']))>100000: raise HTTPException(422,'Content must be 100,000 characters or less.')
+            fields['content']=str(form['content'])
+        if any(key in form for key in ('name','icon','description','show_in_sidebar','settings_form')):
+            if not section['is_owner']:raise HTTPException(403,'Only the owner can change space settings.')
+            for key,limit in (('name',100),('icon',8),('description',500)):
+                if key in form:
+                    value=str(form[key]).strip()
+                    if len(value)>limit or key=='name' and not value:raise HTTPException(422,'Enter a valid space name and description.')
+                    fields[key]=value
+            if 'show_in_sidebar' in form or 'settings_form' in form:fields['show_in_sidebar']=int(form.get('show_in_sidebar')=='on')
+        fields['updated_at_utc']=now_iso()
+        conn.execute('UPDATE workspace_sections SET '+','.join(key+'=?' for key in fields)+' WHERE id=?',(*fields.values(),section_id))
         conn.commit()
-    return RedirectResponse(f"/sections/{section_id}", status_code=303)
+    view='settings' if 'settings_form' in form else 'list'
+    return RedirectResponse(f'/sections/{section_id}?view={view}',303)
 
 
 @router.post("/{section_id}/delete")
@@ -376,7 +379,7 @@ def share_section(request: Request, section_id: int, user_id: int = Form(...), c
                 (section_id, user_id, 1 if can_edit == "on" else 0, now_iso()),
             )
             conn.commit()
-    return RedirectResponse(f"/sections/{section_id}", status_code=303)
+    return RedirectResponse(f"/sections/{section_id}?view=settings", status_code=303)
 
 
 @router.post("/{section_id}/share/{user_id}/remove")
@@ -387,7 +390,7 @@ def unshare_section(request: Request, section_id: int, user_id: int):
             raise HTTPException(status_code=403, detail="Only the section owner can change sharing")
         conn.execute("DELETE FROM workspace_section_members WHERE section_id=? AND user_id=?", (section_id, user_id))
         conn.commit()
-    return RedirectResponse(f"/sections/{section_id}", status_code=303)
+    return RedirectResponse(f"/sections/{section_id}?view=settings", status_code=303)
 
 
 @router.post("/{section_id}/checklist/add")
@@ -453,7 +456,7 @@ def grocery_add_item(request: Request, section_id: int, name: str = Form(...), u
             )
         conn.execute("UPDATE workspace_sections SET updated_at_utc=? WHERE id=?", (ts, section_id))
         conn.commit()
-    return RedirectResponse(f"/sections/{section_id}#shopping-list", status_code=303)
+    return RedirectResponse(f"/sections/{section_id}?view=list", status_code=303)
 
 
 @router.post("/{section_id}/groceries/list/add-existing")
@@ -472,7 +475,7 @@ def grocery_add_existing(request: Request, section_id: int, grocery_item_id: int
                 (section_id, grocery_item_id, 1, item["default_unit"], user["id"], now_iso()),
             )
             conn.commit()
-    return RedirectResponse(f"/sections/{section_id}#shopping-list", status_code=303)
+    return RedirectResponse(f"/sections/{section_id}?view=list", status_code=303)
 
 
 @router.post("/{section_id}/groceries/list/{entry_id}/toggle")
@@ -489,7 +492,7 @@ def grocery_toggle_entry(request: Request, section_id: int, entry_id: int):
             (now_iso(), entry_id, section_id),
         )
         conn.commit()
-    return RedirectResponse(f"/sections/{section_id}#shopping-list", status_code=303)
+    return RedirectResponse(f"/sections/{section_id}?view=list", status_code=303)
 
 
 @router.post("/{section_id}/groceries/list/{entry_id}/update")
@@ -498,10 +501,10 @@ def grocery_update_entry(request: Request, section_id: int, entry_id: int, quant
         _section_access(conn, request, section_id, require_edit=True)
         conn.execute(
             "UPDATE grocery_list_entries SET quantity=?,unit=?,note=? WHERE id=? AND section_id=?",
-            (max(0.01, float(quantity or 1)), (unit or "").strip()[:30], (note or "").strip()[:200], entry_id, section_id),
+            (finite_quantity(quantity), (unit or "").strip()[:30], (note or "").strip()[:200], entry_id, section_id),
         )
         conn.commit()
-    return RedirectResponse(f"/sections/{section_id}#shopping-list", status_code=303)
+    return RedirectResponse(f"/sections/{section_id}?view=list", status_code=303)
 
 
 @router.post("/{section_id}/groceries/list/clear")
@@ -510,7 +513,7 @@ def grocery_clear_checked(request: Request, section_id: int):
         _section_access(conn, request, section_id, require_edit=True)
         conn.execute("DELETE FROM grocery_list_entries WHERE section_id=? AND checked=1", (section_id,))
         conn.commit()
-    return RedirectResponse(f"/sections/{section_id}#shopping-list", status_code=303)
+    return RedirectResponse(f"/sections/{section_id}?view=list", status_code=303)
 
 
 @router.post("/{section_id}/groceries/recipes/add")
@@ -526,7 +529,7 @@ def grocery_add_recipe(request: Request, section_id: int, name: str = Form(...),
                 (section_id, name[:120], (notes or "").strip()[:1000], user["id"], ts, ts),
             )
             conn.commit()
-    return RedirectResponse(f"/sections/{section_id}#recipes", status_code=303)
+    return RedirectResponse(f"/sections/{section_id}?view=recipes", status_code=303)
 
 
 @router.post("/{section_id}/groceries/recipes/{recipe_id}/ingredient")
@@ -538,10 +541,10 @@ def grocery_add_ingredient(request: Request, section_id: int, recipe_id: int, gr
         if valid and item:
             conn.execute(
                 "INSERT OR REPLACE INTO grocery_recipe_ingredients(recipe_id,grocery_item_id,quantity,unit) VALUES(?,?,?,?)",
-                (recipe_id, grocery_item_id, max(0.01, float(quantity or 1)), (unit or item["default_unit"] or "").strip()[:30]),
+                (recipe_id, grocery_item_id, finite_quantity(quantity), (unit or item["default_unit"] or "").strip()[:30]),
             )
             conn.commit()
-    return RedirectResponse(f"/sections/{section_id}#recipes", status_code=303)
+    return RedirectResponse(f"/sections/{section_id}?view=recipes", status_code=303)
 
 
 @router.post("/{section_id}/groceries/recipes/{recipe_id}/ingredient/{grocery_item_id}/remove")
@@ -562,7 +565,7 @@ def grocery_remove_ingredient(request: Request, section_id: int, recipe_id: int,
                 (recipe_id, grocery_item_id),
             )
             conn.commit()
-    return RedirectResponse(f"/sections/{section_id}#recipes", status_code=303)
+    return RedirectResponse(f"/sections/{section_id}?view=recipes", status_code=303)
 
 
 @router.post("/{section_id}/groceries/recipes/{recipe_id}/add-to-list")
@@ -592,7 +595,7 @@ def grocery_recipe_to_list(request: Request, section_id: int, recipe_id: int):
                 (section_id, ing["grocery_item_id"], ing["quantity"], ing["unit"], user["id"], ts),
             )
         conn.commit()
-    return RedirectResponse(f"/sections/{section_id}#shopping-list", status_code=303)
+    return RedirectResponse(f"/sections/{section_id}?view=list", status_code=303)
 
 
 @router.post("/{section_id}/groceries/recipes/{recipe_id}/delete")
@@ -601,7 +604,7 @@ def grocery_delete_recipe(request: Request, section_id: int, recipe_id: int):
         _section_access(conn, request, section_id, require_edit=True)
         conn.execute("DELETE FROM grocery_recipes WHERE id=? AND section_id=?", (recipe_id, section_id))
         conn.commit()
-    return RedirectResponse(f"/sections/{section_id}#recipes", status_code=303)
+    return RedirectResponse(f"/sections/{section_id}?view=recipes", status_code=303)
 
 
 @router.post("/{section_id}/groceries/prices/add")
@@ -616,8 +619,10 @@ def grocery_add_price(
     note: str = Form(""),
 ):
     user = _user(request)
-    quantity = max(0.01, float(quantity or 1))
-    total_cost = max(0.0, float(total_cost or 0))
+    try: purchased_on=date.fromisoformat(purchased_on).isoformat()
+    except ValueError: raise HTTPException(422,"Choose a valid purchase date.")
+    quantity = finite_quantity(quantity)
+    total_cost = finite_quantity(total_cost,allow_zero=True)
     with get_conn() as conn:
         _section_access(conn, request, section_id, require_edit=True)
         item = conn.execute("SELECT 1 FROM grocery_items WHERE id=? AND section_id=?", (grocery_item_id, section_id)).fetchone()
@@ -630,4 +635,11 @@ def grocery_add_price(
                 (grocery_item_id, user["id"], (store or "").strip()[:100], purchased_on[:10], quantity, total_cost, total_cost / quantity, (note or "").strip()[:300], now_iso()),
             )
             conn.commit()
-    return RedirectResponse(f"/sections/{section_id}#prices", status_code=303)
+    return RedirectResponse(f"/sections/{section_id}?view=prices", status_code=303)
+
+
+def finite_quantity(value,allow_zero=False):
+    number=float(value)
+    if not math.isfinite(number) or number<0 or (not allow_zero and number<=0) or number>1_000_000:
+        raise HTTPException(422,'Enter a finite, positive quantity or a non-negative price.')
+    return number

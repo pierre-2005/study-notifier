@@ -17,8 +17,7 @@ from app.notifier.ntfy import NtfyNotifier
 from app.meta import APP_VERSION
 
 router=APIRouter(prefix='/life/devices',tags=['devices'])
-templates=Jinja2Templates(directory=str(Path(__file__).resolve().parent/'templates'))
-templates.env.globals['APP_VERSION']=APP_VERSION
+from app.ui import templates
 
 
 def init_phone_schema():

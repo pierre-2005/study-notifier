@@ -1,0 +1,10 @@
+{% macro heading(title, parent='', href='', subtitle='') -%}
+<header class="record-heading">{% if parent %}<a class="mlo-back" href="{{href}}">← {{parent}}</a>{% endif %}<div class="mlo-page-head"><div><h1>{{title}}</h1>{% if subtitle %}<p>{{subtitle}}</p>{% endif %}</div></div></header>
+{%- endmacro %}
+{% macro field(name,label,value='',type='text',required=false,placeholder='',max='') -%}
+<label class="record-field"><span>{{label}}</span><input class="input" name="{{name}}" type="{{type}}" value="{{value if value is not none else ''}}" {% if required %}required{% endif %}{% if placeholder %} placeholder="{{placeholder}}"{% endif %}{% if max %} {{'max' if type=='number' else 'maxlength'}}="{{max}}"{% endif %}{% for key,value in kwargs.items() %} {{key}}="{{value}}"{% endfor %}></label>
+{%- endmacro %}
+{% macro textarea(name,label,value='',rows=4) -%}<label class="record-field record-wide"><span>{{label}}</span><textarea class="input" name="{{name}}" rows="{{rows}}">{{value or ''}}</textarea></label>{%- endmacro %}
+{% macro select(name,label,options,value='') -%}<label class="record-field"><span>{{label}}</span><select class="input" name="{{name}}">{% for key,text in options %}<option value="{{key}}" {% if key|string == value|string %}selected{% endif %}>{{text}}</option>{% endfor %}</select></label>{%- endmacro %}
+{% macro actions(label='Save changes',href='') -%}<div class="record-actions record-wide"><button type="submit" class="mlo-btn mlo-primary">{{label}}</button>{% if href %}<a class="mlo-btn mlo-secondary" href="{{href}}">Cancel</a>{% endif %}</div>{%- endmacro %}
+{% macro empty(title,href='',label='') -%}<div class="mlo-empty"><p>{{title}}</p>{% if href %}<a class="mlo-btn mlo-secondary" href="{{href}}">{{label}}</a>{% endif %}</div>{%- endmacro %}

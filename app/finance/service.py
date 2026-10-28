@@ -3,7 +3,11 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import json
+import re
 import sqlite3
+import subprocess
+import sys
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -33,15 +37,12 @@ def percent(value) -> str:
     if value == float("inf"):
         return "New"
     if value is None:
-        return "—"
+        return "â€”"
     return f"{value:+.1f}%"
 
 
 def parse_amount(value: str) -> float:
-    try:
-        return float(str(value or "0").replace("$", "").replace(",", "").strip() or 0)
-    except Exception:
-        return 0.0
+    return float(budget.money_decimal(value, signed=True))
 
 
 def clean_text(value: str, max_len: int = 500) -> str:
@@ -84,7 +85,7 @@ def add_category(name: str) -> bool:
 
 def load_rules() -> dict[str, list[str]]:
     categories = list_categories()
-    rules = default_rules_for(categories)
+    rules = {category: [] for category in categories}
     with get_conn() as conn:
         rows = conn.execute("SELECT category, keyword FROM finance_merchant_rules ORDER BY category, keyword").fetchall()
     for r in rows:
@@ -176,7 +177,11 @@ def import_pdf_bytes(filename: str, data: bytes) -> dict:
     try:
         rules = load_rules()
         categories = list_categories()
-        transactions = parse_statement(tmp_path, rules=rules, categories=categories)
+        try:
+            process=subprocess.run([sys.executable,'-m','app.finance.worker',tmp_path],input=json.dumps({'rules':rules,'categories':categories}),text=True,encoding='utf-8',capture_output=True,timeout=45)
+        except subprocess.TimeoutExpired as exc:raise ValueError('Statement processing took too long. Split the PDF and try again.') from exc
+        if process.returncode:raise ValueError('Unable to read this statement. Use an unencrypted BMO or Scotiabank PDF with at most 60 pages.')
+        transactions=[Transaction(**row) for row in json.loads(process.stdout)]
     finally:
         try:
             Path(tmp_path).unlink()
@@ -233,20 +238,34 @@ def load_transactions(include_excluded: bool = True, category: str = "All", mont
     return [transaction_from_row(r) for r in rows]
 
 
-def list_transaction_rows(include_excluded: bool = False, category: str = "All", month: str = "") -> list:
-    sql = "SELECT * FROM finance_transactions WHERE 1=1"
-    params: list = []
-    if not include_excluded:
-        sql += " AND included=1"
-    if category and category != "All":
-        sql += " AND category=?"
-        params.append(category)
+def transaction_page(include_excluded=False,category='All',month='',query='',page=1,page_size=50):
+    where,params=['1=1'],[]
+    if not include_excluded:where.append('included=1')
+    if category and category!='All':where.append('category=?');params.append(category)
     if month:
-        sql += " AND date LIKE ?"
-        params.append(month + "-%")
-    sql += " ORDER BY date DESC, id DESC"
+        if not re.fullmatch(r'\d{4}-\d{2}',month):raise ValueError('Choose a valid month.')
+        datetime.strptime(month+'-01','%Y-%m-%d')
+        where.append('date>=? AND date<?');params.extend([month+'-01', (datetime(int(month[:4])+int(month[5:])//12,int(month[5:])%12+1,1)).strftime('%Y-%m-%d')])
+    if query:
+        where.append('(description LIKE ? OR note LIKE ?)');params.extend(['%'+query[:200]+'%']*2)
+    clause=' AND '.join(where)
     with get_conn() as conn:
-        return conn.execute(sql, params).fetchall()
+        summary=conn.execute("SELECT COUNT(*) AS count,COALESCE(SUM(CASE WHEN included=1 AND transaction_type IN ('Purchase','Refund/Credit') THEN amount ELSE 0 END),0) AS total FROM finance_transactions WHERE "+clause,params).fetchone()
+        pages=max(1,(summary['count']+page_size-1)//page_size);page=max(1,min(page,pages))
+        rows=conn.execute('SELECT * FROM finance_transactions WHERE '+clause+' ORDER BY date DESC,id DESC LIMIT ? OFFSET ?',(*params,page_size,(page-1)*page_size)).fetchall()
+        months=[r[0] for r in conn.execute("SELECT DISTINCT substr(date,1,7) FROM finance_transactions ORDER BY 1")]
+    return {'rows':rows,'count':summary['count'],'total':summary['total'],'page':page,'pages':pages,'months':months}
+
+
+def list_transaction_rows(include_excluded=False,category='All',month='',limit=None):
+    # Exports intentionally include every requested row. Interactive views use SQL pagination.
+    sql='SELECT * FROM finance_transactions WHERE 1=1';params=[]
+    if not include_excluded:sql+=' AND included=1'
+    if category and category!='All':sql+=' AND category=?';params.append(category)
+    if month:sql+=' AND date LIKE ?';params.append(month+'-%')
+    sql+=' ORDER BY date DESC,id DESC'
+    if limit is not None:sql+=' LIMIT ?';params.append(limit)
+    with get_conn() as conn:return conn.execute(sql,params).fetchall()
 
 
 def get_transaction(tx_id: int):
@@ -257,6 +276,10 @@ def get_transaction(tx_id: int):
 def update_transaction(tx_id: int, data: dict) -> None:
     category = data.get("category") if data.get("category") in list_categories() else "Other"
     tx_type = data.get("transaction_type") if data.get("transaction_type") in TRANSACTION_TYPES else "Other"
+    day = str(data.get("date", ""))
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day): raise ValueError("Enter a valid date.")
+    datetime.strptime(day, "%Y-%m-%d")
+    if not clean_text(data.get("description", "")): raise ValueError("Description is required.")
     amount = parse_amount(data.get("amount", "0"))
     if tx_type == "Refund/Credit":
         amount = -abs(amount)
@@ -305,6 +328,8 @@ def clear_statement_history() -> None:
 
 
 def remove_month(month_key: str) -> int:
+    if not re.fullmatch(r"\d{4}-\d{2}", month_key): raise ValueError("Choose a valid month.")
+    datetime.strptime(month_key + "-01", "%Y-%m-%d")
     with get_conn() as conn:
         before = conn.execute("SELECT COUNT(*) AS c FROM finance_transactions").fetchone()["c"]
         conn.execute("DELETE FROM finance_transactions WHERE date LIKE ?", (month_key + "-%",))
@@ -327,40 +352,68 @@ def budget_data() -> dict:
         if section not in data:
             data[section] = {}
         data[section][name] = {"amount": float(r["amount"]), "frequency": budget.normalize_frequency(r["frequency"])}
+    with get_conn() as conn:
+        settings = {r["key"]: r["value"] for r in conn.execute("SELECT key,value FROM finance_settings WHERE key IN ('budget_revision','budget_stages')")}
+    try: data["revision"] = int(settings.get("budget_revision", "0"))
+    except (ValueError, TypeError): data["revision"] = 0
+    try:
+        stages = json.loads(settings.get("budget_stages", "{}"))
+        data["stages"] = stages if isinstance(stages, dict) else {}
+    except (ValueError, TypeError): data["stages"] = {}
     return data
 
 
-def save_budget_rows(name: str, rows: list[dict]) -> None:
+class BudgetConflict(ValueError):
+    pass
+
+
+def save_budget_rows(name: str, rows: list[dict], revision=None) -> int:
+    if len(rows) > 500: raise ValueError("A budget supports up to 500 categories.")
+    if len(str(name)) > 120: raise ValueError("Budget name must be 120 characters or less.")
+    clean, seen = [], set()
+    for r in rows:
+        section, row_name = str(r.get("section", "")), str(r.get("name", "")).strip()
+        if section not in ("income", "custom_income", "expenses", "savings", "custom_savings"):
+            raise ValueError("Choose a valid budget section.")
+        if not row_name or len(row_name) > 180: raise ValueError("Category names must be 1 to 180 characters.")
+        identity = (section, row_name.casefold())
+        if identity in seen: raise ValueError("A category appears more than once.")
+        seen.add(identity)
+        amount = budget.money_decimal(r.get("amount", "0"))
+        frequency = r.get("frequency", "Monthly")
+        if frequency not in budget.FREQUENCIES: raise ValueError("Choose a valid payment frequency.")
+        stage = r.get("stage", "")
+        if section == "expenses" and stage and stage not in ("essentials", "flexible"):
+            raise ValueError("Choose Essentials or Flexible spending.")
+        clean.append((section, row_name, float(amount), frequency, stage))
     ts = now_iso()
     with get_conn() as conn:
-        conn.execute(
-            "INSERT OR REPLACE INTO finance_settings(key, value) VALUES('budget_name', ?)",
-            (clean_text(name, 120),),
-        )
-        for r in rows:
-            section = clean_text(r.get("section", ""), 40)
-            row_name = clean_text(r.get("name", ""), 180)
-            if not section or not row_name:
-                continue
-            amount = max(0.0, parse_amount(r.get("amount", "0")))
-            frequency = budget.normalize_frequency(r.get("frequency", "Monthly"))
-            # UPDATE-first remains compatible with databases created by older
-            # releases where finance_budget_rows has no composite UNIQUE index.
-            # Do not rely on SQLite ON CONFLICT(section,name) being available.
-            result = conn.execute(
-                """UPDATE finance_budget_rows
-                   SET amount=?, frequency=?, updated_at_utc=?
-                   WHERE section=? AND name=?""",
-                (amount, frequency, ts, section, row_name),
-            )
+        conn.execute("BEGIN IMMEDIATE")
+        old = conn.execute("SELECT value FROM finance_settings WHERE key='budget_revision'").fetchone()
+        current = int(old["value"]) if old and str(old["value"]).isdigit() else 0
+        if revision is not None:
+            try: supplied = int(revision)
+            except (ValueError, TypeError): raise ValueError("Invalid budget revision.")
+            if supplied != current:
+                raise BudgetConflict("A newer budget was saved in another tab. Your edits are still here. Open the saved budget in a new tab to compare before reloading.")
+        old_stages = conn.execute("SELECT value FROM finance_settings WHERE key='budget_stages'").fetchone()
+        try: stages = json.loads(old_stages["value"]) if old_stages else {}
+        except (ValueError, TypeError): stages = {}
+        if not isinstance(stages, dict): stages = {}
+        for section, row_name, amount, frequency, stage in clean:
+            # UPDATE-first also supports historical tables with no composite unique key.
+            result = conn.execute("UPDATE finance_budget_rows SET amount=?,frequency=?,updated_at_utc=? WHERE section=? AND name=?",
+                                  (amount, frequency, ts, section, row_name))
             if result.rowcount == 0:
-                conn.execute(
-                    """INSERT INTO finance_budget_rows
-                       (section,name,amount,frequency,created_at_utc,updated_at_utc)
-                       VALUES(?,?,?,?,?,?)""",
-                    (section, row_name, amount, frequency, ts, ts),
-                )
+                conn.execute("INSERT INTO finance_budget_rows(section,name,amount,frequency,created_at_utc,updated_at_utc) VALUES(?,?,?,?,?,?)",
+                             (section, row_name, amount, frequency, ts, ts))
+            if section == "expenses":
+                conn.execute("INSERT OR IGNORE INTO finance_categories(name,is_custom,created_at_utc) VALUES(?,1,?)", (row_name, ts))
+                if stage: stages[row_name] = stage
+        for key, value in (("budget_name", name.strip()), ("budget_revision", str(current + 1)), ("budget_stages", json.dumps(stages))):
+            conn.execute("INSERT OR REPLACE INTO finance_settings(key,value) VALUES(?,?)", (key, value))
         conn.commit()
+    return current + 1
 
 
 def add_budget_row(section: str, name: str) -> bool:
@@ -410,6 +463,9 @@ def budget_rows_for_template(data: dict) -> list[dict]:
                 "frequency": src.get("frequency", "Monthly"),
                 "chart_kind": chart_kind,
                 "chart_group": chart_group,
+                "stage": budget.stage_for(section, name, data.get("stages")),
+                "visible": bool(float(src.get("amount", 0))) or name in budget.COMMON_ROWS,
+                "monthly": budget.monthlyize(src.get("amount", 0), src.get("frequency", "Monthly")),
             })
     return rows
 

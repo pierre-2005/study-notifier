@@ -24,7 +24,7 @@ from app.auth import (get_user_by_id, verify_password, update_user_password,
 from app.db import get_conn
 
 router=APIRouter(tags=['account-security'])
-templates=Jinja2Templates(directory=str(Path(__file__).resolve().parent/'templates'))
+from app.ui import templates
 
 def init_account_security_schema():
     # Tables/columns are created in init_auth_schema, which is always called first.

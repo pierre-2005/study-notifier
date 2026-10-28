@@ -11,8 +11,12 @@ def parse_local_datetime_localinput(dt_str: str, tz_name: str) -> datetime:
     """
     tz = ZoneInfo(tz_name)
     local_naive = datetime.strptime(dt_str, "%Y-%m-%dT%H:%M")
-    local_aware = local_naive.replace(tzinfo=tz)
-    return local_aware.astimezone(timezone.utc)
+    candidates = []
+    for fold in (0,1):
+        candidate=local_naive.replace(tzinfo=tz,fold=fold).astimezone(timezone.utc)
+        if candidate.astimezone(tz).replace(tzinfo=None)==local_naive and candidate not in candidates: candidates.append(candidate)
+    if len(candidates)!=1: raise ValueError('Choose an unambiguous local time outside the daylight-saving transition.')
+    return candidates[0]
 
 def utc_to_local_str(dt_utc_iso: str | None, tz_name: str) -> str:
     if not dt_utc_iso:

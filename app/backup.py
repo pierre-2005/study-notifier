@@ -1,3 +1,4 @@
+from contextlib import closing
 """One-time automatic pre-v3 backup using SQLite's consistent backup API."""
 from pathlib import Path
 import sqlite3
@@ -12,13 +13,13 @@ def pre_v37_backup():
         return None
     target=source.with_name(source.stem+'.pre-mlo-v3.7.sqlite.backup')
     if target.exists():
-        with sqlite3.connect(f'file:{target}?mode=ro',uri=True) as saved:
+        with closing(sqlite3.connect(f'file:{target}?mode=ro',uri=True)) as saved:
             if saved.execute('PRAGMA quick_check').fetchone()[0]!='ok':
                 raise RuntimeError('The v3.7 migration backup failed its integrity check.')
         return target
     partial=target.with_name(target.name+'.partial')
-    with sqlite3.connect(f'file:{source}?mode=ro',uri=True,timeout=30) as original:
-        with sqlite3.connect(partial) as saved:
+    with closing(sqlite3.connect(f'file:{source}?mode=ro',uri=True,timeout=30)) as original:
+        with closing(sqlite3.connect(partial)) as saved:
             original.backup(saved)
             if saved.execute('PRAGMA quick_check').fetchone()[0]!='ok':
                 raise RuntimeError('The v3.7 migration backup failed its integrity check.')
@@ -36,8 +37,8 @@ def pre_v3_backup():
     source.parent.mkdir(parents=True,exist_ok=True)
     dest=target.with_suffix(target.suffix+'.partial')
     try:
-        with sqlite3.connect(str(source),timeout=30) as original:
-            with sqlite3.connect(str(dest),timeout=30) as saved:
+        with closing(sqlite3.connect(str(source),timeout=30)) as original:
+            with closing(sqlite3.connect(str(dest),timeout=30)) as saved:
                 original.backup(saved)
         os.replace(dest,target)
         return target
@@ -53,8 +54,8 @@ def pre_consolidation_backup():
     if target.exists(): return target
     dest=target.with_suffix(target.suffix+'.partial')
     try:
-        with sqlite3.connect(str(source),timeout=30) as original:
-            with sqlite3.connect(str(dest),timeout=30) as saved: original.backup(saved)
+        with closing(sqlite3.connect(str(source),timeout=30)) as original:
+            with closing(sqlite3.connect(str(dest),timeout=30)) as saved: original.backup(saved)
         os.replace(dest,target)
         return target
     finally:
@@ -69,8 +70,8 @@ def pre_v34_backup():
     if target.exists(): return target
     partial=target.with_name(target.name+'.partial')
     try:
-        with sqlite3.connect(str(source),timeout=30) as existing:
-            with sqlite3.connect(str(partial),timeout=30) as saved:
+        with closing(sqlite3.connect(str(source),timeout=30)) as existing:
+            with closing(sqlite3.connect(str(partial),timeout=30)) as saved:
                 existing.backup(saved)
         os.replace(partial,target)
         return target
@@ -86,8 +87,8 @@ def pre_v36_backup():
     if target.exists(): return target
     partial=target.with_name(target.name+'.partial')
     try:
-        with sqlite3.connect(str(source),timeout=30) as original:
-            with sqlite3.connect(str(partial),timeout=30) as saved:
+        with closing(sqlite3.connect(str(source),timeout=30)) as original:
+            with closing(sqlite3.connect(str(partial),timeout=30)) as saved:
                 original.backup(saved)
         os.replace(partial,target)
         return target

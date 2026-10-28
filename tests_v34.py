@@ -20,8 +20,8 @@ with TestClient(app,follow_redirects=False) as c:
     assert c.get('/life/insights').status_code==200
     assert c.get('/life/tasks?project=').status_code==200, 'Empty project selection must not error'
     assert 'Add task' in c.get('/life').text
-    assert 'flow34.js' in c.get('/life').text
-    assert 'max-age=31536000' in c.get(f'/static/flow34.css?v={APP_VERSION}').headers['cache-control']
+    assert 'capture.js' in c.get('/life').text
+    assert 'max-age=31536000' in c.get(f'/static/app.css?v={APP_VERSION}').headers['cache-control']
     tasks=[(1, None,None,f'Backlog {i:03}', '', 'todo','normal','Personal',None, f'2026-10-10T12:00:00',f'2026-10-10T12:00:00') for i in range(127)]
     with get_conn() as db:
         uid=db.execute("SELECT id FROM users WHERE username='admin'").fetchone()['id']

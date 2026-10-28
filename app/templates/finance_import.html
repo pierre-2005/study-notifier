@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="mlo-legacy-trail"><a href="/finance">Finance overview</a><span> / </span><span>Import</span></div>
 {% include "finance_nav.html" %}
 
 
@@ -17,8 +16,8 @@
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5">
   <div class="card lg:col-span-2 p-5">
     <form method="post" action="/finance/import" enctype="multipart/form-data" class="space-y-3">
-      <div class="label">PDF statements</div>
-      <input class="input" type="file" name="files" accept="application/pdf,.pdf" multiple required>
+      <label class="label" for="field-finance_import-1-{{loop.index if loop is defined else 0}}">PDF statements</label>
+      <input id="field-finance_import-1-{{loop.index if loop is defined else 0}}" class="input" type="file" name="files" accept="application/pdf,.pdf" multiple required>
       <button class="btn btn-primary" type="submit">Import PDFs</button>
     </form>
 

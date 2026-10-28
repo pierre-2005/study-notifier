@@ -14,8 +14,7 @@ from app.lifeos import user_id, now, pick, safe_day, AREAS, PRIORITIES
 from app.meta import APP_VERSION
 
 router=APIRouter(prefix='/life/import',tags=['import'])
-templates=Jinja2Templates(directory=str(Path(__file__).resolve().parent/'templates'))
-templates.env.globals['APP_VERSION']=APP_VERSION
+from app.ui import templates
 
 
 def init_import_schema():

@@ -1,6 +1,7 @@
 """Private syllabus review and atomic, duplicate-safe import into real MLO tasks."""
 from datetime import date, datetime, timedelta, timezone
 import hashlib
+import shutil
 import json
 import os
 from pathlib import Path
@@ -25,8 +26,7 @@ from app.outline_parse import candidates
 from app import outline_ai
 
 router=APIRouter(prefix='/life/study',tags=['course outlines'])
-templates=Jinja2Templates(directory=str(Path(__file__).parent/'templates'))
-templates.env.globals['APP_VERSION']=APP_VERSION
+from app.ui import templates
 MAX_BYTES=10*1024*1024
 
 
@@ -73,7 +73,7 @@ def parse_upload(data, extension):
         try:
             result=subprocess.run([sys.executable,'-m','app.outline_parse',str(path),extension],
                 capture_output=True,timeout=90,cwd=str(Path(__file__).resolve().parent.parent),
-                env={"PATH":"/usr/bin:/bin","LANG":"C.UTF-8","PYTHONPATH":str(Path(__file__).resolve().parent.parent)})
+                env={**{k:os.environ[k] for k in ("SystemRoot","TEMP","TMP","TESSDATA_PREFIX") if k in os.environ},"PATH":os.environ.get("PATH","") if os.name=="nt" else "/usr/bin:/bin","LANG":"C.UTF-8","PYTHONUTF8":"1","PYTHONPATH":str(Path(__file__).resolve().parent.parent),"MLO_TESSERACT":shutil.which("tesseract") or "tesseract","MLO_PDFTOPPM":shutil.which("pdftoppm") or "pdftoppm"})
         except subprocess.TimeoutExpired as exc:
             raise ValueError('This document took too long to read. Split it into smaller files.') from exc
         if len(result.stdout)>3_000_000:
@@ -260,4 +260,4 @@ def course_page(request:Request,course_id:int):
         if not course: raise HTTPException(404,'Course not found')
         assessments=db.execute('''SELECT a.*,t.status,t.title AS task_title,t.due_on AS task_due_on FROM life_course_assessments a
             LEFT JOIN life_tasks t ON t.id=a.task_id WHERE a.course_id=? AND a.user_id=? ORDER BY a.due_on,a.id''',(course_id,uid)).fetchall()
-    return view(request,'course_detail_v37.html',course=course,assessments=assessments)
+    return view(request,'study_course.html',course=course,assessments=assessments)

@@ -17,7 +17,7 @@
     panel.querySelector('[data-inspector-body]').innerHTML='<h2 id="inspector-title">Loading task…</h2><p role="status">Loading…</p>';
     if(!panel.open)panel.showModal();
     try{
-      const r=await fetch(`/api/v37/tasks/${id}`,{credentials:'same-origin',signal:controller.signal});
+      const r=await fetch(`/api/v4/tasks/${id}`,{credentials:'same-origin',signal:controller.signal});
       if(!r.ok)throw Error(r.status===404?'Task not found.':'Could not load this task. Sign in again or retry.');
       const data=await r.json();if(selectedId!==id||!panel)return;paint(data);
     }catch(error){if(error.name!=='AbortError'&&panel)panel.querySelector('[data-inspector-body]').innerHTML=`<h2 id="inspector-title">Task unavailable</h2><p role="alert">${esc(error.message)}</p><a href="/life/tasks/${id}" data-no-preview>Open task page</a>`;}
@@ -29,7 +29,7 @@
       e.preventDefault();const button=e.target.querySelector('button[type=submit]');if(!button||button.disabled)return;button.disabled=true;
       const fd=new FormData(e.target),body=Object.fromEntries(fd);body.estimated_minutes=Number(body.estimated_minutes);body.due_on=body.due_on||null;body.expected_updated_at=revision;
       try{
-        const response=await fetch(`/api/v37/tasks/${t.id}`,{method:'PATCH',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),result=await response.json();
+        const response=await fetch(`/api/v4/tasks/${t.id}`,{method:'PATCH',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),result=await response.json();
         if(!response.ok)throw Error(typeof result.detail==='string'?result.detail:'Check the task fields and try again.');
         document.dispatchEvent(new CustomEvent('mlo:task-updated',{detail:result.task}));
         if(!panel)return;

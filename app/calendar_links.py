@@ -19,8 +19,7 @@ from app.lifeos import user_id
 from app.meta import APP_VERSION
 
 router = APIRouter(prefix='/life/calendars',tags=['calendar connections'])
-templates=Jinja2Templates(directory=str(Path(__file__).resolve().parent/'templates'))
-templates.env.globals['APP_VERSION']=APP_VERSION
+from app.ui import templates
 PUBLIC_URL=os.environ.get('MLO_PUBLIC_URL','').rstrip('/')
 KEY=os.environ.get('MLO_CREDENTIAL_KEY','').strip()
 AUTO_SYNC = os.environ.get('MLO_CALENDAR_AUTO_SYNC','true').lower() in ('1','yes','on','true')

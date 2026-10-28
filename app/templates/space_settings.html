@@ -1,0 +1,15 @@
+    {% if section['is_owner'] %}<section class="card"><div class="card-h"><div class="h2">Space settings</div></div><form class="card-b space-y-3" method="post" action="/sections/{{ section['id'] }}/update" data-enhanced-form><input type="hidden" name="settings_form" value="1"><input type="hidden" name="base_version" value="{{section.updated_at_utc}}">
+      <label class="field"><span class="label">Name</span><input class="input" name="name" value="{{ section['name'] }}" required></label>
+      <label class="field"><span class="label">Icon</span><input class="input" name="icon" value="{{ section['icon'] }}" maxlength="8"></label>
+      <label class="field"><span class="label">Description</span><textarea class="textarea" name="description">{{ section['description'] }}</textarea></label>
+      
+      <label class="switch-row"><span><strong>Show in sidebar</strong><small>You can still open hidden spaces from All spaces.</small></span><input type="checkbox" name="show_in_sidebar" {% if section['show_in_sidebar'] %}checked{% endif %}><i></i></label>
+      <button class="btn btn-primary" type="submit">Save space</button>
+    </form></section>{% endif %}
+
+    {% if section['is_owner'] %}<section class="card"><div class="card-h"><div><div class="h2">Share</div><div class="muted mt-1">Give an approved user access to this space.</div></div></div><div class="card-b">
+      {% if shareable_users %}<form method="post" action="/sections/{{ section['id'] }}/share" class="space-y-3"><select class="input" name="user_id">{% for u in shareable_users %}<option value="{{ u['id'] }}">{{ u['display_name'] or u['username'] }} (@{{ u['username'] }})</option>{% endfor %}</select><label class="switch-row"><span><strong>Can edit</strong></span><input type="checkbox" name="can_edit" checked><i></i></label><button class="btn" type="submit">Share space</button></form>{% endif %}
+      <div class="share-list mt-3">{% for u in members %}<div class="share-user"><div><strong>{{ u['display_name'] or u['username'] }}</strong><div class="small">{{ 'Can edit' if u['can_edit'] else 'View only' }}</div></div><form method="post" action="/sections/{{ section['id'] }}/share/{{ u['id'] }}/remove"><button class="btn" type="submit">Remove</button></form></div>{% else %}<div class="muted">Not shared with anyone yet.</div>{% endfor %}</div>
+    </div></section>{% endif %}
+
+    {% if section['is_owner'] %}<section class="card"><div class="card-b"><form method="post" action="/sections/{{ section['id'] }}/delete" onsubmit="return confirm('Delete this space and everything inside it?');"><button class="btn btn-danger" type="submit">Delete space</button></form></div></section>{% endif %}

@@ -11,8 +11,7 @@ from app.db import get_conn, _ensure_column
 from app.meta import APP_VERSION
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-templates.env.globals["APP_VERSION"] = APP_VERSION
+from app.ui import templates
 router = APIRouter(prefix="/timers", tags=["timers"])
 
 

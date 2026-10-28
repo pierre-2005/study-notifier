@@ -45,7 +45,48 @@ def main():
                 for text in ('Check calculations','Create the final diagrams'):
                     client.post('/life/tasks',data={'title':text,'project_id':pid,'parent_id':tid})
         client.post('/life/notes',data={'title':'Ideas for the next design review','body':'Questions to explore in the next meeting.'})
-        (root/'fixture.json').write_text(json.dumps({'project_id':pid,'task_ids':ids}))
+        fixture={'project_id':pid,'task_ids':ids}
+        def post(path,**data):
+            response=client.post(path,data=data)
+            assert response.status_code==303,(path,response.status_code,response.text[:300])
+            return response
+        post('/courses/new',name='Electrical systems',term='Fall 2026',color='#3975b7')
+        with get_conn() as db:fixture['course_id']=db.execute('SELECT MAX(id) FROM courses').fetchone()[0]
+        post('/items/new',course_id=fixture['course_id'],type='exam',title='Systems midterm',due_at_local='2026-11-20T10:00',weight='25')
+        post('/jobs/new',company='Northwind Engineering',role='Design intern',link='https://example.com/careers',status='interview',followup_at_local='2026-11-15T09:00')
+        post('/expenses/new',title='Apartment rent',category='Housing',amount='1450',due_at_local='2026-11-01T09:00',recurrence='monthly')
+        post('/classes/new',title='Systems lecture',weekday='1',start_time_local='10:00',duration_minutes='50',location='Engineering 204')
+        post('/events/new',title='Project review',start_at_local='2026-11-12T14:00',end_at_local='2026-11-12T15:00')
+        post('/life/goals',title='Complete the semester project',target_on='2026-12-15')
+        post('/life/habits',title='Review notes for 15 minutes')
+        for key,table in [('item_id','items'),('job_id','jobs'),('expense_id','expenses'),('class_id','class_meetings'),('event_id','events'),('note_id','life_notes')]:
+            with get_conn() as db:fixture[key]=db.execute('SELECT MAX(id) FROM '+table).fetchone()[0]
+        for key,kind,title in [('space_id','blank','Design notebook'),('grocery_id','grocery','Home groceries')]:
+            fixture[key]=int(post('/sections/new',name=title,section_type=kind).headers['location'].rsplit('/',1)[1])
+        sid=fixture['space_id'];gid=fixture['grocery_id']
+        post(f'/sections/{sid}/update',content='Questions, decisions and reference material for the next design review.')
+        post(f'/sections/{sid}/checklist/add',content='Review component availability')
+        post(f'/sections/{gid}/groceries/items/add',name='Oats',unit='kg',aisle='Breakfast')
+        post(f'/sections/{gid}/groceries/items/add',name='Milk',unit='L',aisle='Dairy')
+        post(f'/sections/{gid}/groceries/recipes/add',name='Overnight oats',notes='Prepare for the next morning.')
+        with get_conn() as db:
+            iid=db.execute('SELECT id FROM grocery_items WHERE name=?',('Oats',)).fetchone()[0]
+            rid=db.execute('SELECT MAX(id) FROM grocery_recipes').fetchone()[0]
+        post(f'/sections/{gid}/groceries/recipes/{rid}/ingredient',grocery_item_id=iid,quantity='0.1',unit='kg')
+        post(f'/sections/{gid}/groceries/prices/add',grocery_item_id=iid,total_cost='4.50',quantity='1',store='Local market',purchased_on='2026-10-20')
+        from app.finance import service
+        from app.finance.parser import Transaction
+        service.save_budget_rows('Monthly plan',[
+            {'section':'income','name':'Employment income','amount':'2400','frequency':'Biweekly'},
+            {'section':'expenses','name':'Mortgage or rent','amount':'1450','frequency':'Monthly','stage':'essentials'},
+            {'section':'expenses','name':'Groceries','amount':'110','frequency':'Weekly','stage':'essentials'},
+            {'section':'expenses','name':'Streaming media subscriptions','amount':'22.50','frequency':'Monthly','stage':'flexible'},
+            {'section':'savings','name':'Emergency fund','amount':'300','frequency':'Monthly'}])
+        with get_conn() as db:
+            for index in range(72):
+                service.insert_transaction(db,Transaction(date=f'2026-{9+index%2:02d}-{1+index%28:02d}',description=['Weekly groceries','Coffee with friends','Transit pass','Bookshop'][index%4]+f' {index+1}',amount=round(12.45+index*1.63,2),category=['Groceries','Cafés and coffee shops','Public transit','Hobbies and recreation'][index%4],bank='BMO' if index%2 else 'Scotiabank',source_file='demonstration.pdf'))
+            db.commit()
+        (root/'fixture.json').write_text(json.dumps(fixture))
     import uvicorn
     uvicorn.run(app,host='127.0.0.1',port=args.port,log_level='warning')
 

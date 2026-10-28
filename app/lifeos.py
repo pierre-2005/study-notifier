@@ -22,9 +22,7 @@ from app.db import get_conn
 from app.meta import APP_VERSION
 
 router = APIRouter(prefix="/life", tags=["life-os"])
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
-templates.env.globals["APP_VERSION"] = APP_VERSION
-templates.env.globals["current_day"] = lambda: date.today().isoformat()
+from app.ui import templates
 
 AREAS = ("Personal", "Work", "Study", "Home", "Health", "Other")
 PRIORITIES = ("low", "normal", "high", "urgent")
@@ -858,13 +856,20 @@ def note_detail(request:Request,note_id:int):
 
 
 @router.post('/notes/{note_id}/edit')
-def save_note(request:Request,note_id:int,title:str=Form(...),body:str=Form('')):
+def save_note(request:Request,note_id:int,title:str=Form(...),body:str=Form(''),base_version:str|None=Form(None)):
     uid=user_id(request)
+    title=text_clean(title,200)
+    if not title: raise HTTPException(422,'Note title is required.')
+    if len(body)>100000: raise HTTPException(422,'Notes can contain up to 100,000 characters.')
     with get_conn() as conn:
-        note_access(conn,uid,note_id,edit=True)
-        conn.execute('UPDATE life_notes SET title=?,body=?,updated_at=? WHERE id=?',
-                     (text_clean(title,200),text_clean(body,100000),now(),note_id))
+        conn.execute('BEGIN IMMEDIATE')
+        note=note_access(conn,uid,note_id,edit=True)
+        if base_version is not None and base_version!=note['updated_at']:
+            raise HTTPException(409,'This note changed in another tab or by a collaborator. Your draft is still here. Open the saved note in another tab to compare.')
+        version=now()
+        conn.execute('UPDATE life_notes SET title=?,body=?,updated_at=? WHERE id=?', (title,body,version,note_id))
         conn.commit()
+    if 'application/json' in request.headers.get('accept',''): return JSONResponse({'ok':True,'version':version})
     return redirect(f'/life/notes/{note_id}')
 
 
@@ -879,7 +884,7 @@ def delete_note(request:Request,note_id:int):
 
 
 @router.get('/calendar',response_class=HTMLResponse)
-def calendar_page(request:Request, month:str=''):
+def calendar_page(request:Request, month:str='', view:str='auto'):
     uid=user_id(request)
     from app.v37 import read_user_setup
     with get_conn() as db: zone=ZoneInfo(read_user_setup(db,uid)['timezone'])
@@ -891,9 +896,9 @@ def calendar_page(request:Request, month:str=''):
     if first.year<2000 or first.year>2100: first=local_today.replace(day=1)
     last=date(first.year+(first.month//12),first.month%12+1,1)
     grouped={}
-    def add(day,title,href,kind,status=''):
+    def add(day,title,href,kind,status='',clock=''):
         if first<=day<last:
-            grouped.setdefault(day.day,[]).append({'title':title,'href':href,'kind':kind,'status':status})
+            grouped.setdefault(day.day,[]).append({'title':title,'href':href,'kind':kind,'status':status,'clock':clock})
     def local_day(utc_value):
         try:
             ts=datetime.fromisoformat(str(utc_value).replace('Z','+00:00'))
@@ -923,7 +928,7 @@ def calendar_page(request:Request, month:str=''):
                 for offset in range((last-first).days):
                     d=first+timedelta(days=offset)
                     if d.weekday()==x['weekday']:
-                        add(d,x['title']+' · '+x['start_time_local'],f'/classes/{x["id"]}/edit','class')
+                        add(d,x['title']+' Ã‚Â· '+x['start_time_local'],f'/classes/{x["id"]}/edit','class')
             for x in conn.execute("SELECT id,title,due_at_utc,status FROM expenses WHERE status='unpaid' AND due_at_utc>=? AND due_at_utc<?",((first-timedelta(days=1)).isoformat(),(last+timedelta(days=1)).isoformat())):
                 d=local_day(x['due_at_utc'])
                 if d: add(d,x['title'],f'/expenses/{x["id"]}','bill')
@@ -935,7 +940,7 @@ def calendar_page(request:Request, month:str=''):
                          WHERE user_id=? AND start_at_utc>=? AND start_at_utc<? ORDER BY start_at_utc LIMIT 500''',
                          (uid,(first-timedelta(days=1)).isoformat(),(last+timedelta(days=1)).isoformat())):
             d=local_day(x['start_at_utc'])
-            if d:add(d,x['title'],f'/life/calendars/local/{x["id"]}/edit','event')
+            if d:add(d,x['title'],f'/life/calendars/local/{x["id"]}/edit','event',clock=datetime.fromisoformat(x['start_at_utc'].replace('Z','+00:00')).astimezone(zone).strftime('%H:%M'))
         # User-specific, previously synchronized external events. No HTTP during page loads.
         for x in conn.execute("""SELECT e.title,e.starts_on,e.starts_at,e.is_all_day,e.href,e.uid,e.connection_id,c.provider,c.label FROM life_external_events e
                       JOIN life_calendar_connections c ON c.id=e.connection_id
@@ -946,27 +951,29 @@ def calendar_page(request:Request, month:str=''):
             d=instant.date() if instant else None
             if d:add(d, x['title'], (f"/life/calendars/{x['connection_id']}/events/{urllib.parse.quote(x['uid'],safe='')}/edit" if x['provider'] in ('google','microsoft') else (x['href'] if x['href'] and x['href'].startswith('https://') else '/life/calendars')), 'external')
     for values in grouped.values():
-        values.sort(key=lambda x: {'class':0,'exam':1,'assignment':2,'lab':2,'event':3,'task':4,'job':5,'bill':6}.get(x['kind'],9))
+        values.sort(key=lambda x: (x.get('clock',''),{'class':0,'exam':1,'assignment':2,'lab':2,'event':3,'task':4,'job':5,'bill':6}.get(x['kind'],9)))
     weeks=calendar.Calendar(firstweekday=0).monthdatescalendar(first.year,first.month)
     prev=(first-timedelta(days=1)).replace(day=1).strftime('%Y-%m')
     nxt=last.strftime('%Y-%m')
-    return render(request,'life_calendar.html',month=first.strftime('%B %Y'),month_num=first.month,weeks=weeks,events=grouped,prev=prev,nxt=nxt,today=local_today.isoformat(),is_admin=is_admin)
+    return render(request,'life_calendar.html',month=first.strftime('%B %Y'),month_num=first.month,view=view if view in ('auto','month','agenda') else 'auto',month_key=first.strftime('%Y-%m'),agenda_days=[{'day':date(first.year,first.month,n),'events':events} for n,events in sorted(grouped.items())],weeks=weeks,events=grouped,prev=prev,nxt=nxt,today=local_today.isoformat(),is_admin=is_admin)
 
 
 @router.get('/goals',response_class=HTMLResponse)
 def goals_page(request:Request):
     uid=user_id(request)
     with get_conn() as conn:
+        local_day=user_day(conn,uid).isoformat()
         goals=conn.execute('SELECT * FROM life_goals WHERE owner_id=? ORDER BY status,target_on,id DESC',(uid,)).fetchall()
         habits=conn.execute('''SELECT h.*,EXISTS(SELECT 1 FROM life_habit_days d WHERE d.habit_id=h.id AND d.day=?) AS checked,
-          (SELECT COUNT(*) FROM life_habit_days d WHERE d.habit_id=h.id AND d.day>=?) AS days_7
-          FROM life_habits h WHERE h.owner_id=? ORDER BY h.id DESC''',(today(),(date.today()-timedelta(days=6)).isoformat(),uid)).fetchall()
-    return render(request,'life_goals.html',goals=goals,habits=habits,today=today())
+          (SELECT COUNT(*) FROM life_habit_days d WHERE d.habit_id=h.id AND d.day>=? AND d.day<=?) AS days_7
+          FROM life_habits h WHERE h.owner_id=? ORDER BY h.id DESC''',(local_day,(date.fromisoformat(local_day)-timedelta(days=6)).isoformat(),local_day,uid)).fetchall()
+    return render(request,'life_goals.html',goals=goals,habits=habits,today=local_day)
 
 
 @router.post('/goals')
 def new_goal(request:Request,title:str=Form(...),target_on:str=Form(''),area:str=Form('Personal')):
     uid=user_id(request)
+    if not text_clean(title,240): raise HTTPException(422,'Goal title is required.')
     with get_conn() as conn:
         conn.execute("INSERT INTO life_goals(owner_id,title,target_on,area,created_at) VALUES(?,?,?,?,?)",
                      (uid,text_clean(title,240),safe_day(target_on),pick(area,AREAS,'Personal'),now()))
@@ -978,6 +985,7 @@ def new_goal(request:Request,title:str=Form(...),target_on:str=Form(''),area:str
 def complete_goal(request:Request,goal_id:int):
     uid=user_id(request)
     with get_conn() as conn:
+        if not conn.execute('SELECT 1 FROM life_goals WHERE id=? AND owner_id=?',(goal_id,uid)).fetchone(): raise HTTPException(404,'Goal not found.')
         conn.execute("UPDATE life_goals SET status=CASE WHEN status='complete' THEN 'active' ELSE 'complete' END WHERE id=? AND owner_id=?",(goal_id,uid))
         conn.commit()
     return redirect('/life/goals')
@@ -986,6 +994,7 @@ def complete_goal(request:Request,goal_id:int):
 @router.post('/habits')
 def new_habit(request:Request,title:str=Form(...),area:str=Form('Personal')):
     uid=user_id(request)
+    if not text_clean(title,240): raise HTTPException(422,'Habit title is required.')
     with get_conn() as conn:
         conn.execute('INSERT INTO life_habits(owner_id,title,area,created_at) VALUES(?,?,?,?)',
                      (uid,text_clean(title,240),pick(area,AREAS,'Personal'),now()))
@@ -997,14 +1006,63 @@ def new_habit(request:Request,title:str=Form(...),area:str=Form('Personal')):
 def check_habit(request:Request,habit_id:int):
     uid=user_id(request)
     with get_conn() as conn:
+        local_day=user_day(conn,uid).isoformat()
         if not conn.execute('SELECT 1 FROM life_habits WHERE id=? AND owner_id=?',(habit_id,uid)).fetchone():
             raise HTTPException(404,'Habit not found')
-        if conn.execute('SELECT 1 FROM life_habit_days WHERE habit_id=? AND day=?',(habit_id,today())).fetchone():
-            conn.execute('DELETE FROM life_habit_days WHERE habit_id=? AND day=?',(habit_id,today()))
+        if conn.execute('SELECT 1 FROM life_habit_days WHERE habit_id=? AND day=?',(habit_id,local_day)).fetchone():
+            conn.execute('DELETE FROM life_habit_days WHERE habit_id=? AND day=?',(habit_id,local_day))
         else:
-            conn.execute('INSERT INTO life_habit_days(habit_id,day) VALUES(?,?)',(habit_id,today()))
+            conn.execute('INSERT INTO life_habit_days(habit_id,day) VALUES(?,?)',(habit_id,local_day))
         conn.commit()
     return redirect('/life/goals')
+
+
+@router.post('/goals/{goal_id}/edit')
+def edit_goal(request:Request,goal_id:int,title:str=Form(...),target_on:str=Form(''),area:str=Form('Personal')):
+    uid=user_id(request)
+    if not text_clean(title,240): raise HTTPException(422,'Goal title is required.')
+    if target_on and not safe_day(target_on): raise HTTPException(422,'Choose a valid target date.')
+    with get_conn() as conn:
+        if not conn.execute('SELECT 1 FROM life_goals WHERE id=? AND owner_id=?',(goal_id,uid)).fetchone(): raise HTTPException(404,'Goal not found.')
+        conn.execute('UPDATE life_goals SET title=?,target_on=?,area=? WHERE id=? AND owner_id=?',(text_clean(title,240),safe_day(target_on),pick(area,AREAS,'Personal'),goal_id,uid));conn.commit()
+    return redirect('/life/goals')
+
+
+@router.post('/goals/{goal_id}/delete')
+def delete_goal(request:Request,goal_id:int):
+    with get_conn() as conn:
+        result=conn.execute('DELETE FROM life_goals WHERE id=? AND owner_id=?',(goal_id,user_id(request)))
+        if not result.rowcount: raise HTTPException(404,'Goal not found.')
+        conn.commit()
+    return redirect('/life/goals')
+
+
+@router.post('/habits/{habit_id}/edit')
+def edit_habit(request:Request,habit_id:int,title:str=Form(...),area:str=Form('Personal')):
+    if not text_clean(title,240): raise HTTPException(422,'Habit title is required.')
+    with get_conn() as conn:
+        result=conn.execute('UPDATE life_habits SET title=?,area=? WHERE id=? AND owner_id=?',(text_clean(title,240),pick(area,AREAS,'Personal'),habit_id,user_id(request)))
+        if not result.rowcount: raise HTTPException(404,'Habit not found.')
+        conn.commit()
+    return redirect('/life/goals')
+
+
+@router.post('/habits/{habit_id}/delete')
+def delete_habit(request:Request,habit_id:int):
+    with get_conn() as conn:
+        uid=user_id(request)
+        if not conn.execute('SELECT 1 FROM life_habits WHERE id=? AND owner_id=?',(habit_id,uid)).fetchone(): raise HTTPException(404,'Habit not found.')
+        conn.execute('DELETE FROM life_habit_days WHERE habit_id=?',(habit_id,))
+        conn.execute('DELETE FROM life_habits WHERE id=? AND owner_id=?',(habit_id,uid));conn.commit()
+    return redirect('/life/goals')
+
+
+@router.post('/tasks/{task_id}/dependency/{dependency_id}/delete')
+def remove_dependency(request:Request,task_id:int,dependency_id:int):
+    with get_conn() as conn:
+        task_access(conn,user_id(request),task_id,edit=True)
+        conn.execute('DELETE FROM life_task_dependencies WHERE task_id=? AND depends_on_id=?',(task_id,dependency_id));conn.commit()
+    return redirect(f'/life/tasks/{task_id}')
 
 
 @router.get('/focus',response_class=HTMLResponse)

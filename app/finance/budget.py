@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+import re
 
 from app.finance.parser import STANDARD_CATEGORIES, Transaction
 
@@ -32,7 +34,7 @@ EXPENSE_GROUPS = {
         "Internet, cable and home phone", "Mobile phone", "Streaming media subscriptions", "Other digital subscriptions",
     ],
     "Food": [
-        "Groceries", "Meal kits and food-delivery services", "Cafés and coffee shops",
+        "Groceries", "Meal kits and food-delivery services", "CafÃ©s and coffee shops",
         "Restaurants (dine-in, delivery or takeout)",
     ],
     "Debt payments": [
@@ -70,13 +72,42 @@ SAVINGS_ROWS = [
 ]
 
 
-def _number(value) -> float:
+def money_decimal(value, *, signed=False) -> Decimal:
+    """Reject malformed money before writes, with deterministic cents."""
+    raw = str(value if value is not None else "").strip() or "0"
+    if raw.startswith("$"): raw = raw[1:]
+    pattern = r"(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,6})?"
+    if signed: pattern = "-?" + pattern
+    if len(raw) > 30 or not re.fullmatch(pattern, raw):
+        raise ValueError("Enter a valid amount, such as 125.50.")
     try:
-        if isinstance(value, str):
-            value = value.replace("$", "").replace(",", "").strip()
-        return max(0.0, float(value or 0.0))
-    except Exception:
-        return 0.0
+        amount = Decimal(raw.replace(",", ""))
+        if not amount.is_finite() or abs(amount) > Decimal("999999999.99"):
+            raise ValueError("Amount must be within 999,999,999.99.")
+        return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    except InvalidOperation as exc:
+        raise ValueError("Enter a valid amount.") from exc
+
+
+def _number(value) -> float:
+    return float(money_decimal(value))
+
+
+STAGES = [("income", "Income"), ("essentials", "Essentials"),
+          ("flexible", "Flexible spending"), ("savings", "Savings"), ("review", "Review")]
+FLEXIBLE_TERMS = ("streaming", "subscription", "meal kit", "food-delivery", "café", "restaurant",
+                  "recreation", "hobbies", "tickets", "gifts", "donation", "beauty", "spa", "decor")
+COMMON_ROWS = {"Employment income", "Mortgage or rent", "Groceries", "Electricity, gas and water",
+               "Mobile phone", "Public transit", "Restaurants (dine-in, delivery or takeout)",
+               "Streaming media subscriptions", "Emergency fund"}
+
+
+def stage_for(section: str, name: str, overrides: dict | None = None) -> str:
+    if section in ("income", "custom_income"): return "income"
+    if section in ("savings", "custom_savings"): return "savings"
+    override = (overrides or {}).get(name)
+    if override in ("essentials", "flexible"): return override
+    return "flexible" if any(term in name.lower() for term in FLEXIBLE_TERMS) else "essentials"
 
 
 def normalize_frequency(value: str, default: str = "Monthly") -> str:
@@ -217,7 +248,7 @@ def build_recommendations(rows: list[dict], transactions: list[Transaction], cas
         recs.append("You are within every spending limit you entered. Your current category limits look sustainable based on the statements loaded.")
 
     discretionary_terms = (
-        "restaurant", "café", "coffee", "streaming", "digital subscription", "recreation",
+        "restaurant", "cafÃ©", "coffee", "streaming", "digital subscription", "recreation",
         "tickets", "hobbies", "gifts", "clothing", "beauty", "ride-share", "food-delivery",
     )
     essential_terms = ("rent", "mortgage", "property tax", "electricity", "insurance", "prescription", "childcare", "student loan")

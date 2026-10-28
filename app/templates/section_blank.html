@@ -1,20 +1,21 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="mlo-legacy-trail"><a href="/life/spaces">← Spaces</a><span> / </span><span>Details & management</span></div>
-<div class="finance-back-row"><a class="back-link" href="/sections">← All sections</a></div>
+<div class="finance-back-row"><a class="back-link" href="/life/spaces">← Spaces</a></div>
 <div class="page-heading">
-  <div><div class="section-page-title"><span class="section-page-icon">{{ section['icon'] }}</span><div><div class="eyebrow">{{ 'Your section' if section['is_owner'] else 'Shared section' }}</div><h1>{{ section['name'] }}</h1></div></div><p>{{ section['description'] }}</p></div>
+  <div><div class="section-page-title"><span class="section-page-icon">{{ section['icon'] }}</span><div><div class="eyebrow">{{ 'Your space' if section['is_owner'] else 'Shared space' }}</div><h1>{{ section['name'] }}</h1></div></div><p>{{ section['description'] }}</p></div>
 </div>
 
-<div class="section-two-col">
+<nav class="subnav"><a href="?view=list" class="{{'active' if space_view!='settings' else ''}}">Content</a><a href="?view=settings" class="{{'active' if space_view=='settings' else ''}}">Settings & sharing</a></nav>
+<div class="space-content-layout">
+{% if space_view != 'settings' %}
   <div class="space-y-4">
-    <section class="card"><div class="card-h"><div><div class="h2">Notes</div><div class="muted mt-1">A simple flexible writing area for this section.</div></div></div><form method="post" action="/sections/{{ section['id'] }}/update" class="card-b">
-      <input type="hidden" name="name" value="{{ section['name'] }}"><input type="hidden" name="icon" value="{{ section['icon'] }}"><input type="hidden" name="description" value="{{ section['description'] }}"><input type="hidden" name="show_in_sidebar" value="{{ 'on' if section['show_in_sidebar'] else 'off' }}">
+    <section class="card"><div class="card-h"><div><div class="h2">Notes</div><div class="muted mt-1"></div></div></div><form method="post" action="/sections/{{ section['id'] }}/update" class="card-b" data-enhanced-form data-protect-draft>
+      <input type="hidden" name="base_version" value="{{section.updated_at_utc}}">
       <textarea class="section-editor" name="content" placeholder="Start writing…" {% if not section['can_edit'] %}readonly{% endif %}>{{ section['content'] }}</textarea>
       {% if section['can_edit'] %}<div class="hstack"><button class="btn btn-primary" type="submit">Save notes</button></div>{% endif %}
     </form></section>
 
-    <section class="card"><div class="card-h"><div><div class="h2">Checklist</div><div class="muted mt-1">Shared lightweight tasks for this section.</div></div></div><div class="card-b">
+    <section class="card"><div class="card-h"><div><div class="h2">Checklist</div><div class="muted mt-1"></div></div></div><div class="card-b">
       {% if section['can_edit'] %}<form method="post" action="/sections/{{ section['id'] }}/checklist/add" class="hstack mb-3"><input class="input" style="flex:1" name="content" placeholder="Add an item…" required><button class="btn" type="submit">Add</button></form>{% endif %}
       {% for item in checklist %}<div class="checklist-row {{ 'is-checked' if item['checked'] else '' }}">
         {% if section['can_edit'] %}<form method="post" action="/sections/{{ section['id'] }}/checklist/{{ item['id'] }}/toggle"><button class="checklist-toggle" type="submit" aria-label="Toggle item">{{ '✓' if item['checked'] else '' }}</button></form>{% else %}<span class="checklist-toggle">{{ '✓' if item['checked'] else '' }}</span>{% endif %}
@@ -24,22 +25,10 @@
     </div></section>
   </div>
 
+{% else %}
   <aside class="space-y-4">
-    {% if section['is_owner'] %}<section class="card"><div class="card-h"><div class="h2">Section settings</div></div><form class="card-b space-y-3" method="post" action="/sections/{{ section['id'] }}/update">
-      <label class="field"><span class="label">Name</span><input class="input" name="name" value="{{ section['name'] }}" required></label>
-      <label class="field"><span class="label">Icon</span><input class="input" name="icon" value="{{ section['icon'] }}" maxlength="8"></label>
-      <label class="field"><span class="label">Description</span><textarea class="textarea" name="description">{{ section['description'] }}</textarea></label>
-      <input type="hidden" name="content" value="{{ section['content']|e }}">
-      <label class="switch-row"><span><strong>Show in sidebar</strong><small>You can still open hidden sections from All sections.</small></span><input type="checkbox" name="show_in_sidebar" {% if section['show_in_sidebar'] %}checked{% endif %}><i></i></label>
-      <button class="btn btn-primary" type="submit">Save section</button>
-    </form></section>{% endif %}
-
-    {% if section['is_owner'] %}<section class="card"><div class="card-h"><div><div class="h2">Share</div><div class="muted mt-1">Give an approved user access to this section.</div></div></div><div class="card-b">
-      {% if shareable_users %}<form method="post" action="/sections/{{ section['id'] }}/share" class="space-y-3"><select class="input" name="user_id">{% for u in shareable_users %}<option value="{{ u['id'] }}">{{ u['display_name'] or u['username'] }} (@{{ u['username'] }})</option>{% endfor %}</select><label class="switch-row"><span><strong>Can edit</strong></span><input type="checkbox" name="can_edit" checked><i></i></label><button class="btn" type="submit">Share section</button></form>{% endif %}
-      <div class="share-list mt-3">{% for u in members %}<div class="share-user"><div><strong>{{ u['display_name'] or u['username'] }}</strong><div class="small">{{ 'Can edit' if u['can_edit'] else 'View only' }}</div></div><form method="post" action="/sections/{{ section['id'] }}/share/{{ u['id'] }}/remove"><button class="btn" type="submit">Remove</button></form></div>{% else %}<div class="muted">Not shared with anyone yet.</div>{% endfor %}</div>
-    </div></section>{% endif %}
-
-    {% if section['is_owner'] %}<section class="card"><div class="card-b"><form method="post" action="/sections/{{ section['id'] }}/delete" onsubmit="return confirm('Delete this section and everything inside it?');"><button class="btn btn-danger" type="submit">Delete section</button></form></div></section>{% endif %}
+{% include 'space_settings.html' %}
   </aside>
+{% endif %}
 </div>
 {% endblock %}
