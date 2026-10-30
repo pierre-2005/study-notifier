@@ -68,7 +68,7 @@ with tempfile.TemporaryDirectory() as temp:
         assert qr.status_code==200 and qr.headers['content-type']=='image/png'
         assert qr.content.startswith(b'\x89PNG\r\n\x1a\n')
         assert qr.headers.get('cache-control')=='private, no-store'
-        assert 'Pair phone with QR code' in admin.get('/life/devices').text
+        assert 'Pair this phone' in admin.get('/life/devices').text
         ok,msg=create_pending_user('beta','Beta user','beta-password-123')
         assert ok,msg
         with get_conn() as c:

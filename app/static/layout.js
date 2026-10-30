@@ -203,9 +203,8 @@
   }
   (async()=>{
     try {
-      const response=await fetch('/life/layout',{credentials:'same-origin',cache:'no-store'});
-      if(!response.ok)throw new Error('HTTP '+response.status);
-      const loaded=await response.json();
+      let loaded=JSON.parse(document.getElementById('mlo-layout-initial')?.textContent||'null');
+      if(!loaded){const response=await fetch('/life/layout',{credentials:'same-origin',cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);loaded=await response.json();}
       for(const key of Object.keys(prefs))if(Object.hasOwn(loaded,key)&&loaded[key]!==null)prefs[key]=loaded[key];
     } catch(error){console.warn('Layout defaults loaded',error);}
     render();

@@ -24,6 +24,7 @@ class WorkspaceV37Tests(unittest.TestCase):
           onboarding_completed INTEGER,updated_at TEXT);
         CREATE TABLE v37_reminder_rules (user_id INTEGER, kind TEXT,offset_minutes INTEGER,PRIMARY KEY(user_id,kind,offset_minutes));
         """)
+        self.db.execute("ALTER TABLE life_tasks ADD COLUMN updated_at TEXT NOT NULL DEFAULT 'fixture-revision'")
     def tearDown(self):self.db.close()
     def test_nested_subtasks_hidden_from_top_level(self):
         b=project_board(self.db,9);self.assertEqual(len(b["columns"]["todo"]),1)

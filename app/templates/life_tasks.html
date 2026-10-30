@@ -7,7 +7,7 @@
  <div class="mlo-saved-filter-list">{% for v in saved_views %}<div class="mlo-saved-filter"><a href="/life/tasks?{{v.query_params}}">{{v.name}}</a><form method="post" action="/life/tasks/views/{{v.id}}/delete"><button type="submit" aria-label="Remove saved filter {{v.name}}" title="Remove saved filter">×</button></form></div>{% endfor %}
  <form method="post" action="/life/tasks/views" class="mlo-save-filter-form"><input type="hidden" name="view" value="{{view}}"><input type="hidden" name="q" value="{{filters.q}}"><input type="hidden" name="priority" value="{{filters.priority}}"><input type="hidden" name="area" value="{{filters.area}}"><input type="hidden" name="sort" value="{{filters.sort}}"><input type="hidden" name="project" value="{{selected_project if selected_project else ''}}"><input name="name" placeholder="Name this filter" maxlength="45" required aria-label="Saved filter name"><button type="submit" class="mlo-btn mlo-secondary">Save current view</button></form>
  </div></details>
-<section class="mlo-surface mlo-task-workspace">
+<section class="mlo-surface mlo-task-workspace" data-task-region>
   <form method="get" action="/life/tasks" class="mlo-task-filters" aria-label="Task filters">
     <input type="hidden" name="view" value="{{view}}">
     <label class="mlo-filter-search"><span>Search</span><input type="search" name="q" value="{{filters.q}}" placeholder="Find tasks" maxlength="100"></label>

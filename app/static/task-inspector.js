@@ -5,7 +5,7 @@
   const labels={todo:'To do',doing:'In progress',blocked:'Blocked',done:'Done'};
   function close(){controller?.abort();panel?.close();}
   async function open(id,trigger){
-    controller?.abort();controller=new AbortController();selectedId=id;
+    controller?.abort();controller=new AbortController();const signal=controller.signal;selectedId=id;
     if(!panel){
       panel=document.createElement('dialog');panel.className='task-inspector';panel.setAttribute('aria-labelledby','inspector-title');
       panel.innerHTML='<header><span>Task</span><button type="button" data-inspector-close aria-label="Close task preview">×</button></header><div data-inspector-body></div>';
@@ -17,7 +17,8 @@
     panel.querySelector('[data-inspector-body]').innerHTML='<h2 id="inspector-title">Loading task…</h2><p role="status">Loading…</p>';
     if(!panel.open)panel.showModal();
     try{
-      const r=await fetch(`/api/v4/tasks/${id}`,{credentials:'same-origin',signal:controller.signal});
+      await window.MLOTasks?.settled(id);if(signal.aborted)return;
+      const r=await fetch(`/api/v4/tasks/${id}`,{credentials:'same-origin',signal});
       if(!r.ok)throw Error(r.status===404?'Task not found.':'Could not load this task. Sign in again or retry.');
       const data=await r.json();if(selectedId!==id||!panel)return;paint(data);
     }catch(error){if(error.name!=='AbortError'&&panel)panel.querySelector('[data-inspector-body]').innerHTML=`<h2 id="inspector-title">Task unavailable</h2><p role="alert">${esc(error.message)}</p><a href="/life/tasks/${id}" data-no-preview>Open task page</a>`;}
@@ -33,8 +34,7 @@
         if(!response.ok)throw Error(typeof result.detail==='string'?result.detail:'Check the task fields and try again.');
         document.dispatchEvent(new CustomEvent('mlo:task-updated',{detail:result.task}));
         if(!panel)return;
-        paint(result);panel.querySelector('[data-inspector-status]').textContent='Saved.';
-        panel.querySelector('[type=submit]')?.focus();
+        close();window.MLOTasks?.notify('Task saved.');
         document.querySelectorAll(`[data-task-id="${t.id}"] .mlo-task-name`).forEach(link=>{link.textContent=result.task.title;link.classList.toggle('is-done',result.task.status==='done');});
       }catch(error){if(panel){panel.querySelector('[data-inspector-status]').textContent=error.message;button.disabled=false;}}
     });

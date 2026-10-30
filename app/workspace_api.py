@@ -212,12 +212,17 @@ def read_user_setup(db, uid):
     return prefs
 
 
-def project_board(db, pid):
-    rows=db.execute("SELECT * FROM life_tasks WHERE project_id=? ORDER BY position,id",(pid,)).fetchall()
+BOARD_FIELDS=('id','title','status','priority','due_on','parent_id','position','updated_at','project_id')
+
+def board_from_rows(pid,rows):
     groups={s:[] for s in STATUSES}
-    for node in task_forest(rows):
+    for node in task_forest([{key:r[key] for key in BOARD_FIELDS} for r in rows]):
         groups[node['status']].append(node)
     return {'project_id':pid,'total':len(rows),'columns':groups}
+
+def project_board(db,pid):
+    rows=db.execute('SELECT '+','.join(BOARD_FIELDS)+' FROM life_tasks WHERE project_id=? ORDER BY position,id',(pid,)).fetchall()
+    return board_from_rows(pid,rows)
 
 
 class Move(BaseModel):

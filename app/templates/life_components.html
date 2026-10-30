@@ -3,7 +3,7 @@
  <form method="post" action="/life/tasks/{{ t.id }}/status" data-inline-task>
   <input type="hidden" name="status" value="{{ 'todo' if t.status=='done' else 'done' }}">
   <input type="hidden" name="next_page" value="{{ next_page }}">
-  <button class="mlo-check {{ 'is-done' if t.status=='done' else '' }}" {{'disabled' if t.can_edit is defined and not t.can_edit else ''}} type="submit" title="{{ 'Mark incomplete' if t.status=='done' else 'Complete task' }}" aria-label="Toggle completion for {{ t.title }}">{{ '✓' if t.status=='done' else '' }}</button>
+  <button class="mlo-check {{ 'is-done' if t.status=='done' else '' }}" {{'disabled' if t.can_edit is defined and not t.can_edit else ''}} aria-pressed="{{'true' if t.status=='done' else 'false'}}" type="submit" title="{{ 'Mark incomplete' if t.status=='done' else 'Complete task' }}" aria-label="Toggle completion for {{ t.title }}">{{ '✓' if t.status=='done' else '' }}</button>
  </form>
  <div class="mlo-task-main">
   <a class="mlo-task-name {{ 'is-done' if t.status=='done' else '' }}" href="/life/tasks/{{ t.id }}">{{ t.title }}</a>

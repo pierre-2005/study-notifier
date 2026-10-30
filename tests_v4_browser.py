@@ -2,6 +2,7 @@
 import json,os,socket,subprocess,sys,tempfile,time
 from pathlib import Path
 import requests
+from scripts.qa_routes import populated_routes
 from playwright.sync_api import sync_playwright,expect,Error as BrowserError
 ROOT=Path(__file__).resolve().parent
 OUT=Path(os.getenv('MLO_V4_QA_OUTPUT',str(ROOT/'test-results/v4')));OUT.mkdir(parents=True,exist_ok=True)
@@ -30,7 +31,7 @@ with tempfile.TemporaryDirectory() as temporary:
     except requests.RequestException:pass
     time.sleep(.1)
    else:raise AssertionError('Fixture startup timed out.')
-   f=json.loads((data/'fixture.json').read_text());routes=['/life','/life/tasks','/life/projects',f'/life/projects/{f["project_id"]}?view=board',f'/life/tasks/{f["task_ids"][0]}','/life/notes',f'/life/notes/{f["note_id"]}','/life/calendar','/life/calendar?month=2026-11&view=agenda','/life/focus','/life/goals','/life/insights','/life/study','/life/study/planner','/life/study/import','/life/work','/finance','/finance/transactions','/finance/transactions/1','/finance/budget','/finance/monthly','/finance/rules','/finance/import','/expenses','/expenses/new',f'/expenses/{f["expense_id"]}','/courses','/courses/new',f'/courses/{f["course_id"]}','/items','/items/new',f'/items/{f["item_id"]}','/classes','/classes/new',f'/classes/{f["class_id"]}/edit','/jobs','/jobs/new',f'/jobs/{f["job_id"]}','/events',f'/events/{f["event_id"]}','/life/spaces','/sections/new',f'/sections/{f["space_id"]}',f'/sections/{f["space_id"]}?view=settings',*[f'/sections/{f["grocery_id"]}?view={v}' for v in ['list','recipes','prices','settings']],'/life/calendars','/life/calendars/new','/life/devices',f'/life/devices/{f["device_id"]}/pair-iphone','/settings','/account/security','/account/password','/admin/users','/life/import','/life/search','/missing-page']
+   f=json.loads((data/'fixture.json').read_text());routes=populated_routes(f)
    audits=[];screens=[];errors=[]
    with sync_playwright() as pw:
     options={'headless':True,'args':['--no-sandbox','--disable-dev-shm-usage']}
@@ -65,15 +66,15 @@ with tempfile.TemporaryDirectory() as temporary:
     page.locator('[data-budget-step=review]').click();expect(page.locator('[data-budget-review]')).to_contain_text('Workshop supplies');audit(page,'budget-review')
     page.route('**/finance/budget/save',lambda route:route.fulfill(status=503,content_type='application/json',body=json.dumps({'detail':'Temporary test failure. Retry your save.'})))
     page.locator('[data-budget-save]').click();expect(page.locator('[data-budget-feedback]')).to_contain_text('Temporary test failure');expect(custom.locator('[data-budget-amount]')).to_have_value('42.555');page.screenshot(path=str(OUT/'budget-save-failure.png'),full_page=True)
-    page.unroute('**/finance/budget/save');page.locator('[data-budget-save]').click();expect(page.locator('[data-budget-feedback]')).to_have_text('Budget saved.')
+    page.unroute('**/finance/budget/save');page.locator('[data-budget-save]').click();page.wait_for_url(base+'/finance');navigate(page,base+'/finance/budget')
     page.reload();page.locator('[data-budget-quick]').click();expect(page.locator('[data-category-name]').filter(has_text='Workshop supplies')).to_be_visible()
     # Both existing and new categories can be removed and restored without losing frequencies.
     custom=page.locator('[data-budget-row]').filter(has=page.locator('[data-category-name]',has_text='Workshop supplies'));expect(custom.locator('[data-budget-frequency]')).to_have_value('Weekly')
     custom.locator('[data-budget-remove]').click();expect(custom).to_be_hidden();page.locator('[data-budget-add=flexible]').click();page.locator('[data-budget-search]').fill('Workshop');page.get_by_role('button',name='Workshop supplies',exact=True).click();expect(custom).to_be_visible()
-    page.locator('[data-budget-save]').click();expect(page.locator('[data-budget-feedback]')).to_have_text('Budget saved.')
+    page.locator('[data-budget-save]').click();page.wait_for_url(base+'/finance');navigate(page,base+'/finance/budget');page.locator('[data-budget-quick]').click()
     stale=context.new_page();stale.on('dialog',lambda d:d.accept());navigate(stale,base+'/finance/budget');stale.locator('[data-budget-quick]').click();stale.locator('[data-budget-amount]').first.fill('999')
-    salary.locator('[data-budget-amount]').fill('2800');page.locator('[data-budget-save]').click();expect(page.locator('[data-budget-feedback]')).to_have_text('Budget saved.')
-    stale.locator('[data-budget-save]').click();expect(stale.locator('[data-budget-feedback]')).to_contain_text('newer budget');expect(stale.locator('[data-budget-amount]').first).to_have_value('999');stale.close()
+    salary.locator('[data-budget-amount]').fill('2800');page.locator('[data-budget-save]').click();page.wait_for_url(base+'/finance');navigate(page,base+'/finance/budget');page.locator('[data-budget-quick]').click()
+    stale.locator('[data-budget-save]').click();expect(stale.locator('[data-budget-feedback]')).to_contain_text('newer budget');expect(stale.locator('[data-budget-amount]').first).to_have_value('999');stale.close();navigate(page,base+'/finance/budget');page.locator('[data-budget-quick]').click()
     for mode in ('light','dark'):
      for palette in ('neutral','ocean','sage','rose','amber','lavender'):
       page.evaluate("([m,p])=>{document.documentElement.classList.toggle('dark',m==='dark');document.documentElement.dataset.palette=p}",[mode,palette]);audit(page,'budget-'+mode+'-'+palette)
@@ -88,8 +89,8 @@ with tempfile.TemporaryDirectory() as temporary:
     page.locator('[data-note-view=split]').click();audit(page,'note-split')
     page.evaluate("window.__realFetch=window.fetch;window.fetch=(...a)=>window.__realFetch(...a).then(r=>new Promise(resolve=>setTimeout(()=>resolve(r),500)))")
     page.locator('[data-note-editor] [type=submit]').click();body.fill('A later draft typed while the previous save was pending.');expect(page.locator('[data-note-status]')).to_contain_text('Newer changes are unsaved');expect(body).to_have_value('A later draft typed while the previous save was pending.')
-    page.evaluate('window.fetch=window.__realFetch');page.locator('[data-note-editor] [type=submit]').click();expect(page.locator('[data-note-status]')).to_have_text('Saved')
-    other=context.new_page();other.on('dialog',lambda d:d.accept());navigate(other,base+f'/life/notes/{f["note_id"]}');other.locator('[name=body]').fill('Other tab saved');other.locator('[data-note-editor] [type=submit]').click();expect(other.locator('[data-note-status]')).to_have_text('Saved');other.close()
+    page.evaluate('window.fetch=window.__realFetch');page.locator('[data-note-editor] [type=submit]').click();page.wait_for_url(base+'/life/notes');navigate(page,base+f'/life/notes/{f["note_id"]}')
+    other=context.new_page();other.on('dialog',lambda d:d.accept());navigate(other,base+f'/life/notes/{f["note_id"]}');other.locator('[name=body]').fill('Other tab saved');other.locator('[data-note-editor] [type=submit]').click();other.wait_for_url(base+'/life/notes');other.close()
     body.fill('Keep this conflicting draft');page.locator('[data-note-editor] [type=submit]').click();expect(page.locator('[data-note-status]')).to_contain_text('another tab');expect(body).to_have_value('Keep this conflicting draft')
     for mode in ('light','dark'):
      for palette in ('neutral','ocean','sage','rose','amber','lavender'):
@@ -113,7 +114,7 @@ with tempfile.TemporaryDirectory() as temporary:
     installed.reload();installed.wait_for_function('navigator.serviceWorker.controller!==null')
     installed.evaluate("async()=>{await fetch('/login');await fetch('/life');await fetch('/api/v4/projects/1/board');}")
     keys=installed.evaluate('async()=>await caches.keys()');assert 'unrelated-owner-cache' in keys and 'mlo-static-v3.7.1' not in keys,keys
-    cached=installed.evaluate("async()=>{const c=await caches.open('mlo-static-v4.0.0');return (await c.keys()).map(r=>new URL(r.url).pathname)}")
+    cached=installed.evaluate("async()=>{const c=await caches.open('mlo-static-v4.1.0');return (await c.keys()).map(r=>new URL(r.url).pathname)}")
     assert cached and all(path.startswith('/static/') for path in cached),cached
     assert installed.request.get(local+'/static/theme.js?v=3.7.1').status==200
     pwa.close();context.close();browser.close()

@@ -25,11 +25,11 @@ from app.scheduler import start_scheduler
 from app.notifier import build_notifier
 from app.meta import APP_VERSION
 from app.lifeos import router as life_router
-from app.phones import router as phone_router
+from app.phones import router as phone_router, public_router as phone_pair_router
 from app.life_import import router as import_router
 from app.life_files import router as files_router
 from app.life_hubs import router as hubs_router
-from app.personalize import router as layout_router, appearance_for
+from app.personalize import router as layout_router, appearance_for, layout_for
 from app.calendar_links import router as calendar_links_router, sync_due_calendars, AUTO_SYNC
 from app.course_import import router as course_router
 from app.note_reminders import router as note_reminder_router
@@ -93,7 +93,7 @@ async def require_auth(request: Request, call_next):
     if request.method == 'GET' and path in ('/classic/dashboard','/todos','/todos/new','/schedule','/timers'):
         return RedirectResponse('/life/tasks' if path.startswith('/todos') else '/life/calendar' if path == '/schedule' else '/life/focus' if path == '/timers' else '/life',status_code=303)
     public_paths = {"/", "/privacy", "/termsofservice", "/login", "/signup", "/logout", "/favicon.ico", "/health", "/forgot-password", "/reset-code", "/verify-email/resend", "/service-worker.js", "/manifest.webmanifest"}
-    if path.startswith(("/password-reset/", "/verify-email/")):
+    if path.startswith(("/password-reset/", "/verify-email/")) or (request.method in ("GET","HEAD") and path.startswith("/pair/phone/")):
         return await call_next(request)
     if path.startswith("/static") or path in public_paths:
         return await call_next(request)
@@ -147,6 +147,7 @@ async def require_auth(request: Request, call_next):
         with get_conn() as conn:
             request.state.workspace_density=(conn.execute('SELECT density FROM v37_workspace_preferences WHERE user_id=?',(user['id'],)).fetchone() or {'density':'comfortable'})['density']
         request.state.appearance = appearance_for(int(user['id']))
+        request.state.layout = layout_for(int(user['id']))
         request.state.custom_sections = list_sections_for_user(int(user["id"]), sidebar_only=True)
         request.state.active_timer = active_timer_for_user(int(user["id"]))
     else:
@@ -215,8 +216,19 @@ app.add_middleware(GZipMiddleware,minimum_size=1200)
 @app.middleware('http')
 async def add_security_headers(request: Request, call_next):
     response=await call_next(request)
+    if request.method=='POST' and request.headers.get('x-mlo-enhanced')=='1' and response.status_code in (302,303):
+        destination=response.headers.get('location','')
+        from urllib.parse import urlsplit
+        parsed=urlsplit(destination)
+        if not parsed.netloc and destination.startswith('/') and not destination.startswith('//'):
+            from fastapi.responses import JSONResponse
+            original_cookies=[header for header in response.raw_headers if header[0].lower()==b'set-cookie']
+            if parsed.path.startswith(('/login','/account/password')):
+                response=JSONResponse({'detail':'Your session expired. Sign in in another tab, then retry.'},status_code=401)
+            else: response=JSONResponse({'ok':True,'redirect':destination})
+            response.raw_headers.extend(original_cookies)
     response.headers['X-Content-Type-Options']='nosniff'
-    response.headers['Referrer-Policy']='no-referrer' if request.url.path.startswith(('/password-reset/','/verify-email/','/life/devices/')) else 'same-origin' 
+    response.headers['Referrer-Policy']='no-referrer' if request.url.path.startswith(('/password-reset/','/verify-email/','/life/devices/','/pair/phone/')) else 'same-origin'
     response.headers['X-Frame-Options']='DENY'
     if request.url.path.startswith('/static/'):
         if request.query_params.get('v') == APP_VERSION:
@@ -495,6 +507,9 @@ app.include_router(layout_router)
 app.include_router(calendar_links_router)
 app.include_router(hubs_router)
 app.include_router(phone_router)
+app.include_router(phone_pair_router)
+from app.task_map import router as task_map_router
+app.include_router(task_map_router)
 app.include_router(import_router)
 app.include_router(files_router)
 app.include_router(finance_router)

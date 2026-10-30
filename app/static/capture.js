@@ -12,6 +12,8 @@
     previouslyFocused = document.activeElement;
     dialog.hidden = false;
     document.body.classList.add('mlo-modal-open');
+    const project=document.querySelector('[data-project-id]');
+    let scope=form.querySelector('[name=project_id]');if(!scope){scope=document.createElement('input');scope.type='hidden';scope.name='project_id';form.append(scope);}scope.value=project?.dataset.projectId||'';
     input?.focus();
   };
   const hide = () => {
@@ -58,41 +60,22 @@
     if (due) due.value=schedule==='inbox'?'':`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
     submit.disabled=true;
     try {
+      await window.MLOTasks?.idle();
       const response=await fetch(form.getAttribute('action') || form.action,{method:'POST',body:new FormData(form),credentials:'same-origin',headers:{'X-MLO-Action':'fetch'}});
       if (!response.ok) throw new Error(`Could not save (${response.status})`);
       const task=await response.json();
       form.reset();
       hide();
       toast('Task added to your list');
-      document.dispatchEvent(new CustomEvent('mlo:task-created',{detail:task}));
-      // Update the current dashboard immediately without fetching another full page.
-      document.querySelectorAll('[data-open-task-count]').forEach(node=>{
-        const value=Number(node.textContent.trim());
-        if(Number.isFinite(value))node.textContent=String(value+1);
-      });
-      const card=qs('.mlo-widget-tasks');
-      if(card){
-        qs('.mlo-empty',card)?.remove();
-        const row=document.createElement('div');row.className='mlo-task';row.dataset.taskId=String(task.id);
-        const main=document.createElement('div');main.className='mlo-task-main';
-        const link=document.createElement('a');link.href=`/life/tasks/${task.id}`;link.className='mlo-task-name';link.textContent=task.title;
-        main.append(link);row.append(main);
-        const top=qs('.mlo-task',card);
-        if(top)top.before(row);else card.append(row);
-      }
-      // The currently displayed task list must reflect server-side filters and pagination.
-      if (location.pathname === '/life/tasks') {
-        const params=new URLSearchParams(location.search);
-        if (!params.has('q') && !params.has('priority') && !params.has('project') && (!params.has('view') || ['all','open','inbox','today'].includes(params.get('view')))) {
-          // Reload only the tasks view; other pages retain their state and UI.
-          location.reload();
-        }
-      }
+      window.MLOTasks.created(task);
     } catch(err) { toast(err.message,true); }
     finally {submit.disabled=false;}
   });
+  const bulkBound=new WeakSet();
+  function bindBulk(){
   const bulkForm=qs('[data-bulk-form]');
-  if (bulkForm) {
+  if (bulkForm&&!bulkBound.has(bulkForm)) {
+    bulkBound.add(bulkForm);
     const all=qs('[data-select-page]',bulkForm);
     const selected=qsa('[data-task-select]').filter(box=>!box.disabled);
     const action=qs('[data-bulk-submit]',bulkForm);
@@ -108,4 +91,6 @@
     bulkForm.addEventListener('submit',event=>{if (!selected.some(x=>x.checked)){event.preventDefault();toast('Select at least one task first',true);}});
     update();
   }
+  }
+  bindBulk();document.addEventListener('mlo:task-region-updated',bindBulk);
 })();
