@@ -512,10 +512,14 @@
       }
     ],
     "metrics": {
-      "quick_add_to_correct_column_ms": 160.96,
-      "map_150_ready_ms": 350.25,
+      "quick_add_to_correct_column_ms": 133.55,
+      "map_150_ready_ms": 295.34,
       "map_nodes_during_drag": 150,
-      "requests_during_drag": 0
+      "requests_during_drag": 0,
+      "native_touch_body_drag": {
+        "destination": "doing",
+        "horizontal_scroll_px": 288
+      }
     },
     "javascript_errors": []
   },
@@ -799,5 +803,19 @@
     "tests_v41.py": "10 tests passed"
   },
   "release_gate": "Exact final-head CI must run all 36 scripts and both container architectures. Consult the PR checks.",
-  "live_or_production_tested": false
+  "live_or_production_tested": false,
+  "first_ci": {
+    "head": "54e78110b437ddf10fa2159ad3ef3aa91c149488",
+    "run": "https://github.com/pierre-2005/study-notifier/actions/runs/41119665849",
+    "passed_scripts": 35,
+    "failed_script": "tests_v41_browser.py",
+    "reason": "An assertion assumed a literal 2px computed check stroke rather than accepting browser-scaled fractional pixel widths. It now checks a visible solid check.",
+    "amd64": "success",
+    "arm64_qemu": "success",
+    "next_gate": "All36 scripts and both containers must pass on the corrected final head."
+  },
+  "final_local_rerun": {
+    "tests_v41_browser.py": "passed, including inline draft isolation, sibling lineup changes and native card-body touch drag/edge scroll",
+    "source": "66 Python files,83 templates,22 JavaScript files,20 static cache assets"
+  }
 }

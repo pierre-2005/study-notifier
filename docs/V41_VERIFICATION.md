@@ -63,3 +63,10 @@ from the PR and included in its CI artifact. The final PR must pass all 36 scrip
 source checks and AMD64/ARM64 container build/start. An approved main merge then
 repeats validation before image publication. See V41_SETUP.md for installation
 contracts, signed-QR behavior, limits and owner rollout checks.
+
+The first Linux PR run passed 35 of 36 scripts and both container jobs. Its
+remaining failure was a test assuming an exact two-pixel computed check stroke;
+Chrome can report a scaled fractional width. The assertion now verifies a visible
+solid check rather than a browser-specific pixel value. Native touch card-body
+drag and continuous edge scrolling are also exercised with real CDP touch input.
+The corrected exact head requires a fresh full CI run.

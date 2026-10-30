@@ -13,7 +13,8 @@ string and Compose tag alone do not establish publication or deployment.
   It uses the same task IDs as List, Table and the map. New task positions append
   consistently to their real sibling/status group.
 - Board cards drag from their title or body. Checkboxes, menus, inputs and selects
-  keep their normal actions. The handle, touch controls and keyboard alternatives
+  keep their normal actions. On a phone, hold a card until the columns highlight,
+  then drag it across. The handle, touch controls and keyboard alternatives
   remain. Pending writes briefly disable conflicting task controls; task previews
   wait for their own pending status write before reading an editing revision.
 - Save closes a task preview or inline editor. A clean full-page save returns to
