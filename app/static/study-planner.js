@@ -18,7 +18,7 @@
   form.addEventListener('input',e=>{const row=e.target.closest('[data-window]');if(row&&e.target.dataset.windowField){const key=e.target.dataset.windowField;windows[Number(row.dataset.window)][key]=key==='weekday'?Number(e.target.value):e.target.value;}invalidate();});
   form.addEventListener('click',e=>{const remove=e.target.closest('[data-remove-window]');if(remove){windows.splice(Number(remove.dataset.removeWindow),1);paintWindows();invalidate();}});
   root.querySelector('[data-add-window]').addEventListener('click',()=>{if(windows.length>=28){feedback('Use up to 28 windows.');return;}windows.push({weekday:5,start:'09:00',end:'12:00'});paintWindows();invalidate();container.lastElementChild.querySelector('select').focus();});
-  form.addEventListener('submit',e=>{e.preventDefault();action(async()=>{await save();feedback('Availability saved.');});});
+  form.addEventListener('submit',e=>{e.preventDefault();action(async()=>{await save();feedback('Availability saved.');window.MLOSave?.finish(form);});});
   function render(plan){const panel=root.querySelector('[data-plan-output]');panel.hidden=false;root.querySelector('[data-plan-totals]').textContent=`${plan.blocks.length} sessions · ${Math.round(plan.minutes/60*10)/10} hours`;root.querySelector('[data-plan-warnings]').innerHTML=plan.warnings.map(w=>`<p class="product-notice">${esc(w)}</p>`).join('');
     const groups=new Map();for(const block of plan.blocks){const date=new Date(block.start),key=date.toLocaleDateString(undefined,{timeZone:plan.timezone,weekday:'long',month:'short',day:'numeric'});if(!groups.has(key))groups.set(key,[]);groups.get(key).push(block);}
     const clock=value=>new Date(value).toLocaleTimeString(undefined,{timeZone:plan.timezone,hour:'2-digit',minute:'2-digit'});

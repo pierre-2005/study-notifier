@@ -9,13 +9,14 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--data-dir',required=True)
     parser.add_argument('--port',type=int,required=True)
+    parser.add_argument('--map-size',type=int,default=0)
     args=parser.parse_args()
     root=Path(args.data_dir).resolve()
     root.mkdir(parents=True,exist_ok=True)
     if any(root.iterdir()):raise SystemExit('Browser fixtures require an empty data directory.')
     os.environ.update(STUDY_NOTIFIER_DB=str(root/'fixture.sqlite'),SESSION_SECRET='browser-fixture-secret-only',
         APP_USERNAME='demo',APP_PASSWORD='MloPreviewOnly!234',COOKIE_SECURE='false',
-        MLO_PUBLIC_URL=f'http://127.0.0.1:{args.port}',MLO_SCHEDULER_ENABLED='false',
+        MLO_PUBLIC_URL='https://organizer.example',MLO_SCHEDULER_ENABLED='false',
         MLO_CALENDAR_AUTO_SYNC='false',MLO_OUTLINE_AI_ENABLED='false',MLO_SMTP_HOST='',
         MLO_ATTACHMENT_DIR=str(root/'uploads'))
     from fastapi.testclient import TestClient
@@ -96,6 +97,15 @@ def main():
         with get_conn() as db:fixture['shared_note_id']=db.execute('SELECT MAX(id) FROM life_notes').fetchone()[0]
         post('/life/devices',name='Demonstration phone')
         with get_conn() as db:fixture['device_id']=db.execute('SELECT MAX(id) FROM life_devices').fetchone()[0]
+        if args.map_size:
+            assert 1<=args.map_size<=2000
+            from app.lifeos import now
+            with get_conn() as db:
+                ts=now();cur=db.execute('INSERT INTO life_projects(owner_id,name,created_at,updated_at) VALUES(?,?,?,?)',(uid,'Map performance fixture',ts,ts));perf_pid=cur.lastrowid;perf_ids=[]
+                for i in range(args.map_size):
+                    parent=perf_ids[(i-1)//3] if i else None
+                    cur=db.execute('INSERT INTO life_tasks(owner_id,project_id,parent_id,title,status,created_at,updated_at,position) VALUES(?,?,?,?,?,?,?,?)',(uid,perf_pid,parent,f'Performance task {i+1}',('todo','doing','blocked','done')[i%4],ts,ts,i));perf_ids.append(cur.lastrowid)
+                db.commit();fixture['performance_project_id']=perf_pid;fixture['performance_task_ids']=perf_ids
         (root/'fixture.json').write_text(json.dumps(fixture))
     import uvicorn
     uvicorn.run(app,host='127.0.0.1',port=args.port,log_level='warning')

@@ -33,12 +33,12 @@ with tempfile.TemporaryDirectory() as tmp:
       kwargs['content']=options.get('body','').encode('utf8')
       kwargs['headers']={'Content-Type':options.get('contentType','application/json'),'X-MLO-Action':options.get('mloAction','')}
     response=client.request(**kwargs)
-    return {'ok':response.is_success,'status':response.status_code,'text':response.text}
+    return {'ok':response.is_success,'status':response.status_code,'text':response.text,'contentType':response.headers.get('content-type','')}
    page.expose_function('mloBackend',backend)
    page.evaluate("""(() => {
        window.fetch=async (path,options={}) => {
          const result=await window.mloBackend(path,JSON.stringify({method:options.method||'GET',body:typeof options.body==='string'?options.body:'',form:options.body instanceof FormData ? [...options.body.entries()]:null,contentType:options.headers?.['Content-Type']||'application/json',mloAction:options.headers?.['X-MLO-Action']||''}));
-         return {ok:result.ok,status:result.status,json:async()=>JSON.parse(result.text),text:async()=>result.text};
+         return new Response(result.text,{status:result.status,headers:{'Content-Type':result.contentType}});
        };
      })();""")
    def render_page(path='/life',target=None):

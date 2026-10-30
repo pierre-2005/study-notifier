@@ -150,7 +150,7 @@
       const type=response.headers.get('content-type')||'';
       if(response.redirected||!type.includes('application/json'))throw new Error('Your session may have expired. Sign in in another tab, then retry. Your edits are still here.');
       const payload=await response.json();if(!response.ok)throw new Error(payload.detail||'Unable to save. Please retry.');
-      form.elements.revision.value=payload.revision;dirty=generation!==submitted;announce(dirty?'Saved. You have newer unsaved edits.':'Budget saved.');update();
+      form.elements.revision.value=payload.revision;dirty=generation!==submitted;announce(dirty?'Saved. You have newer unsaved edits.':'Budget saved.');update();if(!dirty)window.MLOSave?.finish(form);
     }catch(error){announce(error.message,true);}finally{saving=false;save.disabled=false;save.textContent='Save budget';}
   });
   window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});

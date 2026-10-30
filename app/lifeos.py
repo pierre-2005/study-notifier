@@ -549,15 +549,16 @@ def create_task(request: Request, title: str=Form(...), project_id: str=Form('')
             from app.task_service import validate_parent
             validate_parent(conn,uid,None,parent,pid)
         ts=now()
-        conn.execute("""INSERT INTO life_tasks(owner_id,project_id,parent_id,title,description,status,priority,area,due_on,estimated_minutes,recurrence,created_at,updated_at)
-                 VALUES(?,?,?,?,?,'todo',?,?,?,?,?,?,?)""",
-                 (uid,pid,parent,title,text_clean(description,10000),priority,area,due,max(0,min(100000,estimated_minutes)),recurrence,ts,ts))
+        position=conn.execute("SELECT COALESCE(MAX(position),-1)+1 FROM life_tasks WHERE project_id IS ? AND parent_id IS ? AND status='todo' AND (project_id IS NOT NULL OR owner_id=?)",(pid,parent,uid)).fetchone()[0]
+        conn.execute("""INSERT INTO life_tasks(owner_id,project_id,parent_id,title,description,status,priority,area,due_on,estimated_minutes,recurrence,created_at,updated_at,position)
+                 VALUES(?,?,?,?,?,'todo',?,?,?,?,?,?,?,?)""",
+                 (uid,pid,parent,title,text_clean(description,10000),priority,area,due,max(0,min(100000,estimated_minutes)),recurrence,ts,ts,position))
         if pid:
             conn.execute('UPDATE life_projects SET updated_at=? WHERE id=?',(ts,pid))
         new_id=conn.execute('SELECT last_insert_rowid()').fetchone()[0]
         conn.commit()
     if request.headers.get('x-mlo-action')=='fetch':
-        return JSONResponse({'ok':True,'id':new_id,'title':title,'project_id':pid,'due_on':due,'priority':priority})
+        return JSONResponse({'ok':True,'id':new_id,'title':title,'project_id':pid,'parent_id':parent,'status':'todo','due_on':due,'priority':priority,'updated_at':ts,'position':position,'children':[],'subtask_total':0,'subtask_done':0})
     return redirect(next_page)
 
 
@@ -578,10 +579,14 @@ def change_task_status(request: Request,task_id:int,status:str=Form('done'), nex
     from app.task_service import transition
     with get_conn() as conn:
         conn.execute('BEGIN IMMEDIATE')
+        previous=task_access(conn,uid,task_id,edit=True)
+        before=conn.execute('SELECT 1 FROM life_task_successors WHERE source_id=?',(task_id,)).fetchone()
         transition(conn,uid,task_id,status)
+        created=not before and conn.execute('SELECT 1 FROM life_task_successors WHERE source_id=?',(task_id,)).fetchone() is not None
+        delta=int(previous['status']=='done')-int(status=='done')+int(created)
         conn.commit()
     if request.headers.get('x-mlo-action')=='fetch':
-        return JSONResponse({'ok':True,'status':status})
+        return JSONResponse({'ok':True,'id':task_id,'status':status,'project_id':previous['project_id'],'open_delta':delta})
     return redirect(next_page)
 
 
@@ -659,7 +664,7 @@ def delete_task(request: Request,task_id:int):
 def add_dependency(request: Request,task_id:int, depends_on:int=Form(...)):
     uid=user_id(request)
     with get_conn() as conn:
-        task_access(conn,uid,task_id,edit=True)
+        conn.execute('BEGIN IMMEDIATE')
         source=task_access(conn,uid,task_id,edit=True)
         target=task_access(conn,uid,depends_on)
         if source['project_id']!=target['project_id']:
@@ -712,7 +717,7 @@ def project_detail(request:Request,project_id:int,view:str=''):
     if not view:
         from app.v37 import read_user_setup
         with get_conn() as db: view=read_user_setup(db,uid)['preferred_view']
-    view=pick(view,('board','list','calendar','table'),'board')
+    view=pick(view,('board','list','calendar','table','map'),'board')
     with get_conn() as conn:
         project=access(conn,uid,project_id)
         tasks=conn.execute('SELECT * FROM life_tasks WHERE project_id=? ORDER BY position,id',(project_id,)).fetchall()
@@ -724,7 +729,13 @@ def project_detail(request:Request,project_id:int,view:str=''):
         preference=pref(conn,uid)
         records=conn.execute('SELECT * FROM life_project_records WHERE project_id=? ORDER BY status,record_type,due_on,id DESC LIMIT 150',(project_id,)).fetchall()
         attachments=conn.execute('SELECT * FROM life_files WHERE project_id=? ORDER BY id DESC',(project_id,)).fetchall()
-    return render(request,'life_project_detail.html',project=project,tasks=tasks,task_nodes=task_nodes,notes=notes,members=members,minutes=minutes,view=view,preference=preference,attachments=attachments,records=records)
+        map_data=None
+        if view=='map':
+            from app.task_map import map_from_rows
+            map_data=map_from_rows(conn,uid,project_id,tasks,project['my_role']!='viewer')
+    from app.workspace_api import board_from_rows
+    board_data=board_from_rows(project_id,tasks)
+    return render(request,'life_project_detail.html',map_data=map_data,board_data=board_data,project=project,tasks=tasks,task_nodes=task_nodes,notes=notes,members=members,minutes=minutes,view=view,preference=preference,attachments=attachments,records=records)
 
 
 @router.post('/projects/{project_id}/edit')

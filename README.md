@@ -1,23 +1,21 @@
-# My Life Organized 4.0
+# My Life Organized 4.1
 
 MLO is a self-hosted workspace for tasks, projects, calendars, study, work, notes,
 shared spaces, focus time and personal finances. FastAPI, Jinja, vanilla
 JavaScript and SQLite remain the application platform. The browser and installed
 PWA use the same server data.
 
-Version 4.0 rebuilds the record workflows and shared interface, including a
-five-stage Budget, a Markdown note editor, editable goals and habits, separate
-space/grocery views, a mobile calendar agenda, and safer concurrent edits.
-The released course importer, study planner, nested task board, private
-reminders, verification email and password recovery remain integrated.
+Version 4.1 adds a movable project task map, immediate task/board feedback,
+whole-card dragging, consistent completion checks, Save-and-return behavior and
+phone pairing without a second login. It also fixes shared contrast/layout issues
+and reduces redundant page-load/save requests. Existing tasks, permissions,
+Finance, study planning, reminders, files and calendar connections stay integrated.
 
-Read the [setup report](docs/V4_SETUP_REPORT.md),
-[verification report](docs/V4_VERIFICATION.md),
-[screen/workflow review](docs/V4_SCREEN_REVIEW.md) and
-[deployment and rollback guide](docs/V4_DEPLOYMENT.md).
-[PR #3](https://github.com/pierre-2005/study-notifier/pull/3) identifies the
-reviewed branch and its exact checks. A source version is not evidence that the
-image has been published or that the owner's server has been redeployed.
+Read the [4.1 setup and rollout guide](docs/V41_SETUP.md) and
+[verification/CSS review](docs/V41_VERIFICATION.md). The [earlier setup](docs/V4_SETUP_REPORT.md)
+and [backup/rollback procedure](docs/V4_DEPLOYMENT.md) retain the existing installation
+contracts. A source version or Compose tag does not prove that its image has been
+published or that the owner's server has been redeployed.
 
 ## Existing installation
 
@@ -38,7 +36,7 @@ attachment/configuration snapshot. Run one scheduler worker per database.
 - Projects are private by default; their creator controls sharing. Account
   administrators do not automatically get private project/device access.
 - Historical Finance, academic and job records remain bound to their original
-  installation owner. Version 4 does not expose those tables to every account.
+  installation owner. This release does not expose those tables to every account.
 - Statement import supports BMO and Scotiabank PDF formats. Review imported
   transactions; universal bank formats are not implemented.
 - Course imports create actual tasks after source review. Optional AI requires

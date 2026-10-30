@@ -1,0 +1,831 @@
+{
+  "release_target": "4.1.0",
+  "baseline_commit": "af1a3089cc0dfa502756716dd3fed4f4e9d3e294",
+  "new_service_tests": 10,
+  "new_browser": {
+    "audits": [
+      {
+        "screen": "anonymous-pair-iphone",
+        "violations": []
+      },
+      {
+        "screen": "anonymous-pair-android",
+        "violations": []
+      },
+      {
+        "screen": "map-viewer-phone",
+        "violations": []
+      },
+      {
+        "screen": "home-light-neutral",
+        "violations": []
+      },
+      {
+        "screen": "home-light-ocean",
+        "violations": []
+      },
+      {
+        "screen": "home-light-sage",
+        "violations": []
+      },
+      {
+        "screen": "home-light-rose",
+        "violations": []
+      },
+      {
+        "screen": "home-light-amber",
+        "violations": []
+      },
+      {
+        "screen": "home-light-lavender",
+        "violations": []
+      },
+      {
+        "screen": "home-dark-neutral",
+        "violations": []
+      },
+      {
+        "screen": "home-dark-ocean",
+        "violations": []
+      },
+      {
+        "screen": "home-dark-sage",
+        "violations": []
+      },
+      {
+        "screen": "home-dark-rose",
+        "violations": []
+      },
+      {
+        "screen": "home-dark-amber",
+        "violations": []
+      },
+      {
+        "screen": "home-dark-lavender",
+        "violations": []
+      },
+      {
+        "screen": "map-light-neutral",
+        "violations": []
+      },
+      {
+        "screen": "map-light-ocean",
+        "violations": []
+      },
+      {
+        "screen": "map-light-sage",
+        "violations": []
+      },
+      {
+        "screen": "map-light-rose",
+        "violations": []
+      },
+      {
+        "screen": "map-light-amber",
+        "violations": []
+      },
+      {
+        "screen": "map-light-lavender",
+        "violations": []
+      },
+      {
+        "screen": "map-dark-neutral",
+        "violations": []
+      },
+      {
+        "screen": "map-dark-ocean",
+        "violations": []
+      },
+      {
+        "screen": "map-dark-sage",
+        "violations": []
+      },
+      {
+        "screen": "map-dark-rose",
+        "violations": []
+      },
+      {
+        "screen": "map-dark-amber",
+        "violations": []
+      },
+      {
+        "screen": "map-dark-lavender",
+        "violations": []
+      },
+      {
+        "screen": "phones-light-neutral",
+        "violations": []
+      },
+      {
+        "screen": "phones-light-ocean",
+        "violations": []
+      },
+      {
+        "screen": "phones-light-sage",
+        "violations": []
+      },
+      {
+        "screen": "phones-light-rose",
+        "violations": []
+      },
+      {
+        "screen": "phones-light-amber",
+        "violations": []
+      },
+      {
+        "screen": "phones-light-lavender",
+        "violations": []
+      },
+      {
+        "screen": "phones-dark-neutral",
+        "violations": []
+      },
+      {
+        "screen": "phones-dark-ocean",
+        "violations": []
+      },
+      {
+        "screen": "phones-dark-sage",
+        "violations": []
+      },
+      {
+        "screen": "phones-dark-rose",
+        "violations": []
+      },
+      {
+        "screen": "phones-dark-amber",
+        "violations": []
+      },
+      {
+        "screen": "phones-dark-lavender",
+        "violations": []
+      },
+      {
+        "screen": "focus-light-neutral",
+        "violations": []
+      },
+      {
+        "screen": "focus-light-ocean",
+        "violations": []
+      },
+      {
+        "screen": "focus-light-sage",
+        "violations": []
+      },
+      {
+        "screen": "focus-light-rose",
+        "violations": []
+      },
+      {
+        "screen": "focus-light-amber",
+        "violations": []
+      },
+      {
+        "screen": "focus-light-lavender",
+        "violations": []
+      },
+      {
+        "screen": "focus-dark-neutral",
+        "violations": []
+      },
+      {
+        "screen": "focus-dark-ocean",
+        "violations": []
+      },
+      {
+        "screen": "focus-dark-sage",
+        "violations": []
+      },
+      {
+        "screen": "focus-dark-rose",
+        "violations": []
+      },
+      {
+        "screen": "focus-dark-amber",
+        "violations": []
+      },
+      {
+        "screen": "focus-dark-lavender",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/tasks",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/projects",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/projects/1?view=board",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/tasks/1",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/notes",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/notes/1",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/calendar",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/calendar?month=2026-11&view=agenda",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/focus",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/goals",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/insights",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/study",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/study/planner",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/study/import",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/work",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/finance",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/finance/transactions",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/finance/transactions/1",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/finance/budget",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/finance/monthly",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/finance/rules",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/finance/import",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/expenses",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/expenses/new",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/expenses/1",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/courses",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/courses/new",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/courses/1",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/items",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/items/new",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/items/1",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/classes",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/classes/new",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/classes/1/edit",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/jobs",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/jobs/new",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/jobs/1",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/events",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/events/1",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/spaces",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/sections/new",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/sections/1",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/sections/1?view=settings",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/sections/2?view=list",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/sections/2?view=recipes",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/sections/2?view=prices",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/sections/2?view=settings",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/calendars",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/calendars/new",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/devices",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/devices/1/pair-iphone",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/settings",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/account/security",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/account/password",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/admin/users",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/import",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/life/search",
+        "violations": []
+      },
+      {
+        "screen": "dark-route-/missing-page",
+        "violations": []
+      }
+    ],
+    "states": [
+      {
+        "screen": "home",
+        "width": 375
+      },
+      {
+        "screen": "home",
+        "width": 768
+      },
+      {
+        "screen": "home",
+        "width": 1280
+      },
+      {
+        "screen": "home",
+        "width": 1440
+      },
+      {
+        "screen": "map",
+        "width": 375
+      },
+      {
+        "screen": "map",
+        "width": 768
+      },
+      {
+        "screen": "map",
+        "width": 1280
+      },
+      {
+        "screen": "map",
+        "width": 1440
+      },
+      {
+        "screen": "phones",
+        "width": 375
+      },
+      {
+        "screen": "phones",
+        "width": 768
+      },
+      {
+        "screen": "phones",
+        "width": 1280
+      },
+      {
+        "screen": "phones",
+        "width": 1440
+      },
+      {
+        "screen": "focus",
+        "width": 375
+      },
+      {
+        "screen": "focus",
+        "width": 768
+      },
+      {
+        "screen": "focus",
+        "width": 1280
+      },
+      {
+        "screen": "focus",
+        "width": 1440
+      }
+    ],
+    "metrics": {
+      "quick_add_to_correct_column_ms": 133.55,
+      "map_150_ready_ms": 295.34,
+      "map_nodes_during_drag": 150,
+      "requests_during_drag": 0,
+      "native_touch_body_drag": {
+        "destination": "doing",
+        "horizontal_scroll_px": 288
+      }
+    },
+    "javascript_errors": []
+  },
+  "css": {
+    "files": [
+      {
+        "path": "app.css",
+        "rules": 2341,
+        "active": true
+      },
+      {
+        "path": "design32.css",
+        "rules": 177,
+        "active": false
+      },
+      {
+        "path": "design33.css",
+        "rules": 109,
+        "active": false
+      },
+      {
+        "path": "flow34.css",
+        "rules": 92,
+        "active": false
+      },
+      {
+        "path": "life.css",
+        "rules": 290,
+        "active": false
+      },
+      {
+        "path": "onboarding.css",
+        "rules": 38,
+        "active": true
+      },
+      {
+        "path": "polish342.css",
+        "rules": 64,
+        "active": false
+      },
+      {
+        "path": "polish343.css",
+        "rules": 32,
+        "active": false
+      },
+      {
+        "path": "product37.css",
+        "rules": 293,
+        "active": false
+      },
+      {
+        "path": "public-legal.css",
+        "rules": 172,
+        "active": false
+      },
+      {
+        "path": "public.css",
+        "rules": 179,
+        "active": true
+      },
+      {
+        "path": "theme.css",
+        "rules": 631,
+        "active": false
+      },
+      {
+        "path": "v37-board.css",
+        "rules": 64,
+        "active": false
+      },
+      {
+        "path": "v37-onboarding.css",
+        "rules": 38,
+        "active": false
+      },
+      {
+        "path": "workspace37.css",
+        "rules": 397,
+        "active": false
+      }
+    ],
+    "parse_errors": [],
+    "duplicate_declarations": []
+  },
+  "source": {
+    "python_files": 66,
+    "templates": 83,
+    "javascript_files": 22,
+    "cache_version": "4.1.0",
+    "cache_assets": 20
+  },
+  "local_regression_initial_service": [
+    {
+      "script": "tests_calendar_destination.py",
+      "status": "passed",
+      "seconds": 4.97
+    },
+    {
+      "script": "tests_consolidation.py",
+      "status": "passed",
+      "seconds": 8.23
+    },
+    {
+      "script": "tests_migration.py",
+      "status": "passed",
+      "seconds": 2.98
+    },
+    {
+      "script": "tests_new_features.py",
+      "status": "passed",
+      "seconds": 6.78
+    },
+    {
+      "script": "tests_public_legal.py",
+      "status": "passed",
+      "seconds": 3.3
+    },
+    {
+      "script": "tests_pwa_public.py",
+      "status": "passed",
+      "seconds": 2.73
+    },
+    {
+      "script": "tests_smoke.py",
+      "status": "passed",
+      "seconds": 13.67
+    },
+    {
+      "script": "tests_v32.py",
+      "status": "passed",
+      "seconds": 8.84
+    },
+    {
+      "script": "tests_v34.py",
+      "status": "passed",
+      "seconds": 10.23
+    },
+    {
+      "script": "tests_v343_calendar.py",
+      "status": "passed",
+      "seconds": 8.56
+    },
+    {
+      "script": "tests_v34_perf.py",
+      "status": "passed",
+      "seconds": 11.84
+    },
+    {
+      "script": "tests_v35_calendar.py",
+      "status": "passed",
+      "seconds": 9.22
+    },
+    {
+      "script": "tests_v361_device_isolation.py",
+      "status": "passed",
+      "seconds": 8.8
+    },
+    {
+      "script": "tests_v363_finance_pwa_qr.py",
+      "status": "passed",
+      "seconds": 7.52
+    },
+    {
+      "script": "tests_v364_ios_manifest.py",
+      "status": "passed",
+      "seconds": 7.67
+    },
+    {
+      "script": "tests_v365_appearance.py",
+      "status": "passed",
+      "seconds": 7.62
+    },
+    {
+      "script": "tests_v36_accounts.py",
+      "status": "passed",
+      "seconds": 11.98
+    },
+    {
+      "script": "tests_v37_calendar_time.py",
+      "status": "passed",
+      "seconds": 2.72
+    },
+    {
+      "script": "tests_v37_documents.py",
+      "status": "passed",
+      "seconds": 13.7
+    },
+    {
+      "script": "tests_v37_planner.py",
+      "status": "passed",
+      "seconds": 12.22
+    },
+    {
+      "script": "tests_v37_release.py",
+      "status": "passed",
+      "seconds": 18.2
+    },
+    {
+      "script": "tests_v37_staging.py",
+      "status": "passed",
+      "seconds": 3.34
+    },
+    {
+      "script": "tests_v37_timezone.py",
+      "status": "passed",
+      "seconds": 1.7
+    },
+    {
+      "script": "tests_v37_upgrade.py",
+      "status": "passed",
+      "seconds": 10.19
+    },
+    {
+      "script": "tests_v37_workspace.py",
+      "status": "failed",
+      "seconds": 1.31
+    },
+    {
+      "script": "tests_v4.py",
+      "status": "passed",
+      "seconds": 13.0
+    },
+    {
+      "script": "tests_v41.py",
+      "status": "passed",
+      "seconds": 9.16
+    },
+    {
+      "script": "tests_v4_upgrade.py",
+      "status": "passed",
+      "seconds": 7.41
+    }
+  ],
+  "local_regression_initial_browser": [
+    {
+      "script": "tests_v33_browser.py",
+      "status": "failed",
+      "seconds": 8.34
+    },
+    {
+      "script": "tests_v341_contrast.py",
+      "status": "passed",
+      "seconds": 10.91
+    },
+    {
+      "script": "tests_v342_layout.py",
+      "status": "passed",
+      "seconds": 34.59
+    },
+    {
+      "script": "tests_v34_browser.py",
+      "status": "passed",
+      "seconds": 11.45
+    },
+    {
+      "script": "tests_v36_visual.py",
+      "status": "passed",
+      "seconds": 7.17
+    },
+    {
+      "script": "tests_v37_browser.py",
+      "status": "passed",
+      "seconds": 69.78
+    },
+    {
+      "script": "tests_v41_browser.py",
+      "status": "failed",
+      "seconds": 107.33
+    },
+    {
+      "script": "tests_v4_browser.py",
+      "status": "passed",
+      "seconds": 166.25
+    }
+  ],
+  "reruns": {
+    "tests_v37_workspace.py": "passed after adding the actual revision field to the minimal test fixture",
+    "tests_v33_browser.py": "passed after correcting its mock Response and preserving relative form actions",
+    "tests_v37_browser.py": "passed with the requested editor-closing behavior",
+    "tests_v41_browser.py": "passed after correcting contrast findings and exercising map ordering/space returns",
+    "tests_v41.py": "10 tests passed"
+  },
+  "release_gate": "Exact final-head CI must run all 36 scripts and both container architectures. Consult the PR checks.",
+  "live_or_production_tested": false,
+  "first_ci": {
+    "head": "54e78110b437ddf10fa2159ad3ef3aa91c149488",
+    "run": "https://github.com/pierre-2005/study-notifier/actions/runs/41119665849",
+    "passed_scripts": 35,
+    "failed_script": "tests_v41_browser.py",
+    "reason": "An assertion assumed a literal 2px computed check stroke rather than accepting browser-scaled fractional pixel widths. It now checks a visible solid check.",
+    "amd64": "success",
+    "arm64_qemu": "success",
+    "next_gate": "All36 scripts and both containers must pass on the corrected final head."
+  },
+  "final_local_rerun": {
+    "tests_v41_browser.py": "passed, including inline draft isolation, sibling lineup changes and native card-body touch drag/edge scroll",
+    "source": "66 Python files,83 templates,22 JavaScript files,20 static cache assets"
+  },
+  "second_ci": {
+    "head": "496dd021700f94432698126e88ff3e075e5aa02d",
+    "run": "https://github.com/pierre-2005/study-notifier/actions/runs/41121760021",
+    "passed_scripts": 35,
+    "failed_script": "tests_v41_browser.py",
+    "reason": "Checkbox assertion could inspect a detached optimistic card during the saved-state replacement. It now waits for Saved and queries the live DOM per frame.",
+    "amd64": "success",
+    "arm64_qemu": "success",
+    "next_gate": "All 36 scripts and both containers must pass on the corrected final head."
+  }
+}

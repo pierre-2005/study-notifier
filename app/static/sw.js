@@ -1,6 +1,6 @@
 /* MLO caches public static assets only. Authenticated pages and APIs stay on the server. */
-const CACHE='mlo-static-v4.0.0';
-const ASSETS=['/static/app.css?v=4.0.0','/static/public.css?v=4.0.0','/static/onboarding.css?v=4.0.0','/static/app.js?v=4.0.0','/static/appearance.js?v=4.0.0','/static/tasks.js?v=4.0.0','/static/layout.js?v=4.0.0','/static/capture.js?v=4.0.0','/static/board.js?v=4.0.0','/static/onboarding.js?v=4.0.0','/static/budget.js?v=4.0.0','/static/notes.js?v=4.0.0','/static/task-inspector.js?v=4.0.0','/static/course-import.js?v=4.0.0','/static/study-planner.js?v=4.0.0','/static/apple-touch-icon.png','/static/icon-192.png','/static/icon-512.png'];
+const CACHE='mlo-static-v4.1.0';
+const ASSETS=['/static/app.css?v=4.1.0','/static/public.css?v=4.1.0','/static/onboarding.css?v=4.1.0','/static/app.js?v=4.1.0','/static/appearance.js?v=4.1.0','/static/tasks.js?v=4.1.0','/static/layout.js?v=4.1.0','/static/capture.js?v=4.1.0','/static/board.js?v=4.1.0','/static/onboarding.js?v=4.1.0','/static/budget.js?v=4.1.0','/static/notes.js?v=4.1.0','/static/phones.js?v=4.1.0','/static/task-map.js?v=4.1.0','/static/task-inspector.js?v=4.1.0','/static/course-import.js?v=4.1.0','/static/study-planner.js?v=4.1.0','/static/apple-touch-icon.png','/static/icon-192.png','/static/icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS))));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('mlo-static-')&&key!==CACHE).map(key=>caches.delete(key))))));
 self.addEventListener('fetch',event=>{
