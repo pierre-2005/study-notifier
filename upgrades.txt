@@ -4,3 +4,6 @@ Make it so that you can drg and drop the tasks between the sections when you dra
 Add contrast to the plus and minus button to the focus timer cause its currently black on the dark mode.
 Fix the formatting on the phone area and when I click the phone pair drop down. Make it so that when I scan the apple or android qr code i dont need to sign it to copy the code.
 When I add a task it gets placed below the to do/in progress/blocked/done boxes and you have to refresh the page for it to go to the to do.
+Create an almost web view of a projects tasks, sub tasks and be able to move around the web add things to it, change lineups etc.
+Do a full review of all of the CSS and if you find any more problems change them/adjust them.
+Also for the web I want it to feel super snappy and fast.
