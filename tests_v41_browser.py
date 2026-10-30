@@ -43,8 +43,17 @@ with tempfile.TemporaryDirectory() as temporary:
     card=page.locator('.v37-ticket').filter(has=page.locator('.v37-task-title',has_text='Immediate project task'));tid=int(card.get_attribute('data-id'));assert page.locator('[data-task-region] > .mlo-task').count()==0
     # Drag from card text/body rather than the dedicated handle.
     card.locator('.v37-task-title').drag_to(page.locator('[data-column=doing] .v37-drop'));expect(page.locator(f'[data-column=doing] [data-id="{tid}"]')).to_have_count(1)
-    card=page.locator(f'[data-id="{tid}"]');card.locator('[data-toggle]').click();expect(page.locator(f'[data-column=done] [data-id="{tid}"] .mlo-check')).to_have_attribute('aria-pressed','true');check=page.locator(f'[data-id="{tid}"] .mlo-check');drawing=check.evaluate("e=>{const s=getComputedStyle(e,'::before');return {width:parseFloat(s.width),height:parseFloat(s.height),stroke:parseFloat(s.borderBottomWidth),style:s.borderBottomStyle}}");assert drawing['width']>0 and drawing['height']>0 and drawing['stroke']>0 and drawing['style']=='solid',drawing
-    expect(page.locator('.v37-message')).to_have_text('Saved.');check.click();expect(page.locator(f'[data-column=todo] [data-id="{tid}"]')).to_have_count(1)
+    card=page.locator(f'[data-id="{tid}"]');card.locator('[data-toggle]').click();expect(page.locator(f'[data-column=done] [data-id="{tid}"] .mlo-check')).to_have_attribute('aria-pressed','true')
+    expect(page.locator('.v37-message')).to_have_text('Saved.')
+    # Saving replaces the optimistic card. Re-query the live DOM on each frame;
+    # a retained element handle can briefly refer to the detached optimistic node.
+    page.wait_for_function("""id=>{
+      const e=document.querySelector(`[data-column=done] [data-id="${id}"] .mlo-check[aria-pressed=true]`);
+      if(!e?.isConnected)return false;
+      const s=getComputedStyle(e,'::before');
+      return parseFloat(s.width)>0&&parseFloat(s.height)>0&&parseFloat(s.borderBottomWidth)>0&&s.borderBottomStyle==='solid';
+    }""",arg=tid)
+    check=page.locator(f'[data-id="{tid}"] .mlo-check');check.click();expect(page.locator(f'[data-column=todo] [data-id="{tid}"]')).to_have_count(1)
     # Save closes the inspector; the edited title is visible in the original board.
     page.locator(f'[data-id="{tid}"] .v37-task-title').click();expect(page.locator('.task-inspector')).to_be_visible();page.locator('.task-inspector [name=title]').fill('Saved task returns to board');page.locator('.task-inspector [type=submit]').click();expect(page.locator('.task-inspector')).to_have_count(0);expect(page.locator(f'[data-id="{tid}"] .v37-task-title')).to_have_text('Saved task returns to board')
     # An actual full edit returns to the originating project/view, retaining scroll.

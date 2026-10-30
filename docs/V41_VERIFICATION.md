@@ -69,4 +69,9 @@ remaining failure was a test assuming an exact two-pixel computed check stroke;
 Chrome can report a scaled fractional width. The assertion now verifies a visible
 solid check rather than a browser-specific pixel value. Native touch card-body
 drag and continuous edge scrolling are also exercised with real CDP touch input.
-The corrected exact head requires a fresh full CI run.
+The next Linux run again passed 35 scripts and both container jobs, exposing a
+second timing issue in this check: the board replaces its optimistic card after
+a save, so an element handle can refer to a detached node. The check now waits
+for the saved state and re-queries the live DOM on each animation frame while
+asserting the same visible solid check. The corrected exact head requires a
+fresh full CI run.

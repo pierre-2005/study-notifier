@@ -817,5 +817,15 @@
   "final_local_rerun": {
     "tests_v41_browser.py": "passed, including inline draft isolation, sibling lineup changes and native card-body touch drag/edge scroll",
     "source": "66 Python files,83 templates,22 JavaScript files,20 static cache assets"
+  },
+  "second_ci": {
+    "head": "496dd021700f94432698126e88ff3e075e5aa02d",
+    "run": "https://github.com/pierre-2005/study-notifier/actions/runs/41121760021",
+    "passed_scripts": 35,
+    "failed_script": "tests_v41_browser.py",
+    "reason": "Checkbox assertion could inspect a detached optimistic card during the saved-state replacement. It now waits for Saved and queries the live DOM per frame.",
+    "amd64": "success",
+    "arm64_qemu": "success",
+    "next_gate": "All 36 scripts and both containers must pass on the corrected final head."
   }
 }
