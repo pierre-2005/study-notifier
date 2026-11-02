@@ -104,8 +104,13 @@
       }
     }
     let y = 40;
-    for (const n of roots()) { place(n, 0, y); y += measure(n) + ROW_GAP * 1.7; }
-    for (const n of data.nodes) if (!seen.has(n.id)) { place(n, 0, y); y += measure(n) + ROW_GAP; }
+    for (const n of roots().filter(n => visible.has(n.id))) { place(n, 0, y); y += measure(n) + ROW_GAP * 1.7; }
+    for (const n of data.nodes) if (visible.has(n.id) && !seen.has(n.id)) { place(n, 0, y); y += measure(n) + ROW_GAP; }
+    // Hidden cards still need in-memory coordinates, but cannot reserve space in
+    // the visible tree. Their automatic parking positions are never persisted.
+    for (const n of data.nodes) if (!seen.has(n.id)) {
+      positions.set(n.id, {x: COLUMN, y}); y += H + ROW_GAP;
+    }
     return new Map([...positions].map(([id, p]) => [id, toView(p)]));
   }
   function freePoint(point, id, occupied = points) {
@@ -385,7 +390,8 @@
     if (!built && !workspace.open) return;
     visible = activeIds();
     const defaultsMap = defaults(), placed = new Map();
-    for (const n of data.nodes) {
+    const placementOrder = [...data.nodes].sort((a, b) => Number(visible.has(b.id)) - Number(visible.has(a.id)));
+    for (const n of placementOrder) {
       const point = [points.get(n.id), data.positions[n.id] ? toView(data.positions[n.id]) : null, defaultsMap.get(n.id)].find(p => Number.isFinite(p?.x) && Number.isFinite(p?.y));
       placed.set(n.id, freePoint(point, n.id, placed));
     }

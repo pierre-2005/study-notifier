@@ -126,6 +126,8 @@ with tempfile.TemporaryDirectory() as temporary:
                 expect(page.locator('[data-map-node]:visible')).to_have_count(3)
                 expect(page.locator('.is-filter-context:visible')).to_have_count(1)
                 expect(page.locator('[data-map-shown]')).to_contain_text('2 matching')
+                compact=list(locations().values())
+                assert max(p['y'] for p in compact)-min(p['y'] for p in compact)<900, 'Hidden root branches reserved empty layout space'
                 page.locator('[data-map-search]').fill('nothing matches this query')
                 expect(page.locator('[data-map-no-results]')).to_be_visible()
                 page.locator('[data-map-search]').fill('')
