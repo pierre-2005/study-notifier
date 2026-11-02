@@ -1,6 +1,7 @@
 """Populated v4 browser acceptance and accessibility, using a disposable HTTP server."""
 import json,os,socket,subprocess,sys,tempfile,time
 from pathlib import Path
+from app.meta import APP_VERSION
 import requests
 from scripts.qa_routes import populated_routes
 from playwright.sync_api import sync_playwright,expect,Error as BrowserError
@@ -114,7 +115,7 @@ with tempfile.TemporaryDirectory() as temporary:
     installed.reload();installed.wait_for_function('navigator.serviceWorker.controller!==null')
     installed.evaluate("async()=>{await fetch('/login');await fetch('/life');await fetch('/api/v4/projects/1/board');}")
     keys=installed.evaluate('async()=>await caches.keys()');assert 'unrelated-owner-cache' in keys and 'mlo-static-v3.7.1' not in keys,keys
-    cached=installed.evaluate("async()=>{const c=await caches.open('mlo-static-v4.1.0');return (await c.keys()).map(r=>new URL(r.url).pathname)}")
+    cached=installed.evaluate("async version=>{const c=await caches.open('mlo-static-v'+version);return (await c.keys()).map(r=>new URL(r.url).pathname)}",APP_VERSION)
     assert cached and all(path.startswith('/static/') for path in cached),cached
     assert installed.request.get(local+'/static/theme.js?v=3.7.1').status==200
     pwa.close();context.close();browser.close()
