@@ -9,6 +9,7 @@ Version 4.2 turns the project Task map into a compact preview that opens into a
 large, accessible workspace. Larger cards, spaced branches, thicker rounded
 connections, a grouped task panel, branch folding/focus, an overview, pinch zoom
 and Auto arrange/Undo make it easier to explore and edit real project tasks.
+Patch 4.2.1 keeps automatic folded-branch positions automatic after Undo.
 The earlier immediate task updates, Save-and-return and signed phone pairing
 remain integrated.
 

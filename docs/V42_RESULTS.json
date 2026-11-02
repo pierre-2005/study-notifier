@@ -1,5 +1,5 @@
 {
-  "version": "4.2.0",
+  "version": "4.2.1",
   "build_date": "2026-11-01",
   "base_commit": "c49d6df8008dbf775880db1213fc2a3b07256881",
   "scope": "Task map preview and expanded workspace; existing task/layout/relationship APIs retained",
@@ -91,7 +91,7 @@
         }
       ],
       "metrics": {
-        "expand_150_ms": 90.92,
+        "expand_150_ms": 132.09,
         "drag_dom_preserved": true,
         "writes_during_drag": 0,
         "native_pinch_zoom": {
@@ -212,9 +212,10 @@
   "test_history": [
     "Undo initially kept the old Saved status while its request was pending. saveLayout now reports Saving and disables Undo until complete; persistence/Undo browser checks passed.",
     "The new viewer test initially asserted disabled state on fieldset itself. It now asserts the actual input is disabled and no submit action exists.",
-    "One initial unchanged native board touch probe did not produce Saved. The complete v4.1 suite passed on rerun; final exact-head CI remains required."
+    "One initial unchanged native board touch probe did not produce Saved. The complete v4.1 suite passed on rerun; final exact-head CI remains required.",
+    "Final review added an Undo regression on a folded 150-task map. It reproduced persistence of automatic hidden-card positions; Undo now restores only prior explicit/pending positions while preserving the in-memory camera/card snapshot. The reproduced failure passes after the fix, along with all 33 workspace accessibility scans, native pinch, task/branch flows and 150-node drag checks. The corrected head still requires the full CI gate."
   ],
-  "release_gate": "Final exact-head CI must pass all 37 scripts and both Linux container architectures. Merge/publication require approval for this new release.",
+  "release_gate": "The 4.2.1 Undo correction requires all 37 scripts and both container architectures on the corrected head. The earlier 4.2.0 build is published; this patch uses a fresh version/cache/image tag.",
   "production_deployed": false,
   "physical_pi_or_phone_tested": false
 }
