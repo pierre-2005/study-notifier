@@ -10,7 +10,7 @@
       panel=document.createElement('dialog');panel.className='task-inspector';panel.setAttribute('aria-labelledby','inspector-title');
       panel.innerHTML='<header><span>Task</span><button type="button" data-inspector-close aria-label="Close task preview">×</button></header><div data-inspector-body></div>';
       document.body.append(panel);panel.querySelector('[data-inspector-close]').onclick=close;
-      panel.addEventListener('close',()=>{controller?.abort();panel.remove();panel=null;returnFocus?.isConnected&&returnFocus.focus();});
+      panel.addEventListener('close',()=>{controller?.abort();window.MLOSave?.clearDraft(panel.querySelector('form'));panel.remove();panel=null;returnFocus?.isConnected&&returnFocus.focus();});
       panel.addEventListener('click',e=>{if(e.target===panel&&e.clientX<panel.getBoundingClientRect().left)close();});
     }
     returnFocus=trigger||returnFocus;

@@ -19,6 +19,24 @@
   const dirty = new Map(), activePointers = new Map(), collapsed = new Set();
   let bounds = {x: 0, y: 0, width: W, height: H}, visible = new Set(), search = '';
   const SVG = 'http://www.w3.org/2000/svg';
+  const preferenceKey = 'mlo.map-view.' + (document.body.dataset.userId || 'guest') + '.' + pid;
+  let orientation = 'horizontal', taskFilter = 'all', matched = new Set();
+  try {
+    const saved = JSON.parse(localStorage.getItem(preferenceKey) || '{}');
+    if (['horizontal', 'vertical'].includes(saved.orientation)) orientation = saved.orientation;
+    if (['all', 'open', 'done', 'todo', 'doing', 'blocked'].includes(saved.filter)) taskFilter = saved.filter;
+  } catch {}
+  function rememberView() {
+    try { localStorage.setItem(preferenceKey, JSON.stringify({orientation, filter: taskFilter})); } catch {}
+  }
+  // Server coordinates remain in the original horizontal space. Rotating the
+  // view never rewrites saved positions or introduces a new database migration.
+  const BREADTH_SCALE = (W + ROW_GAP) / (H + ROW_GAP), DEPTH_SCALE = (H + 150) / COLUMN;
+  function toView(p) { return orientation === 'vertical' ? {x: p.y * BREADTH_SCALE, y: p.x * DEPTH_SCALE} : {...p}; }
+  function fromView(p) { return orientation === 'vertical' ? {x: p.y / DEPTH_SCALE, y: p.x / BREADTH_SCALE} : {...p}; }
+  function matchesStatus(n) { return taskFilter === 'all' || (taskFilter === 'open' ? n.status !== 'done' : n.status === taskFilter); }
+  $('[data-map-orientation]').value = orientation;
+  $('[data-map-filter]').value = taskFilter;
 
   function say(text, error = false) {
     status.textContent = text;
@@ -88,7 +106,7 @@
     let y = 40;
     for (const n of roots()) { place(n, 0, y); y += measure(n) + ROW_GAP * 1.7; }
     for (const n of data.nodes) if (!seen.has(n.id)) { place(n, 0, y); y += measure(n) + ROW_GAP; }
-    return positions;
+    return new Map([...positions].map(([id, p]) => [id, toView(p)]));
   }
   function freePoint(point, id, occupied = points) {
     const p = {x: clamp(point.x, -1000000, 1000000), y: clamp(point.y, -1000000, 1000000)};
@@ -96,13 +114,15 @@
     if (!hits(p)) return p;
     for (let ring = 1; ring <= data.nodes.length + 1; ring++) {
       for (const direction of [1, -1]) {
-        const candidate = {x: p.x, y: clamp(p.y + direction * ring * (H + ROW_GAP), -1000000, 1000000)};
+        const candidate = orientation === 'vertical'
+          ? {x: clamp(p.x + direction * ring * (W + ROW_GAP), -1000000, 1000000), y: p.y}
+          : {x: p.x, y: clamp(p.y + direction * ring * (H + ROW_GAP), -1000000, 1000000)};
         if (!hits(candidate)) return candidate;
       }
     }
     return p;
   }
-  function activeIds() {
+  function branchIds() {
     if (!focusRoot || !nodes.has(focusRoot)) {
       const ids = new Set(), pending = roots().map(n => n.id);
       while (pending.length) {
@@ -122,6 +142,30 @@
     while (nodes.has(parent) && !ids.has(parent)) { ids.add(parent); parent = nodes.get(parent).parent_id; }
     for (const edge of data.edges) if (edge.kind === 'prerequisite' && (edge.from === focusRoot || edge.to === focusRoot)) {
       ids.add(edge.from); ids.add(edge.to);
+    }
+    return ids;
+  }
+  function activeIds() {
+    const branch = branchIds();
+    // A filtered descendant must remain discoverable under a folded ancestor.
+    // Only matching cards and their explicitly marked ancestor context survive.
+    if (taskFilter === 'all') { matched = new Set(branch); return branch; }
+    const candidates = focusRoot ? new Set() : new Set(nodes.keys());
+    if (focusRoot) {
+      const pending = [focusRoot];
+      while (pending.length) {
+        const id = pending.pop(); if (candidates.has(id)) continue;
+        candidates.add(id); pending.push(...(children.get(id) || []).map(n => n.id));
+      }
+    }
+    matched = new Set([...candidates].filter(id => matchesStatus(nodes.get(id))));
+    const ids = new Set(matched);
+    for (const id of matched) {
+      let parent = nodes.get(id)?.parent_id;
+      const visited = new Set();
+      while (nodes.has(parent) && !visited.has(parent)) {
+        visited.add(parent); ids.add(parent); parent = nodes.get(parent).parent_id;
+      }
     }
     return ids;
   }
@@ -167,10 +211,11 @@
     const b = sceneBounds(), z = Math.min((viewport.clientWidth - 48) / b.width, (viewport.clientHeight - 60) / b.height, 1);
     if (z >= .8) fit();
     else {
-      const first = points.get(selected || roots()[0]?.id || data.nodes[0].id);
+      const firstId = visible.has(selected) ? selected : roots().find(n => visible.has(n.id))?.id ?? [...visible][0];
+      const first = points.get(firstId);
+      if (!first) { fit(); return; }
       pan.z = clamp((viewport.clientWidth - 64) / (W + 56), .65, 1);
-      const firstId = selected || roots()[0]?.id || data.nodes[0].id;
-      const branchTop = visible.size > 12 ? first.y : Math.min(first.y, ...(children.get(firstId) || []).map(n => points.get(n.id).y));
+      const branchTop = visible.size > 12 ? first.y : Math.min(first.y, ...(children.get(firstId) || []).filter(n => visible.has(n.id)).map(n => points.get(n.id).y));
       pan.x = 36 - first.x * pan.z; pan.y = 36 - branchTop * pan.z;
       setTransform();
     }
@@ -199,6 +244,17 @@
   function edgePath(edge) {
     const a = edge.from === 0 ? hub : points.get(edge.from), b = points.get(edge.to);
     if (!a || !b) return '';
+    if (orientation === 'vertical') {
+      const start = {x: a.x + 30 + edge.sourcePort * (W - 60), y: a.y + H};
+      const targetX = b.x + 30 + edge.targetPort * (W - 60);
+      if (b.y >= a.y + H + 50) {
+        const end = {x: targetX, y: b.y};
+        const lane = start.y + Math.max(26, (end.y - start.y) * (.35 + .3 * edge.sourcePort));
+        return roundedPath([start, {x: start.x, y: lane}, {x: targetX, y: lane}, end]);
+      }
+      const end = {x: targetX, y: b.y + H}, lane = Math.max(start.y, end.y) + 64 + edge.lane * 18;
+      return roundedPath([start, {x: start.x, y: lane}, {x: targetX, y: lane}, end]);
+    }
     const forward = b.x >= a.x + W + 50;
     const sourceY = a.y + 30 + edge.sourcePort * (H - 60), targetY = b.y + 30 + edge.targetPort * (H - 60);
     const start = {x: a.x + W, y: sourceY};
@@ -248,14 +304,27 @@
     for (const [id, el] of elements) {
       el.hidden = !visible.has(id);
       el.classList.toggle('is-muted', !!search && !nodes.get(id).title.toLocaleLowerCase().includes(search));
+      const context = taskFilter !== 'all' && visible.has(id) && !matched.has(id);
+      el.classList.toggle('is-filter-context', context);
+      el.querySelector('[data-map-context]').hidden = !context;
+      const toggle = el.querySelector('[data-map-toggle]');
+      if (toggle) {
+        toggle.disabled = taskFilter !== 'all';
+        toggle.title = taskFilter === 'all' ? 'Expand or fold subtasks' : 'Filtered views expand matching branches. Choose All tasks to fold them.';
+      }
     }
-    $('[data-map-no-results]').hidden = !search || !!matches.length;
-    $('[data-map-shown]').textContent = data.limit ? data.total.toLocaleString() + ' tasks — use List or Board' : visible.size.toLocaleString() + ' of ' + data.nodes.length.toLocaleString() + ' tasks shown';
+    const noResults = $('[data-map-no-results]');
+    noResults.hidden = !!matches.length || !data.nodes.length;
+    noResults.textContent = taskFilter !== 'all' ? 'No matching tasks. Try All tasks or clear your search.' : 'No matching tasks. Try another name.';
+    $('[data-map-shown]').textContent = data.limit ? data.total.toLocaleString() + ' tasks — use List or Board' :
+      taskFilter === 'all' ? visible.size.toLocaleString() + ' of ' + data.nodes.length.toLocaleString() + ' tasks shown' :
+      matched.size.toLocaleString() + ' matching · ' + (visible.size - matched.size).toLocaleString() + ' ancestors for context';
     const expandAll = $('[data-map-expand-all]');
-    if (expandAll) { expandAll.hidden = visible.size === data.nodes.length || !!data.limit; expandAll.textContent = 'Show all ' + data.nodes.length.toLocaleString() + ' tasks'; }
+    if (expandAll) { expandAll.hidden = taskFilter !== 'all' || visible.size === data.nodes.length || !!data.limit; expandAll.textContent = 'Show all ' + data.nodes.length.toLocaleString() + ' tasks'; }
     $('[data-map-focus-strip]').hidden = !focusRoot;
     if (focusRoot && nodes.has(focusRoot)) $('[data-map-focus-title]').textContent = nodes.get(focusRoot).title;
-    world.querySelector('.task-map-hub').hidden = !!focusRoot || !data.nodes.length;
+    world.querySelector('.task-map-hub').hidden = !!focusRoot || !visible.size;
+    if (selected && !visible.has(selected)) select(null);
     edgeVisibility(); drawOverview();
   }
   function select(id, focus = false) {
@@ -294,7 +363,8 @@
       sourceGroups.get(item.from).push(item); targetGroups.get(item.to).push(item);
     }
     for (const group of sourceGroups.values()) {
-      group.sort((a, b) => points.get(a.to).y - points.get(b.to).y || a.to - b.to);
+      const axis = orientation === 'vertical' ? 'x' : 'y';
+      group.sort((a, b) => points.get(a.to)[axis] - points.get(b.to)[axis] || a.to - b.to);
       group.forEach((e, i) => { e.sourcePort = (i + 1) / (group.length + 1); e.lane = i % 8; });
     }
     for (const group of targetGroups.values()) group.forEach((e, i) => e.targetPort = (i + 1) / (group.length + 1));
@@ -316,7 +386,7 @@
     visible = activeIds();
     const defaultsMap = defaults(), placed = new Map();
     for (const n of data.nodes) {
-      const point = [points.get(n.id), data.positions[n.id], defaultsMap.get(n.id)].find(p => Number.isFinite(p?.x) && Number.isFinite(p?.y));
+      const point = [points.get(n.id), data.positions[n.id] ? toView(data.positions[n.id]) : null, defaultsMap.get(n.id)].find(p => Number.isFinite(p?.x) && Number.isFinite(p?.y));
       placed.set(n.id, freePoint(point, n.id, placed));
     }
     points = placed;
@@ -324,12 +394,14 @@
       const p = points.get(n.id), count = children.get(n.id)?.length || 0;
       return '<article class="task-map-node ' + (n.status === 'done' ? 'is-complete' : '') + '" data-map-node="' + n.id + '" tabindex="0" aria-label="' + esc(n.title + ', ' + labels[n.status] + '. Arrow keys move this card; Enter opens it.') + '" style="transform:translate(' + p.x + 'px,' + p.y + 'px)"><div class="task-map-node-head">' +
         (data.can_edit ? '<button type="button" class="mlo-check ' + (n.status === 'done' ? 'is-done' : '') + '" data-map-complete="' + n.id + '" aria-pressed="' + (n.status === 'done') + '" aria-label="' + esc((n.status === 'done' ? 'Reopen ' : 'Complete ') + n.title) + '"></button>' : '') +
-        '<span class="task-map-node-status"><i class="v37-status-dot ' + n.status + '" aria-hidden="true"></i>' + labels[n.status] + '</span>' +
+        '<span class="task-map-node-status"><i class="v37-status-dot ' + n.status + '" aria-hidden="true"></i>' + labels[n.status] + '</span><span class="map-context-label" data-map-context hidden>Ancestor</span>' +
         (count ? '<button type="button" class="map-node-children" data-map-toggle="' + n.id + '" aria-expanded="' + !collapsed.has(n.id) + '" aria-label="' + esc((collapsed.has(n.id) ? 'Show ' : 'Hide ') + count + ' subtasks of ' + n.title) + '">' + count + ' subtasks <span aria-hidden="true">' + (collapsed.has(n.id) ? '›' : '⌄') + '</span></button>' : '') + '</div><a class="task-map-node-title" href="/life/tasks/' + n.id + '" title="' + esc(n.title) + '">' + esc(n.title) + '</a><div class="task-map-node-meta"><span>' + esc(n.due_on || 'No due date') + '</span>' + (['high', 'urgent'].includes(n.priority) ? '<span>' + esc(n.priority) + ' priority</span>' : '') + '</div></article>';
     }).join('');
     elements = new Map([...nodeLayer.querySelectorAll('[data-map-node]')].map(el => [Number(el.dataset.mapNode), el]));
-    const rootPoints = roots().map(n => points.get(n.id));
-    hub = {x: rootPoints.length ? Math.min(...rootPoints.map(p => p.x)) - COLUMN : 0, y: rootPoints.length ? (rootPoints[0].y + rootPoints.at(-1).y) / 2 : 0};
+    const rootPoints = roots().filter(n => visible.has(n.id)).map(n => points.get(n.id));
+    hub = orientation === 'vertical'
+      ? {x: rootPoints.length ? (rootPoints[0].x + rootPoints.at(-1).x) / 2 : 0, y: rootPoints.length ? Math.min(...rootPoints.map(p => p.y)) - COLUMN * DEPTH_SCALE : 0}
+      : {x: rootPoints.length ? Math.min(...rootPoints.map(p => p.x)) - COLUMN : 0, y: rootPoints.length ? (rootPoints[0].y + rootPoints.at(-1).y) / 2 : 0};
     let hubElement = world.querySelector('.task-map-hub');
     if (!hubElement) { hubElement = document.createElement('div'); hubElement.className = 'task-map-hub'; world.append(hubElement); }
     hubElement.textContent = title;
@@ -342,13 +414,18 @@
       say('Use List or Board for projects with more than ' + data.limit.toLocaleString() + ' tasks.');
     }
     built = true; needsRender = false;
-    if (initial && workspace.open) home(); else setTransform();
+    if (initial && workspace.open) {
+      if (taskFilter !== 'all' && viewport.clientWidth >= 700) fit(); else home();
+    } else setTransform();
   }
   function openWindow() {
     const firstOpen = !built;
     workspace.showModal();
     if (!built || needsRender) render(firstOpen);
-    requestAnimationFrame(() => { if (firstOpen) home(); viewport.focus({preventScroll: true}); updateOverview(); });
+    requestAnimationFrame(() => {
+      if (firstOpen) { if (taskFilter !== 'all' && viewport.clientWidth >= 700) fit(); else home(); }
+      viewport.focus({preventScroll: true}); updateOverview();
+    });
   }
   function closeWindow() { workspace.close(); }
   workspace.addEventListener('close', () => {
@@ -359,7 +436,7 @@
   });
   function changed(id) {
     undoArrange = null; $('[data-map-undo]').hidden = true;
-    dirty.set(id, {...points.get(id)});
+    dirty.set(id, fromView(points.get(id)));
     say('Saving layout…'); clearTimeout(layoutTimer); layoutTimer = setTimeout(saveLayout, 350);
   }
   async function saveLayout(reset = false) {
@@ -525,6 +602,20 @@
     }
   });
   $('[data-map-connections]').addEventListener('change', edgeVisibility);
+  $('[data-map-filter]').addEventListener('change', e => {
+    taskFilter = e.target.value; rememberView(); reflow(); fit();
+  });
+  $('[data-map-orientation]').addEventListener('change', e => {
+    const canonical = new Map([...points].map(([id, p]) => [id, fromView(p)]));
+    orientation = e.target.value; rememberView();
+    points = new Map([...canonical].map(([id, p]) => [id, toView(p)]));
+    if (undoArrange) undoArrange.points = new Map([...undoArrange.points].map(([id, p]) => {
+      // Undo snapshots belong to the previous orientation; transform them too.
+      const raw = orientation === 'vertical' ? p : {x: p.y / DEPTH_SCALE, y: p.x / BREADTH_SCALE};
+      return [id, toView(raw)];
+    }));
+    render(); fit();
+  });
   $('[data-map-overview]').addEventListener('click', e => {
     if (!e.detail || !overview.contains(e.target)) { fit(); return; }
     const matrix = overview.getScreenCTM();
@@ -537,8 +628,9 @@
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
       search = e.target.value.trim().toLocaleLowerCase();
-      if (search && focusRoot && !data.nodes.some(n => activeIds().has(n.id) && n.title.toLocaleLowerCase().includes(search))) focusRoot = null;
-      const match = data.nodes.find(n => n.title.toLocaleLowerCase().includes(search));
+      const scope = activeIds();
+      if (search && focusRoot && !data.nodes.some(n => scope.has(n.id) && n.title.toLocaleLowerCase().includes(search))) focusRoot = null;
+      const match = data.nodes.find(n => matchesStatus(n) && n.title.toLocaleLowerCase().includes(search));
       let expanded = false, parent = match?.parent_id;
       while (nodes.has(parent)) { expanded = collapsed.delete(parent) || expanded; parent = nodes.get(parent).parent_id; }
       if (expanded) reflow(); else applyVisibility();
@@ -552,13 +644,23 @@
     gesture = {distance: Math.max(1, Math.hypot(b.x - a.x, b.y - a.y)), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, pan: {...pan}};
   }
   viewport.addEventListener('pointerdown', e => {
-    if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.target.closest('button,input,select,textarea')) return;
+    if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    const control = e.target.closest('button,input,select,textarea');
+    if (control && e.pointerType !== 'touch') return;
     activePointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
+    if (activePointers.size > 1) {
+      for (const id of activePointers.keys()) viewport.setPointerCapture(id);
+      if (activePointers.size === 2) beginGesture(); return;
+    }
+    // A one-finger tap still activates a control. A second finger turns the
+    // interaction into a pinch even when the first finger landed on a button.
+    if (control) return;
     viewport.setPointerCapture(e.pointerId);
-    if (activePointers.size > 1) { if (activePointers.size === 2) beginGesture(); return; }
     const node = e.target.closest('[data-map-node]'), id = node ? Number(node.dataset.mapNode) : null;
     pointer = {pointerId: e.pointerId, id, startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY, pan: {...pan}, point: id ? {...points.get(id)} : null, moved: false, link: e.target.closest('a')};
-    if (id) select(id);
+    // Opening the phone details pane on the first touch resizes the canvas
+    // underneath the second finger. Select after a tap/drag completes instead.
+    if (id && e.pointerType !== 'touch') select(id);
   });
   function drawPointer() {
     frame = 0;
@@ -602,6 +704,7 @@
         else if (!p.id) setTransform();
       } else if (p.link) { p.link.click(); suppress(); }
       else if (!p.id) select(null);
+      if (p.id) select(p.id);
       activePointers.delete(e.pointerId); pointer = null;
     } else activePointers.delete(e.pointerId);
     viewport.classList.remove('is-dragging');
@@ -623,8 +726,10 @@
   });
   viewport.addEventListener('wheel', e => {
     e.preventDefault();
-    if (e.ctrlKey || e.metaKey) { const rect = viewport.getBoundingClientRect(); zoom(Math.exp(-e.deltaY * .002), e.clientX - rect.left, e.clientY - rect.top); }
-    else { pan.x -= e.deltaX; pan.y -= e.deltaY; setTransform(); }
+    const unit = e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? viewport.clientHeight : 1;
+    const dx = e.deltaX * unit, dy = e.deltaY * unit;
+    if (e.ctrlKey || e.metaKey) { const rect = viewport.getBoundingClientRect(); zoom(Math.exp(-dy * .002), e.clientX - rect.left, e.clientY - rect.top); }
+    else { pan.x -= e.shiftKey && !dx ? dy : dx; pan.y -= e.shiftKey ? 0 : dy; setTransform(); }
   }, {passive: false});
   viewport.addEventListener('keydown', e => {
     if (e.target.closest('input,select,button,a')) return;
@@ -651,7 +756,7 @@
     data.nodes.push(n); data.total = data.nodes.length;
     if (n.parent_id) data.edges.push({from: n.parent_id, to: n.id, kind: 'parent'});
     const parent = points.get(n.parent_id);
-    if (parent) points.set(n.id, freePoint({x: parent.x + COLUMN, y: parent.y + H + ROW_GAP}, n.id));
+    if (parent) points.set(n.id, freePoint(orientation === 'vertical' ? {x: parent.x + W + ROW_GAP, y: parent.y + H + 150} : {x: parent.x + COLUMN, y: parent.y + H + ROW_GAP}, n.id));
     undoArrange = null; undoButton.hidden = true; render(); say('Task added.');
   });
   document.addEventListener('mlo:task-updated', e => {
@@ -667,6 +772,12 @@
       const size = {w: viewport.clientWidth, h: viewport.clientHeight};
       if (oldSize?.w && oldSize?.h) { pan.x += (size.w - oldSize.w) / 2; pan.y += (size.h - oldSize.h) / 2; }
       oldSize = size; setTransform();
+      // Keep at least one card on screen when the window becomes much smaller.
+      // Preserving the same center can otherwise strand a phone in empty space.
+      if (visible.size && ![...visible].some(id => {
+        const p = points.get(id), x = p.x * pan.z + pan.x, y = p.y * pan.z + pan.y;
+        return x + W * pan.z > 0 && x < size.w && y + H * pan.z > 0 && y < size.h;
+      })) centerOn(visible.has(selected) ? selected : roots().find(n => visible.has(n.id))?.id ?? [...visible][0]);
     }, 60);
   }).observe(viewport);
   index();
