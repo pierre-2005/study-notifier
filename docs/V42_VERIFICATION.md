@@ -55,3 +55,10 @@ success label during its write; saving now shows progress immediately. Native
 pinch changed the measured zoom and 150-node dragging retained the DOM with no
 writes during movement. The local timing and test history are retained in the
 machine report. Exact-head CI must still establish the release gate.
+
+A final-review regression on a folded 150-task hierarchy reproduced Undo
+persisting automatic hidden-card coordinates. Undo now restores only the prior
+explicit and pending positions; automatically placed branches stay automatic.
+The regression checks the complete saved-position map before/after Undo, then
+continues to expand/search/drag the hierarchy. The corrected exact head requires
+a fresh full CI gate before final delivery.

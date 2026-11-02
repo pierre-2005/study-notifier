@@ -293,6 +293,14 @@ with tempfile.TemporaryDirectory() as temporary:
                 expect(page.locator('[data-map-node]')).to_have_count(150)
                 expect(page.locator('[data-map-node]:visible')).to_have_count(4)
                 metrics['expand_150_ms'] = round((time.perf_counter()-start)*1000,2)
+                perf_api=base+f'/api/v4/projects/{fixture["performance_project_id"]}'
+                before_undo=page.request.get(perf_api+'/map').json()['positions']
+                page.locator('[data-map-arrange]').click()
+                saved()
+                page.locator('[data-map-undo]').click()
+                saved()
+                assert page.request.get(perf_api+'/map').json()['positions']==before_undo, 'Undo must preserve automatic positions for still-folded branches'
+
                 no_overlap(page)
                 page.screenshot(path=str(OUT/'large-project.png'))
                 page.locator('[data-map-search]').fill('Performance task 150')

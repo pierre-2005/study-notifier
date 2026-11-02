@@ -457,7 +457,11 @@
   function arrange() {
     if (layoutConflict) { say('Reload the saved layout before arranging again.', true); return; }
     if (layoutSaving) { say('Wait for the current layout save, then arrange.'); return; }
-    undoArrange = new Map([...points].map(([id, p]) => [id, {...p}]));
+    undoArrange = {
+      points: new Map([...points].map(([id, p]) => [id, {...p}])),
+      positions: {...data.positions},
+      pending: new Map([...dirty].map(([id, p]) => [id, {...p}]))
+    };
     clearTimeout(layoutTimer); points.clear(); data.positions = {}; dirty.clear();
     render(); fit(); say('Arranging…'); saveLayout(true);
   }
@@ -493,8 +497,12 @@
     else if (button.matches('[data-map-arrange]')) arrange();
     else if (button.matches('[data-map-undo]')) {
       if (!undoArrange || layoutSaving || layoutConflict) return;
-      points = new Map(undoArrange); undoArrange = null; data.positions = Object.fromEntries(points);
-      dirty.clear(); for (const [id, p] of points) dirty.set(id, {...p});
+      const previous = undoArrange;
+      points = new Map(previous.points); data.positions = {...previous.positions}; undoArrange = null;
+      dirty.clear();
+      // Automatic, especially folded, card positions must stay automatic after Undo.
+      for (const [id, p] of Object.entries(previous.positions)) if (nodes.has(Number(id))) dirty.set(Number(id), {...p});
+      for (const [id, p] of previous.pending) if (nodes.has(id)) dirty.set(id, {...p});
       render(); saveLayout(true);
     } else if (button.matches('[data-map-focus]')) {
       search = ''; $('[data-map-search]').value = ''; focusRoot = selected; reflow(); fit();

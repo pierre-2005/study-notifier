@@ -55,7 +55,7 @@ is created when the window first opens, using the existing server-seeded data.
 Opening does not make a redundant map fetch. Panning/zooming changes a transform;
 dragging keeps the card DOM and updates only attached wires on animation frames.
 Layout writes happen after movement, not for every pointer event. Map CSS/JS load
-only with the project map. Current versioned static assets use cache 4.2.0.
+only with the project map. Current versioned static assets use cache 4.2.1.
 
 Read-only project collaborators can navigate and arrange their own layout, with
 shared task edits unavailable. Branch visibility is a current-page preference;
@@ -68,7 +68,7 @@ change or new service is required by this release.
 
 After approval to merge, confirm the main release workflow passes all regression
 scripts and both Linux container architectures and publishes
-`ghcr.io/pierre-2005/study-notifier:v4.2.0`. Record the actual published digest;
+`ghcr.io/pierre-2005/study-notifier:v4.2.1`. Record the actual published digest;
 source version and Compose tag alone do not establish publication.
 
 Follow [the existing backup and rollback guide](V4_DEPLOYMENT.md). Preserve the
@@ -82,3 +82,7 @@ drag/save/reload, connections, folded branches, keyboard return and phone layout
 Reload an installed PWA to receive the new static version. Real installation/Pi
 performance and physical phone acceptance remain operator checks; local timings
 describe disposable fixtures. Production has not been accessed or redeployed.
+
+The 4.2.1 patch preserves automatic positions when Undo follows Auto arrange on
+a folded hierarchy. Its fresh static version updates installed PWAs. Use the
+verified final digest recorded with the patch delivery.
