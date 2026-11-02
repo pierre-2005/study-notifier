@@ -1,0 +1,220 @@
+{
+  "version": "4.2.0",
+  "build_date": "2026-11-01",
+  "base_commit": "c49d6df8008dbf775880db1213fc2a3b07256881",
+  "scope": "Task map preview and expanded workspace; existing task/layout/relationship APIs retained",
+  "schema_change": false,
+  "local": {
+    "tests_v42_browser.py": {
+      "status": "passed",
+      "accessibility_scans": 33,
+      "violations": 0,
+      "javascript_errors": [],
+      "sizes": [
+        {
+          "x": 0,
+          "right": 375,
+          "y": 0,
+          "bottom": 667,
+          "sw": 375,
+          "cw": 375,
+          "vw": 375,
+          "vh": 208.453125,
+          "w": 375,
+          "h": 667,
+          "page": 375
+        },
+        {
+          "x": 0,
+          "right": 390,
+          "y": 0,
+          "bottom": 844,
+          "sw": 390,
+          "cw": 390,
+          "vw": 390,
+          "vh": 325.265625,
+          "w": 390,
+          "h": 844,
+          "page": 390
+        },
+        {
+          "x": 20,
+          "right": 748,
+          "y": 20,
+          "bottom": 1004,
+          "sw": 726,
+          "cw": 726,
+          "vw": 466,
+          "vh": 707.640625,
+          "w": 768,
+          "h": 1024,
+          "page": 768
+        },
+        {
+          "x": 20,
+          "right": 1004,
+          "y": 20,
+          "bottom": 748,
+          "sw": 982,
+          "cw": 982,
+          "vw": 722,
+          "vh": 451.640625,
+          "w": 1024,
+          "h": 768,
+          "page": 1024
+        },
+        {
+          "x": 20,
+          "right": 1420,
+          "y": 20,
+          "bottom": 980,
+          "sw": 1398,
+          "cw": 1398,
+          "vw": 1108,
+          "vh": 711.234375,
+          "w": 1440,
+          "h": 1000,
+          "page": 1440
+        },
+        {
+          "x": 60,
+          "right": 1860,
+          "y": 20,
+          "bottom": 1060,
+          "sw": 1798,
+          "cw": 1798,
+          "vw": 1478,
+          "vh": 791.234375,
+          "w": 1920,
+          "h": 1080,
+          "page": 1920
+        }
+      ],
+      "metrics": {
+        "expand_150_ms": 90.92,
+        "drag_dom_preserved": true,
+        "writes_during_drag": 0,
+        "native_pinch_zoom": {
+          "before": 87,
+          "after": 173
+        }
+      }
+    },
+    "tests_v41_browser.py": {
+      "status": "passed",
+      "accessibility_scans": 110,
+      "note": "Same map flows open the new window first; native board touch passed on the unchanged rerun."
+    },
+    "tests_v4_browser.py": {
+      "status": "passed",
+      "route_width_states": 236,
+      "accessibility_scans": 97,
+      "cache": "Test reads the actual APP_VERSION cache."
+    },
+    "tests_v41.py": {
+      "status": "passed",
+      "tests": 10
+    },
+    "source": {
+      "python_files": 66,
+      "templates": 83,
+      "javascript_files": 22,
+      "cache_assets": 21
+    }
+  },
+  "css": {
+    "files": [
+      {
+        "path": "app.css",
+        "rules": 2341,
+        "active": true
+      },
+      {
+        "path": "design32.css",
+        "rules": 177,
+        "active": false
+      },
+      {
+        "path": "design33.css",
+        "rules": 109,
+        "active": false
+      },
+      {
+        "path": "flow34.css",
+        "rules": 92,
+        "active": false
+      },
+      {
+        "path": "life.css",
+        "rules": 290,
+        "active": false
+      },
+      {
+        "path": "onboarding.css",
+        "rules": 38,
+        "active": true
+      },
+      {
+        "path": "polish342.css",
+        "rules": 64,
+        "active": false
+      },
+      {
+        "path": "polish343.css",
+        "rules": 32,
+        "active": false
+      },
+      {
+        "path": "product37.css",
+        "rules": 293,
+        "active": false
+      },
+      {
+        "path": "public-legal.css",
+        "rules": 172,
+        "active": false
+      },
+      {
+        "path": "public.css",
+        "rules": 179,
+        "active": true
+      },
+      {
+        "path": "task-map.css",
+        "rules": 165,
+        "active": true,
+        "scope": "project Task map only"
+      },
+      {
+        "path": "theme.css",
+        "rules": 631,
+        "active": false
+      },
+      {
+        "path": "v37-board.css",
+        "rules": 64,
+        "active": false
+      },
+      {
+        "path": "v37-onboarding.css",
+        "rules": 38,
+        "active": false
+      },
+      {
+        "path": "workspace37.css",
+        "rules": 397,
+        "active": false
+      }
+    ],
+    "parse_errors": [],
+    "duplicate_declarations": []
+  },
+  "test_history": [
+    "Undo initially kept the old Saved status while its request was pending. saveLayout now reports Saving and disables Undo until complete; persistence/Undo browser checks passed.",
+    "The new viewer test initially asserted disabled state on fieldset itself. It now asserts the actual input is disabled and no submit action exists.",
+    "One initial unchanged native board touch probe did not produce Saved. The complete v4.1 suite passed on rerun; final exact-head CI remains required."
+  ],
+  "release_gate": "Final exact-head CI must pass all 37 scripts and both Linux container architectures. Merge/publication require approval for this new release.",
+  "production_deployed": false,
+  "physical_pi_or_phone_tested": false
+}

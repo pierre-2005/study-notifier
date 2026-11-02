@@ -1,21 +1,23 @@
-# My Life Organized 4.1
+# My Life Organized 4.2
 
 MLO is a self-hosted workspace for tasks, projects, calendars, study, work, notes,
 shared spaces, focus time and personal finances. FastAPI, Jinja, vanilla
 JavaScript and SQLite remain the application platform. The browser and installed
 PWA use the same server data.
 
-Version 4.1 adds a movable project task map, immediate task/board feedback,
-whole-card dragging, consistent completion checks, Save-and-return behavior and
-phone pairing without a second login. It also fixes shared contrast/layout issues
-and reduces redundant page-load/save requests. Existing tasks, permissions,
-Finance, study planning, reminders, files and calendar connections stay integrated.
+Version 4.2 turns the project Task map into a compact preview that opens into a
+large, accessible workspace. Larger cards, spaced branches, thicker rounded
+connections, a grouped task panel, branch folding/focus, an overview, pinch zoom
+and Auto arrange/Undo make it easier to explore and edit real project tasks.
+The earlier immediate task updates, Save-and-return and signed phone pairing
+remain integrated.
 
-Read the [4.1 setup and rollout guide](docs/V41_SETUP.md) and
-[verification/CSS review](docs/V41_VERIFICATION.md). The [earlier setup](docs/V4_SETUP_REPORT.md)
-and [backup/rollback procedure](docs/V4_DEPLOYMENT.md) retain the existing installation
-contracts. A source version or Compose tag does not prove that its image has been
-published or that the owner's server has been redeployed.
+Read the [4.2 interaction and rollout guide](docs/V42_SETUP.md) and
+[verification report](docs/V42_VERIFICATION.md). The [4.1 guide](docs/V41_SETUP.md),
+[earlier setup](docs/V4_SETUP_REPORT.md) and
+[backup/rollback procedure](docs/V4_DEPLOYMENT.md) retain existing installation
+contracts. Source version or Compose tag alone does not establish image
+publication or production rollout.
 
 ## Existing installation
 
