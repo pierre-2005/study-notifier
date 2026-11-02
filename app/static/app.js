@@ -30,7 +30,10 @@
     const entry=read()[here()];const previous=entry&&Date.now()-entry.time<43200000&&safe(entry.url);
     go(previous||options.fallback||fallback(form),previous?entry.y:0);
   }
-  window.MLOSave={finish,remember,safe};
+  // Independently saved dialogs own their lifecycle. Release their draft when
+  // saving or dismissing them so a later page navigation cannot see a ghost edit.
+  function clearDraft(form){drafts.delete(form);if(form)revisions.set(form,0);}
+  window.MLOSave={finish,remember,safe,clearDraft};
   function isSave(form,button){button ||= form.querySelector('button[type=submit],button:not([type]),input[type=submit]');return form.hasAttribute('data-save-return')||/^save\b/i.test((button?.matches('input')?button.value:button?.textContent||'').trim());}
   document.addEventListener('input',e=>{const f=e.target.closest('form');if(!f)return;revisions.set(f,(revisions.get(f)||0)+1);if(!f.matches('[data-note-editor],[data-budget-form]')&&(f.matches('[data-protect-draft],[data-enhanced-form]')||[...f.querySelectorAll('button')].some(b=>/^save\b/i.test(b.textContent.trim()))))drafts.add(f);});
   document.addEventListener('submit',async event=>{
@@ -47,7 +50,7 @@
       if(redirect){remember(redirect);location.assign(redirect);return;}if(json){feedback(form,'Saved.');return;}location.reload();
     }catch(error){feedback(form,error.message,true);}finally{saving.delete(form);for(const b of buttons)b.disabled=false;}
   });
-  window.addEventListener('beforeunload',e=>{if(drafts.size){e.preventDefault();e.returnValue='';}});
+  window.addEventListener('beforeunload',e=>{for(const form of drafts)if(!form.isConnected)drafts.delete(form);if(drafts.size){e.preventDefault();e.returnValue='';}});
   for(const a of document.querySelectorAll('.sidebar-nav a.active,.sidebar-foot a.active'))a.setAttribute('aria-current','page');
   for(const region of document.querySelectorAll('.overflow-x-auto,.table-region'))if(region.scrollWidth>region.clientWidth){region.tabIndex=0;region.setAttribute('role','region');if(!region.hasAttribute('aria-label'))region.setAttribute('aria-label','Scrollable table');}
 })();

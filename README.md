@@ -1,17 +1,23 @@
-# My Life Organized 4.2
+# My Life Organized 4.3
 
 MLO is a self-hosted workspace for tasks, projects, calendars, study, work, notes,
 shared spaces, focus time and personal finances. FastAPI, Jinja, vanilla
 JavaScript and SQLite remain the application platform. The browser and installed
 PWA use the same server data.
 
-Version 4.2 turns the project Task map into a compact preview that opens into a
-large, accessible workspace. Larger cards, spaced branches, thicker rounded
-connections, a grouped task panel, branch folding/focus, an overview, pinch zoom
-and Auto arrange/Undo make it easier to explore and edit real project tasks.
-Patch 4.2.1 keeps automatic folded-branch positions automatic after Undo.
-The earlier immediate task updates, Save-and-return and signed phone pairing
-remain integrated.
+Version 4.3 adds Task map status filters, labeled ancestor context, left-to-right
+or top-to-bottom layouts, and horizontal/Shift-wheel panning. View preferences
+stay specific to your account and project in this browser. Layout coordinates
+and Undo remain compatible with earlier versions. Phone gestures and responsive
+camera recovery keep the canvas usable as the details panel or window changes.
+Saving or dismissing a task preview now clears its draft entry, fixing a false
+leave-page warning when switching to Due dates or another view.
+
+The expanded 2,000-item feature catalog is a proposed product backlog. This
+release implements the map/navigation changes above; it does not implement
+all of those proposals. See the [release guide](docs/V43_SETUP.md),
+[verification report](docs/V43_VERIFICATION.md), and
+[expansion plan](docs/EXPANSION_ROADMAP.md).
 
 Read the [4.2 interaction and rollout guide](docs/V42_SETUP.md) and
 [verification report](docs/V42_VERIFICATION.md). The [4.1 guide](docs/V41_SETUP.md),
